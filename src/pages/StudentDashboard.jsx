@@ -279,8 +279,9 @@ export default function StudentDashboard() {
             <div style={{ ...S.card, marginBottom: 14 }}>
               <MapView
                 busLocation={activeBus?.active ? { lat: activeBus.lat, lng: activeBus.lng } : null}
+                busMoving={activeBus?.speed > 0}
                 routePath={selected?.path?.map(p => [p.lat, p.lng])}
-                stops={selected?.stops}
+
                 center={selected?.center ? [selected.center.lat, selected.center.lng] : null}
                 myLocation={myLocation}
               />
@@ -311,20 +312,6 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* Stops */}
-            {selected?.stops?.length > 0 && (
-              <div>
-                <p style={S.label}>Stops on {selected.name}</p>
-                <div style={S.card}>
-                  {selected.stops.map((stop, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: i < selected.stops.length - 1 ? "1px solid #111" : "none" }}>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#FF5A1F", color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i+1}</div>
-                      <span style={{ fontSize: 13, color: "#888" }}>{stop.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
 

@@ -32,7 +32,8 @@ export default function Login() {
       } else {
         const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
         await setDoc(doc(db, "users", cred.user.uid), { name: form.name, email: form.email, role: form.role, campusId: form.campusId, createdAt: Date.now() });
-        if (form.role === "driver") navigate("/driver");
+        if (form.role === "admin") navigate("/admin");
+        else if (form.role === "driver") navigate("/driver");
         else navigate("/student");
       }
     } catch (err) {
@@ -105,7 +106,7 @@ export default function Login() {
                 <div>
                   <label style={{ color: "#555", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.8px", display: "block", marginBottom: 6 }}>I am a</label>
                   <div style={{ display: "flex", gap: 8 }}>
-                    {["student", "driver"].map(r => (
+                    {["student", "driver", "admin"].map(r => (
                       <button key={r} type="button" onClick={() => setForm({ ...form, role: r })} style={{
                         flex: 1, padding: "12px 0", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif",
                         border: form.role === r ? "1px solid #FF5A1F" : "1px solid #1E1E1E",
@@ -113,7 +114,7 @@ export default function Login() {
                         color: form.role === r ? "#FF5A1F" : "#555",
                         transition: "all 0.2s"
                       }}>
-                        {r === "student" ? "🎓 Student" : "🚌 Driver"}
+                        {r === "student" ? "🎓 Student" : r === "driver" ? "🚌 Driver" : "⚙️ Admin"}
                       </button>
                     ))}
                   </div>

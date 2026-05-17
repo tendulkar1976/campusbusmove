@@ -2,11 +2,25 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-const busIcon = L.divIcon({ className: "", html: `<div style="background:#FF5A1F;width:34px;height:34px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(255,90,31,0.5);font-size:17px;">🚌</div>`, iconSize:[34,34], iconAnchor:[17,17] });
-const stopIcon = L.divIcon({ className: "", html: `<div style="background:#1A1A1A;width:12px;height:12px;border-radius:50%;border:2px solid #FF5A1F;box-shadow:0 1px 4px rgba(0,0,0,0.6);"></div>`, iconSize:[12,12], iconAnchor:[6,6] });
-const myIcon = L.divIcon({ className: "", html: `<div style="background:#60A5FA;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(96,165,250,0.3);"></div>`, iconSize:[16,16], iconAnchor:[8,8] });
+function getBusIcon(moving) {
+  const color = moving ? "#4ADE80" : "#F87171";
+  const shadow = moving ? "0 0 12px rgba(74,222,128,0.6)" : "0 0 12px rgba(248,113,113,0.6)";
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:${shadow};transition:background 0.3s;"></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+}
 
-export default function MapView({ busLocation, routePath, stops, center, myLocation }) {
+const myIcon = L.divIcon({
+  className: "",
+  html: `<div style="background:#60A5FA;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(96,165,250,0.25);"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
+export default function MapView({ busLocation, busMoving, routePath, center, myLocation }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const busMarker = useRef(null);
@@ -25,26 +39,26 @@ export default function MapView({ busLocation, routePath, stops, center, myLocat
   useEffect(() => {
     if (!mapInstance.current || !routePath?.length) return;
     routeLayer.current?.remove();
-    routeLayer.current = L.polyline(routePath, { color: "#FF5A1F", weight: 4, opacity: 0.6, dashArray: "8 5" }).addTo(mapInstance.current);
+    routeLayer.current = L.polyline(routePath, { color: "#FF5A1F", weight: 3, opacity: 0.4, dashArray: "6 4" }).addTo(mapInstance.current);
   }, [routePath]);
-
-  useEffect(() => {
-    if (!mapInstance.current || !stops?.length) return;
-    stops.forEach(stop => L.marker([stop.lat, stop.lng], { icon: stopIcon }).addTo(mapInstance.current).bindPopup(`<b style="font-family:sans-serif">${stop.name}</b>`));
-  }, [stops]);
 
   useEffect(() => {
     if (!mapInstance.current || !busLocation) return;
     const { lat, lng } = busLocation;
-    if (!busMarker.current) busMarker.current = L.marker([lat, lng], { icon: busIcon }).addTo(mapInstance.current).bindPopup("Bus location");
-    else busMarker.current.setLatLng([lat, lng]);
+    const icon = getBusIcon(busMoving);
+    if (!busMarker.current) {
+      busMarker.current = L.marker([lat, lng], { icon }).addTo(mapInstance.current);
+    } else {
+      busMarker.current.setLatLng([lat, lng]);
+      busMarker.current.setIcon(icon);
+    }
     mapInstance.current.panTo([lat, lng]);
-  }, [busLocation]);
+  }, [busLocation, busMoving]);
 
   useEffect(() => {
     if (!mapInstance.current || !myLocation) return;
     const { lat, lng } = myLocation;
-    if (!myMarker.current) myMarker.current = L.marker([lat, lng], { icon: myIcon }).addTo(mapInstance.current).bindPopup("You are here");
+    if (!myMarker.current) myMarker.current = L.marker([lat, lng], { icon: myIcon }).addTo(mapInstance.current);
     else myMarker.current.setLatLng([lat, lng]);
   }, [myLocation]);
 

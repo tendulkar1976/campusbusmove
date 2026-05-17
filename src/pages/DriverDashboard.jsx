@@ -200,7 +200,7 @@ export default function DriverDashboard() {
 
             {/* Map */}
             <div style={{ ...S.card }}>
-              <MapView busLocation={myLocation} />
+              <MapView busLocation={myLocation} busMoving={speed > 0} />
             </div>
 
             {/* Control */}
