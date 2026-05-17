@@ -14,6 +14,7 @@ export default function Login() {
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "student", campusId: "alliance-bangalore" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
 
   function handleChange(e) { setForm({ ...form, [e.target.name]: e.target.value }); }
 
@@ -97,8 +98,13 @@ export default function Login() {
 
             <div>
               <label style={{ color: "#555", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.8px", display: "block", marginBottom: 6 }}>Password</label>
-              <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="••••••••" required
-                style={{ width: "100%", background: "#111", border: "1px solid #1E1E1E", borderRadius: 12, padding: "14px 16px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+              <div style={{ position: "relative" }}>
+                <input name="password" type={showPwd ? "text" : "password"} value={form.password} onChange={handleChange} placeholder="••••••••" required
+                  style={{ width: "100%", background: "#111", border: "1px solid #1E1E1E", borderRadius: 12, padding: "14px 48px 14px 16px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+                <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#555", padding: 0 }}>
+                  {showPwd ? "🙈" : "👁"}
+                </button>
+              </div>
             </div>
 
             {mode === "register" && (
