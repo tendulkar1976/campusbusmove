@@ -12,36 +12,173 @@ function Particle({ style }) {
 
 function AnimatedBus() {
   return (
-    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, overflow: "hidden", pointerEvents: "none" }}>
-      {/* Road */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 24, background: "#0D0D0D" }} />
-      {/* Road dashes */}
-      {[0,1,2,3,4,5,6,7].map(i => (
-        <div key={i} style={{ position: "absolute", bottom: 10, left: `${i * 14}%`, width: "8%", height: 3, background: "#1A1A1A", borderRadius: 2, animation: `roadMove 1.2s linear infinite`, animationDelay: `${i * -0.15}s` }} />
+    <div style={{
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 110,
+      overflow: "hidden",
+      pointerEvents: "none",
+      zIndex: 1
+    }}>
+      {/* Road with gradient */}
+      <div style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 48,
+        background: "linear-gradient(to bottom, #0A0A0A, #111111)",
+        boxShadow: "0 -20px 40px rgba(0,0,0,0.6)"
+      }} />
+
+      {/* Road lines */}
+      {[0,1,2,3,4,5,6,7,8].map(i => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            bottom: 22,
+            left: `${i * 12}%`,
+            width: "9%",
+            height: 4,
+            background: "linear-gradient(90deg, transparent, #FF5A1F, transparent)",
+            borderRadius: 2,
+            opacity: 0.7,
+            animation: `roadMove 1.1s linear infinite`,
+            animationDelay: `${i * -0.13}s`,
+            boxShadow: "0 0 8px rgba(255,90,31,0.4)"
+          }}
+        />
       ))}
-      {/* Bus */}
-      <div style={{ position: "absolute", bottom: 20, left: "8%", animation: "busFloat 2s ease-in-out infinite" }}>
-        {/* Body */}
-        <div style={{ width: 90, height: 38, background: "#FF5A1F", borderRadius: "8px 8px 4px 4px", position: "relative" }}>
-          {/* Windows */}
-          {[8,26,44,62].map((l, i) => (
-            <div key={i} style={{ position: "absolute", top: 7, left: l, width: 14, height: 10, background: "#0A0A0A", borderRadius: 3 }} />
+
+      {/* Bus - Premium look */}
+      <div style={{
+        position: "absolute",
+        bottom: 28,
+        left: "6%",
+        animation: "busFloat 2.4s ease-in-out infinite"
+      }}>
+        {/* Main Body */}
+        <div style={{
+          width: 108,
+          height: 46,
+          background: "linear-gradient(145deg, #FF5A1F, #E84E17)",
+          borderRadius: "12px 12px 6px 6px",
+          position: "relative",
+          boxShadow: "0 12px 30px rgba(255,90,31,0.35), inset 0 -8px 12px rgba(0,0,0,0.3)"
+        }}>
+          {/* Windows with glow */}
+          {[12, 32, 52, 72].map((l, i) => (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                top: 8,
+                left: l,
+                width: 16,
+                height: 14,
+                background: "#0F172A",
+                borderRadius: 4,
+                boxShadow: "inset 0 0 6px rgba(255,224,102,0.3)"
+              }}
+            />
           ))}
+
+          {/* Top highlight */}
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 8,
+            background: "linear-gradient(transparent, rgba(255,255,255,0.25))",
+            borderRadius: "12px 12px 0 0"
+          }} />
+
           {/* Bottom stripe */}
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 10, background: "#CC4518", borderRadius: "0 0 4px 4px" }} />
+          <div style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 12,
+            background: "linear-gradient(#CC4518, #B33C15)",
+            borderRadius: "0 0 6px 6px"
+          }} />
         </div>
-        {/* Front cab */}
-        <div style={{ position: "absolute", top: 4, left: -10, width: 14, height: 30, background: "#E84E17", borderRadius: "6px 0 0 3px" }}>
-          <div style={{ position: "absolute", top: 7, left: 2, width: 6, height: 6, background: "#FFE066", borderRadius: "50%", animation: "glow 2s ease-in-out infinite" }} />
+
+        {/* Front Cab */}
+        <div style={{
+          position: "absolute",
+          top: 6,
+          left: -14,
+          width: 18,
+          height: 34,
+          background: "#E84E17",
+          borderRadius: "8px 4px 4px 8px",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
+        }}>
+          <div style={{
+            position: "absolute",
+            top: 9,
+            left: 4,
+            width: 8,
+            height: 8,
+            background: "#FFEE99",
+            borderRadius: "50%",
+            animation: "glow 1.8s ease-in-out infinite",
+            boxShadow: "0 0 14px #FFEE99"
+          }} />
         </div>
-        {/* Exhaust puffs */}
+
+        {/* Exhaust */}
         {[0,1,2].map(i => (
-          <div key={i} style={{ position: "absolute", top: 24, left: -18 - i * 10, width: 8, height: 8, background: "#1A1A1A", borderRadius: "50%", animation: `puff 1s ease-out infinite`, animationDelay: `${i * 0.25}s` }} />
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              top: 28,
+              left: -22 - i * 11,
+              width: 9,
+              height: 9,
+              background: "#475569",
+              borderRadius: "50%",
+              animation: `puff 0.95s ease-out infinite`,
+              animationDelay: `${i * 0.22}s`,
+              opacity: 0.7
+            }}
+          />
         ))}
-        {/* Wheels */}
-        {[8, 62].map((l, i) => (
-          <div key={i} style={{ position: "absolute", bottom: -8, left: l, width: 18, height: 18, background: "#0A0A0A", border: "2px solid #222", borderRadius: "50%", animation: "spin 0.4s linear infinite" }}>
-            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 7, height: 7, background: "#1A1A1A", border: "1px solid #333", borderRadius: "50%" }} />
+
+        {/* Wheels - Premium */}
+        {[12, 72].map((l, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              bottom: -11,
+              left: l,
+              width: 22,
+              height: 22,
+              background: "#0F172A",
+              border: "3px solid #1E2937",
+              borderRadius: "50%",
+              animation: "spin 0.35s linear infinite",
+              boxShadow: "0 6px 12px rgba(0,0,0,0.6)"
+            }}
+          >
+            <div style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%,-50%)",
+              width: 9,
+              height: 9,
+              background: "#334155",
+              borderRadius: "50%"
+            }} />
           </div>
         ))}
       </div>
@@ -61,133 +198,303 @@ export default function Login() {
   const [formVisible, setFormVisible] = useState(false);
 
   useEffect(() => {
-    const pts = Array.from({ length: 60 }, (_, i) => ({
+    const pts = Array.from({ length: 80 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
-      top: Math.random() * 100,
-      size: Math.random() * 2 + 1,
-      duration: 2 + Math.random() * 4,
-      delay: Math.random() * 4,
-      opacity: Math.random() * 0.4 + 0.1,
+      top: Math.random() * 70,
+      size: Math.random() * 2.5 + 1,
+      duration: 3 + Math.random() * 5,
+      delay: Math.random() * 5,
+      opacity: Math.random() * 0.5 + 0.15,
     }));
     setParticles(pts);
-    setTimeout(() => setMounted(true), 100);
-    setTimeout(() => setFormVisible(true), 400);
+    setTimeout(() => setMounted(true), 80);
+    setTimeout(() => setFormVisible(true), 300);
   }, []);
 
-  function handleChange(e) { setForm({ ...form, [e.target.name]: e.target.value }); }
+  function handleChange(e) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError(""); setLoading(true);
+    setError("");
+    setLoading(true);
     try {
       if (mode === "login") {
         const cred = await signInWithEmailAndPassword(auth, form.email, form.password);
         const snap = await getDoc(doc(db, "users", cred.user.uid));
-        if (!snap.exists()) { setError("Account not found. Please register."); setLoading(false); return; }
+        if (!snap.exists()) {
+          setError("Account not found. Please register.");
+          setLoading(false);
+          return;
+        }
         const role = snap.data().role;
         if (role === "admin") navigate("/admin");
         else if (role === "driver") navigate("/driver");
         else navigate("/student");
       } else {
         const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
-        await setDoc(doc(db, "users", cred.user.uid), { name: form.name, email: form.email, role: form.role, campusId: form.campusId, createdAt: Date.now() });
+        await setDoc(doc(db, "users", cred.user.uid), {
+          name: form.name,
+          email: form.email,
+          role: form.role,
+          campusId: form.campusId,
+          createdAt: Date.now()
+        });
         if (form.role === "admin") navigate("/admin");
         else if (form.role === "driver") navigate("/driver");
         else navigate("/student");
       }
     } catch (err) {
       setError(err.message.replace("Firebase: ", "").replace(/\(auth.*\)/, "").trim());
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", flexDirection: "column", fontFamily: "'DM Sans', sans-serif", position: "relative", overflow: "hidden" }}>
+    <div style={{
+      minHeight: "100vh",
+      background: "#050505",
+      display: "flex",
+      flexDirection: "column",
+      fontFamily: "'DM Sans', system-ui, sans-serif",
+      position: "relative",
+      overflow: "hidden",
+      color: "#fff"
+    }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
-        @keyframes twinkle { 0%,100%{opacity:0.1} 50%{opacity:0.8} }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+        
+        @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.85} }
         @keyframes roadMove { from{transform:translateX(0)} to{transform:translateX(-14%)} }
-        @keyframes busFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+        @keyframes busFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes puff { 0%{opacity:0.5;transform:scale(0.5)} 100%{opacity:0;transform:scale(2) translateX(-20px)} }
-        @keyframes glow { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 8px rgba(255,224,102,0.4)} }
-        @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes puff { 0%{opacity:0.6;transform:scale(0.4) translateX(0)} 100%{opacity:0;transform:scale(2.2) translateX(-28px)} }
+        @keyframes glow { 0%,100%{box-shadow:0 0 12px #FFEE99} 50%{box-shadow:0 0 22px #FFEE99} }
+        
+        @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
-        input:focus { border-color: #FF5A1F !important; outline: none; }
-        input::placeholder { color: #2A2A2A; }
-        select option { background: #111; color: #fff; }
+        
+        .glass-card {
+          background: rgba(15, 15, 20, 0.75);
+          border: 1px solid rgba(255,90,31,0.15);
+          backdrop-filter: blur(16px);
+        }
+        
+        input:focus {
+          border-color: #FF5A1F;
+          box-shadow: 0 0 0 4px rgba(255,90,31,0.15);
+        }
       `}</style>
 
-      {/* Particle stars */}
+      {/* Background Elements */}
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 20%, rgba(255,90,31,0.08) 0%, transparent 50%)" }} />
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,90,31,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,90,31,0.035) 1px, transparent 1px)", backgroundSize: "50px 50px" }} />
+
+      {/* Enhanced Particles */}
       {particles.map(p => (
-        <div key={p.id} style={{ position: "absolute", left: `${p.left}%`, top: `${p.top}%`, width: p.size, height: p.size, background: "#fff", borderRadius: "50%", opacity: p.opacity, animation: `twinkle ${p.duration}s ease-in-out ${p.delay}s infinite`, pointerEvents: "none" }} />
+        <div
+          key={p.id}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            top: `${p.top}%`,
+            width: p.size,
+            height: p.size,
+            background: "#fff",
+            borderRadius: "50%",
+            opacity: p.opacity,
+            animation: `twinkle ${p.duration}s ease-in-out ${p.delay}s infinite`,
+            pointerEvents: "none",
+            boxShadow: "0 0 6px rgba(255,255,255,0.6)"
+          }}
+        />
       ))}
 
-      {/* Subtle grid */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,90,31,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,90,31,0.03) 1px, transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" }} />
-
-      {/* Orange glow top */}
-      <div style={{ position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)", width: 400, height: 300, background: "radial-gradient(circle, rgba(255,90,31,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
-
       {/* Header */}
-      <div style={{ padding: "24px 28px 0", display: "flex", alignItems: "center", gap: 10, animation: mounted ? "fadeIn 0.6s ease forwards" : "none", opacity: mounted ? 1 : 0 }}>
-        <div style={{ width: 36, height: 36, background: "#FF5A1F", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 0 20px rgba(255,90,31,0.3)" }}>🚌</div>
+      <div style={{
+        padding: "28px 32px 0",
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        animation: mounted ? "fadeIn 0.8s ease forwards" : "none"
+      }}>
+        <div style={{
+          width: 42,
+          height: 42,
+          background: "linear-gradient(135deg, #FF5A1F, #FF8A4D)",
+          borderRadius: 12,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 22,
+          boxShadow: "0 0 30px rgba(255,90,31,0.5)",
+          transform: "rotate(-8deg)"
+        }}>
+          🚌
+        </div>
         <div>
-          <div style={{ color: "#fff", fontWeight: 600, fontSize: 16, letterSpacing: "-0.3px" }}>CampusMove</div>
-          <div style={{ color: "#FF5A1F", fontSize: 10, fontWeight: 500, letterSpacing: "1px", textTransform: "uppercase" }}>Live Bus Tracking</div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.6px" }}>CampusMove</div>
+          <div style={{ color: "#FF5A1F", fontSize: 11, fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" }}>Live • Reliable • Campus</div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 24px 80px" }}>
-        <div style={{ maxWidth: 380, width: "100%", margin: "0 auto" }}>
+      {/* Main Content */}
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 24px 100px" }}>
+        <div style={{ maxWidth: 400, width: "100%" }}>
 
-          {/* Heading */}
-          <div style={{ marginBottom: 32, animation: formVisible ? "slideUp 0.5s ease forwards" : "none", opacity: formVisible ? 1 : 0 }}>
-            <h1 style={{ color: "#fff", fontSize: 32, fontWeight: 600, letterSpacing: "-1px", margin: "0 0 8px", lineHeight: 1.1 }}>
-              {mode === "login" ? <>Welcome<br /><span style={{ color: "#FF5A1F" }}>back.</span></> : <>Join<br /><span style={{ color: "#FF5A1F" }}>CampusMove.</span></>}
+          {/* Headline */}
+          <div style={{
+            marginBottom: 40,
+            animation: formVisible ? "slideUp 0.7s cubic-bezier(0.23,1,0.32,1) forwards" : "none",
+            opacity: formVisible ? 1 : 0
+          }}>
+            <h1 style={{
+              fontSize: "42px",
+              fontWeight: 700,
+              lineHeight: 1.05,
+              letterSpacing: "-1.8px",
+              margin: 0
+            }}>
+              {mode === "login" ? (
+                <>Welcome back<span style={{ color: "#FF5A1F" }}>.</span></>
+              ) : (
+                <>Join the ride<span style={{ color: "#FF5A1F" }}>.</span></>
+              )}
             </h1>
-            <p style={{ color: "#333", fontSize: 14, margin: 0 }}>
-              {mode === "login" ? "Sign in to track your campus bus live" : "Create your campus transport account"}
+            <p style={{ color: "#999", fontSize: 16.5, marginTop: 12, fontWeight: 400 }}>
+              {mode === "login"
+                ? "Track your campus bus in real-time"
+                : "Get started with smart campus transport"}
             </p>
           </div>
 
-          {/* Card */}
-          <div style={{ background: "rgba(15,15,15,0.9)", border: "1px solid #1A1A1A", borderRadius: 20, padding: 24, backdropFilter: "blur(10px)", animation: formVisible ? "slideUp 0.6s ease 0.1s forwards" : "none", opacity: formVisible ? 1 : 0 }}>
+          {/* Premium Glass Card */}
+          <div className="glass-card" style={{
+            borderRadius: 24,
+            padding: 32,
+            boxShadow: "0 30px 70px rgba(0,0,0,0.6)",
+            animation: formVisible ? "slideUp 0.8s cubic-bezier(0.23,1,0.32,1) 0.1s forwards" : "none",
+            opacity: formVisible ? 1 : 0
+          }}>
 
-            {/* Mode toggle */}
-            <div style={{ display: "flex", background: "#0A0A0A", borderRadius: 12, padding: 3, marginBottom: 24, border: "1px solid #141414" }}>
+            {/* Toggle */}
+            <div style={{
+              display: "flex",
+              background: "rgba(10,10,10,0.8)",
+              borderRadius: 16,
+              padding: 4,
+              marginBottom: 32,
+              border: "1px solid rgba(255,90,31,0.1)"
+            }}>
               {["login", "register"].map(m => (
-                <button key={m} onClick={() => setMode(m)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif", background: mode === m ? "#FF5A1F" : "transparent", color: mode === m ? "#fff" : "#444", transition: "all 0.25s", boxShadow: mode === m ? "0 2px 12px rgba(255,90,31,0.3)" : "none" }}>
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); setError(""); }}
+                  style={{
+                    flex: 1,
+                    padding: "14px 0",
+                    border: "none",
+                    borderRadius: 12,
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    background: mode === m ? "#FF5A1F" : "transparent",
+                    color: mode === m ? "#fff" : "#888",
+                    transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
+                    boxShadow: mode === m ? "0 4px 15px rgba(255,90,31,0.4)" : "none"
+                  }}
+                >
                   {m === "login" ? "Sign In" : "Register"}
                 </button>
               ))}
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {mode === "register" && (
                 <div>
-                  <label style={{ color: "#444", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Full Name</label>
-                  <input name="name" value={form.name} onChange={handleChange} placeholder="Your full name" required
-                    style={{ width: "100%", background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 12, padding: "13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", transition: "border-color 0.2s" }} />
+                  <label style={{ color: "#888", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8 }}>FULL NAME</label>
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="Alex Rivera"
+                    required
+                    style={{
+                      width: "100%",
+                      background: "rgba(10,10,15,0.9)",
+                      border: "1px solid #222",
+                      borderRadius: 14,
+                      padding: "16px 18px",
+                      color: "#fff",
+                      fontSize: 16,
+                      transition: "all 0.2s"
+                    }}
+                  />
                 </div>
               )}
 
               <div>
-                <label style={{ color: "#444", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Email</label>
-                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="you@university.edu" required
-                  style={{ width: "100%", background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 12, padding: "13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", transition: "border-color 0.2s" }} />
+                <label style={{ color: "#888", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8 }}>UNIVERSITY EMAIL</label>
+                <input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="yourname@university.edu"
+                  required
+                  style={{
+                    width: "100%",
+                    background: "rgba(10,10,15,0.9)",
+                    border: "1px solid #222",
+                    borderRadius: 14,
+                    padding: "16px 18px",
+                    color: "#fff",
+                    fontSize: 16,
+                    transition: "all 0.2s"
+                  }}
+                />
               </div>
 
               <div>
-                <label style={{ color: "#444", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Password</label>
+                <label style={{ color: "#888", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8 }}>PASSWORD</label>
                 <div style={{ position: "relative" }}>
-                  <input name="password" type={showPwd ? "text" : "password"} value={form.password} onChange={handleChange} placeholder="••••••••" required
-                    style={{ width: "100%", background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 12, padding: "13px 48px 13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", transition: "border-color 0.2s" }} />
-                  <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#333", padding: 0, transition: "color 0.2s" }}
-                    onMouseEnter={e => e.target.style.color = "#FF5A1F"} onMouseLeave={e => e.target.style.color = "#333"}>
-                    {showPwd ? "🙈" : "👁"}
+                  <input
+                    name="password"
+                    type={showPwd ? "text" : "password"}
+                    value={form.password}
+                    onChange={handleChange}
+                    placeholder="••••••••"
+                    required
+                    style={{
+                      width: "100%",
+                      background: "rgba(10,10,15,0.9)",
+                      border: "1px solid #222",
+                      borderRadius: 14,
+                      padding: "16px 52px 16px 18px",
+                      color: "#fff",
+                      fontSize: 16,
+                      transition: "all 0.2s"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    style={{
+                      position: "absolute",
+                      right: 18,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      fontSize: 20,
+                      cursor: "pointer",
+                      color: "#666"
+                    }}
+                  >
+                    {showPwd ? "🙈" : "👁️"}
                   </button>
                 </div>
               </div>
@@ -195,44 +502,103 @@ export default function Login() {
               {mode === "register" && (
                 <>
                   <div>
-                    <label style={{ color: "#444", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>I am a</label>
-                    <div style={{ display: "flex", gap: 6 }}>
+                    <label style={{ color: "#888", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 10 }}>I AM A</label>
+                    <div style={{ display: "flex", gap: 8 }}>
                       {["student", "driver", "admin"].map(r => (
-                        <button key={r} type="button" onClick={() => setForm({ ...form, role: r })} style={{ flex: 1, padding: "11px 0", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", border: `1px solid ${form.role === r ? "#FF5A1F" : "#1A1A1A"}`, background: form.role === r ? "#150D09" : "#0A0A0A", color: form.role === r ? "#FF5A1F" : "#444", transition: "all 0.2s" }}>
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setForm({ ...form, role: r })}
+                          style={{
+                            flex: 1,
+                            padding: "14px 10px",
+                            borderRadius: 12,
+                            border: `1.5px solid ${form.role === r ? "#FF5A1F" : "#222"}`,
+                            background: form.role === r ? "rgba(255,90,31,0.08)" : "rgba(10,10,15,0.8)",
+                            color: form.role === r ? "#FF5A1F" : "#aaa",
+                            fontWeight: 600,
+                            fontSize: 13.5,
+                            transition: "all 0.2s"
+                          }}
+                        >
                           {r === "student" ? "🎓 Student" : r === "driver" ? "🚌 Driver" : "⚙️ Admin"}
                         </button>
                       ))}
                     </div>
                   </div>
+
                   <div>
-                    <label style={{ color: "#444", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Campus</label>
-                    <select name="campusId" value={form.campusId} onChange={handleChange}
-                      style={{ width: "100%", background: "#0A0A0A", border: "1px solid #1A1A1A", borderRadius: 12, padding: "13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }}>
-                      {CAMPUSES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <label style={{ color: "#888", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8 }}>CAMPUS</label>
+                    <select
+                      name="campusId"
+                      value={form.campusId}
+                      onChange={handleChange}
+                      style={{
+                        width: "100%",
+                        background: "rgba(10,10,15,0.9)",
+                        border: "1px solid #222",
+                        borderRadius: 14,
+                        padding: "16px 18px",
+                        color: "#fff",
+                        fontSize: 16
+                      }}
+                    >
+                      {CAMPUSES.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
                     </select>
                   </div>
                 </>
               )}
 
               {error && (
-                <div style={{ background: "#120808", border: "1px solid #2A1010", borderRadius: 10, padding: "11px 14px", animation: "slideUp 0.3s ease forwards" }}>
-                  <p style={{ color: "#F87171", fontSize: 12, margin: 0 }}>⚠ {error}</p>
+                <div style={{
+                  background: "rgba(185,28,28,0.15)",
+                  border: "1px solid rgba(248,113,113,0.3)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  color: "#FCA5A5",
+                  fontSize: 13.5
+                }}>
+                  ⚠️ {error}
                 </div>
               )}
 
-              <button type="submit" disabled={loading} style={{ width: "100%", background: loading ? "#2A1A10" : "#FF5A1F", border: "none", borderRadius: 12, padding: "15px 0", color: "#fff", fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, letterSpacing: "-0.2px", transition: "all 0.2s", boxShadow: loading ? "none" : "0 4px 20px rgba(255,90,31,0.3)" }}
-                onMouseEnter={e => { if (!loading) e.target.style.boxShadow = "0 4px 28px rgba(255,90,31,0.5)"; }}
-                onMouseLeave={e => { if (!loading) e.target.style.boxShadow = "0 4px 20px rgba(255,90,31,0.3)"; }}>
-                {loading ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  marginTop: 8,
+                  width: "100%",
+                  background: loading ? "#3F2A1F" : "linear-gradient(90deg, #FF5A1F, #FF8A4D)",
+                  border: "none",
+                  borderRadius: 16,
+                  padding: "18px 0",
+                  color: "#fff",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: loading ? "none" : "0 10px 30px rgba(255,90,31,0.4)",
+                  transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)"
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) e.target.style.transform = "translateY(-2px)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) e.target.style.transform = "translateY(0)";
+                }}
+              >
+                {loading ? "Connecting..." : mode === "login" ? "Sign In Securely" : "Create My Account"}
               </button>
             </form>
           </div>
 
-          <p style={{ textAlign: "center", color: "#1A1A1A", fontSize: 11, marginTop: 20 }}>Admin access via invite only</p>
+          <p style={{ textAlign: "center", color: "#444", fontSize: 12, marginTop: 24 }}>
+            Admin access is invite-only • Secure • Encrypted
+          </p>
         </div>
       </div>
 
-      {/* Animated bus at bottom */}
       <AnimatedBus />
     </div>
   );
