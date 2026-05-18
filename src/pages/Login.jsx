@@ -15,7 +15,7 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [particles, setParticles] = useState([]);
   const [formVisible, setFormVisible] = useState(false);
-  const [busPhase, setBusPhase] = useState("idle"); // idle | driving
+  const [busPhase, setBusPhase] = useState("idle");
   const busRef = useRef(null);
 
   useEffect(() => {
@@ -28,7 +28,6 @@ export default function Login() {
     }));
     setParticles(pts);
     setTimeout(() => setFormVisible(true), 200);
-    // Bus drives across on load
     setTimeout(() => setBusPhase("driving"), 600);
     setTimeout(() => setBusPhase("idle"), 3200);
   }, []);
@@ -38,13 +37,12 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError(""); setLoading(true);
-    // Bus drives off on submit
     setBusPhase("driving");
     try {
       if (mode === "login") {
         const cred = await signInWithEmailAndPassword(auth, form.email, form.password);
         const snap = await getDoc(doc(db, "users", cred.user.uid));
-        if (!snap.exists()) { setError("Account not found. Please register."); setLoading(false); setBusPhase("idle"); return; }
+        if (!snap.exists()) { setError("No account found. Please register."); setLoading(false); setBusPhase("idle"); return; }
         const role = snap.data().role;
         setTimeout(() => {
           if (role === "admin") navigate("/admin");
@@ -61,7 +59,22 @@ export default function Login() {
         }, 800);
       }
     } catch (err) {
-      setError(err.message.replace("Firebase: ", "").replace(/\(auth.*\)/, "").trim());
+      const code = err.code;
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setError("Wrong password. Please try again.");
+      } else if (code === "auth/user-not-found") {
+        setError("No account found with this email.");
+      } else if (code === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
+      } else if (code === "auth/too-many-requests") {
+        setError("Too many attempts. Please try again later.");
+      } else if (code === "auth/email-already-in-use") {
+        setError("Email already registered. Please sign in.");
+      } else if (code === "auth/weak-password") {
+        setError("Password must be at least 6 characters.");
+      } else {
+        setError(err.message.replace("Firebase: ", "").replace(/\(auth.*\)/, "").trim());
+      }
       setLoading(false);
       setBusPhase("idle");
     }
@@ -77,17 +90,17 @@ export default function Login() {
         @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
         @keyframes busLoop { 0%{left:-120px} 100%{left:110vw} }
-        @keyframes busDriveIn { from{left:-120px} to{left:42vw} }
-        @keyframes busDriveOut { from{left:42vw} to{left:110vw} }
         @keyframes busIdle { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-3px)} }
         @keyframes roadDash { from{transform:translateX(0)} to{transform:translateX(-12vw)} }
         @keyframes spinWheel { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes exhaustPuff { 0%{opacity:0.6;transform:scale(0.4) translateX(0)} 100%{opacity:0;transform:scale(2.5) translateX(-30px)} }
         @keyframes headlightPulse { 0%,100%{box-shadow:0 0 4px rgba(255,224,102,0.3)} 50%{box-shadow:0 0 12px rgba(255,224,102,0.7), 8px 0 30px rgba(255,224,102,0.2)} }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
         input:focus { border-color: #FF5A1F !important; box-shadow: 0 0 0 3px rgba(255,90,31,0.1) !important; outline: none; }
         input::placeholder { color: #252525; }
         select option { background: #111; }
         button:active { transform: scale(0.98); }
+        .error-box { animation: shake 0.4s ease; }
       `}</style>
 
       {/* Stars */}
@@ -153,7 +166,7 @@ export default function Login() {
                 <label style={{ color: "#333", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Password</label>
                 <div style={{ position: "relative" }}>
                   <input name="password" type={showPwd ? "text" : "password"} value={form.password} onChange={handleChange} placeholder="••••••••" required
-                    style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 46px 13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s" }} />
+                    style={{ width: "100%", background: "#0A0A0A", border: `1px solid ${error && error.toLowerCase().includes("password") ? "#F87171" : "#161616"}`, borderRadius: 11, padding: "13px 46px 13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s" }} />
                   <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#2A2A2A", padding: 0, transition: "color 0.2s" }}
                     onMouseEnter={e => e.target.style.color = "#FF5A1F"} onMouseLeave={e => e.target.style.color = "#2A2A2A"}>
                     {showPwd ? "🙈" : "👁"}
@@ -184,8 +197,9 @@ export default function Login() {
               )}
 
               {error && (
-                <div style={{ background: "#0F0606", border: "1px solid #220E0E", borderRadius: 10, padding: "11px 14px" }}>
-                  <p style={{ color: "#F87171", fontSize: 12, margin: 0 }}>⚠ {error}</p>
+                <div className="error-box" style={{ background: "#0F0606", border: "1px solid #2A1010", borderRadius: 10, padding: "11px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <p style={{ color: "#F87171", fontSize: 12, margin: 0, fontWeight: 500 }}>{error}</p>
                 </div>
               )}
 
@@ -202,43 +216,26 @@ export default function Login() {
 
       {/* === ANIMATED BUS SCENE === */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 72, pointerEvents: "none", overflow: "hidden" }}>
-        {/* Road */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 30, background: "#0D0D0D", borderTop: "1px solid #141414" }} />
-        {/* Center line dashes */}
         {Array.from({length: 14}).map((_, i) => (
           <div key={i} style={{ position: "absolute", bottom: 13, left: `${i * 8}%`, width: "5%", height: 3, background: "#161616", borderRadius: 2, animation: `roadDash ${isDriving ? "0.35s" : "1.1s"} linear infinite`, animationDelay: `${i * -0.08}s`, transition: "animation-duration 0.4s" }} />
         ))}
-
-        {/* BUS */}
-        <div ref={busRef} style={{
-          position: "absolute", bottom: 26,
-          animation: isDriving ? "busLoop 2.2s linear forwards" : "busIdle 2s ease-in-out infinite",
-          left: isDriving ? undefined : "38%",
-        }}>
+        <div ref={busRef} style={{ position: "absolute", bottom: 26, animation: isDriving ? "busLoop 2.2s linear forwards" : "busIdle 2s ease-in-out infinite", left: isDriving ? undefined : "38%" }}>
           <div style={{ position: "relative" }}>
-            {/* Exhaust puffs */}
             {[0,1,2,3].map(i => (
               <div key={i} style={{ position: "absolute", top: 20, left: -18 - i*11, width: isDriving ? 13 : 9, height: isDriving ? 13 : 9, background: "#161616", borderRadius: "50%", animation: `exhaustPuff ${isDriving ? "0.5s" : "1s"} ease-out infinite`, animationDelay: `${i*0.18}s` }} />
             ))}
-            {/* Front cab */}
             <div style={{ position: "absolute", top: 4, left: -13, width: 16, height: 34, background: "#E84E17", borderRadius: "8px 0 0 4px" }}>
-              {/* Headlight */}
               <div style={{ position: "absolute", top: 8, left: 3, width: 7, height: 7, background: "#FFE066", borderRadius: "50%", animation: "headlightPulse 1.5s ease-in-out infinite" }} />
             </div>
-            {/* Main body */}
             <div style={{ width: 110, height: 44, background: "#FF5A1F", borderRadius: "10px 10px 4px 4px", position: "relative", boxShadow: "0 4px 20px rgba(255,90,31,0.25)" }}>
-              {/* Windows */}
               {[8,30,52,74].map((l,i) => (
                 <div key={i} style={{ position: "absolute", top: 8, left: l, width: 16, height: 12, background: "#0A0A0A", borderRadius: 3, opacity: 0.85 }} />
               ))}
-              {/* Door */}
               <div style={{ position: "absolute", top: 7, right: 10, width: 13, height: 24, background: "#0A0A0A", borderRadius: "3px 3px 0 0" }} />
-              {/* Bottom stripe */}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 12, background: "#CC4518", borderRadius: "0 0 4px 4px" }} />
-              {/* Roof line */}
               <div style={{ position: "absolute", top: 0, left: 8, right: 8, height: 3, background: "#E84E17", borderRadius: 2 }} />
             </div>
-            {/* Wheels */}
             {[10, 80].map((l,i) => (
               <div key={i} style={{ position: "absolute", bottom: -11, left: l, width: 22, height: 22, background: "#0A0A0A", border: "2px solid #222", borderRadius: "50%", animation: `spinWheel ${isDriving ? "0.2s" : "0.5s"} linear infinite`, transition: "animation-duration 0.3s" }}>
                 <div style={{ position: "absolute", inset: 3, background: "#111", border: "1px solid #2A2A2A", borderRadius: "50%" }} />
