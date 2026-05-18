@@ -1,1 +1,9 @@
-{ "appId": "com.campusmove.app", "appName": "CampusMove", "webDir": "dist" } 
+{
+  "appId": "com.campusmove.app",
+  "appName": "CampusMove",
+  "webDir": "dist",
+  "server": {
+    "url": "https://campusbusmove.vercel.app",
+    "cleartext": true
+  }
+}
