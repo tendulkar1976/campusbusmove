@@ -16,18 +16,18 @@ function AnimatedBus() {
       height: "110px",
       overflow: "hidden",
       pointerEvents: "none",
-      perspective: "1200px",           // 3D perspective
-      perspectiveOrigin: "50% 80%"
+      perspective: "1400px",
+      perspectiveOrigin: "50% 75%"
     }}>
-      {/* Futuristic Road / Grid */}
+      {/* Futuristic Road */}
       <div style={{
         position: "absolute",
         bottom: 0,
         left: 0,
         right: 0,
-        height: "48px",
+        height: "52px",
         background: "linear-gradient(180deg, #0A0A0A 0%, #111 100%)",
-        boxShadow: "0 -20px 40px rgba(255,90,31,0.15)"
+        boxShadow: "0 -30px 60px rgba(0, 240, 255, 0.1)"
       }} />
 
       {/* Holographic Road Lines */}
@@ -36,115 +36,114 @@ function AnimatedBus() {
           key={i}
           style={{
             position: "absolute",
-            bottom: "18px",
+            bottom: "19px",
             left: `${i * 11}%`,
             width: "9%",
             height: "3px",
             background: "linear-gradient(90deg, transparent, #00F0FF, #FF5A1F, transparent)",
-            boxShadow: "0 0 8px #00F0FF",
-            animation: `roadMove 1.4s linear infinite`,
-            animationDelay: `${i * -0.14}s`,
-            opacity: 0.9,
+            boxShadow: "0 0 10px #00F0FF",
+            animation: `roadMove 1.35s linear infinite`,
+            animationDelay: `${i * -0.135}s`,
             willChange: "transform"
           }}
         />
       ))}
 
-      {/* Futuristic Bus - 3D Style */}
+      {/* Futuristic 3D Bus */}
       <div style={{
         position: "absolute",
         bottom: "28px",
         left: "-20%",
         animation: "busDrive 14s linear infinite",
-        animationDelay: "0.5s",
+        animationDelay: "0.4s",
         transformStyle: "preserve-3d",
         willChange: "transform"
       }}>
         <div style={{
-          width: "110px",
-          height: "48px",
-          background: "linear-gradient(145deg, #FF5A1F, #E84E17)",
-          borderRadius: "14px 14px 8px 8px",
+          width: "112px",
+          height: "50px",
+          background: "linear-gradient(145deg, #FF5A1F, #C2410C)",
+          borderRadius: "16px 16px 8px 8px",
           position: "relative",
           boxShadow: `
-            0 15px 35px rgba(0,0,0,0.8),
-            0 0 25px rgba(255,90,31,0.6),
-            inset 0 0 20px rgba(255,255,255,0.15)
+            0 20px 40px rgba(0,0,0,0.9),
+            0 0 30px rgba(255,90,31,0.7),
+            inset 0 4px 15px rgba(255,255,255,0.2)
           `,
-          transform: "rotateX(12deg) translateZ(0)",
+          transform: "rotateX(14deg) translateZ(0)",
         }}>
           {/* Neon Windows */}
-          {[12, 34, 56, 78].map((l, i) => (
+          {[13, 35, 57, 79].map((l, i) => (
             <div
               key={i}
               style={{
                 position: "absolute",
-                top: "10px",
+                top: "11px",
                 left: l,
                 width: "14px",
-                height: "18px",
+                height: "19px",
                 background: "#0A1625",
                 borderRadius: "3px",
-                boxShadow: "0 0 12px #00F0FF",
+                boxShadow: "0 0 14px #00F0FF, inset 0 0 6px #67E8F9",
                 border: "1px solid #00F0FF"
               }}
             />
           ))}
 
-          {/* Bottom Neon Stripe */}
+          {/* Neon Bottom Bar */}
           <div style={{
             position: "absolute",
             bottom: 0,
             left: 0,
             right: 0,
-            height: "12px",
-            background: "linear-gradient(90deg, #00F0FF, #FF5A1F)",
+            height: "13px",
+            background: "linear-gradient(90deg, #00F0FF, #FF5A1F, #00F0FF)",
             borderRadius: "0 0 8px 8px",
-            boxShadow: "0 0 15px #00F0FF"
+            boxShadow: "0 0 18px #00F0FF"
           }} />
 
-          {/* Futuristic Headlight */}
+          {/* Headlight */}
           <div style={{
             position: "absolute",
-            top: "14px",
-            left: "-18px",
-            width: "22px",
-            height: "16px",
-            background: "#BAE6FD",
+            top: "15px",
+            left: "-19px",
+            width: "24px",
+            height: "17px",
+            background: "#E0F2FE",
             borderRadius: "50% 40% 40% 50%",
-            boxShadow: "0 0 25px #67E8F9, 0 0 40px #0EA5E9",
-            animation: "glow 1.2s ease-in-out infinite alternate"
+            boxShadow: "0 0 28px #67E8F9, 0 0 45px #0EA5E9",
+            animation: "glow 1.1s ease-in-out infinite alternate"
           }} />
 
-          {/* Side Scanner Line */}
+          {/* Scanner Line */}
           <div style={{
             position: "absolute",
-            top: "22px",
-            left: "0",
-            right: "0",
+            top: "24px",
+            left: "-10%",
+            right: "-10%",
             height: "2px",
-            background: "#67E8F9",
-            boxShadow: "0 0 10px #67E8F9",
-            animation: "scan 2.5s linear infinite"
+            background: "linear-gradient(90deg, transparent, #67E8F9, transparent)",
+            boxShadow: "0 0 12px #67E8F9",
+            animation: "scan 2.2s linear infinite"
           }} />
         </div>
 
-        {/* Wheels with 3D rim effect */}
-        {[18, 78].map((pos, i) => (
+        {/* Wheels */}
+        {[18, 80].map((pos, i) => (
           <div
             key={i}
             style={{
               position: "absolute",
-              bottom: "-14px",
+              bottom: "-15px",
               left: pos,
-              width: "24px",
-              height: "24px",
+              width: "26px",
+              height: "26px",
               background: "#0A0A0A",
-              border: "4px solid #444",
+              border: "4px solid #555",
               borderRadius: "50%",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.9), inset 0 0 10px #666",
-              animation: "wheelSpin 0.5s linear infinite",
-              transform: "translateZ(10px)"
+              boxShadow: "0 6px 15px rgba(0,0,0,0.9), inset 0 0 12px #777",
+              animation: "wheelSpin 0.48s linear infinite",
+              transform: "translateZ(15px)"
             }}
           >
             <div style={{
@@ -152,11 +151,10 @@ function AnimatedBus() {
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
-              width: "10px",
-              height: "10px",
+              width: "11px",
+              height: "11px",
               background: "#222",
-              borderRadius: "50%",
-              boxShadow: "inset 0 0 6px #888"
+              borderRadius: "50%"
             }} />
           </div>
         ))}
@@ -187,8 +185,8 @@ export default function Login() {
       opacity: Math.random() * 0.5 + 0.15,
     }));
     setParticles(pts);
-    setTimeout(() => setMounted(true), 80);
-    setTimeout(() => setFormVisible(true), 350);
+    setTimeout(() => setMounted(true), 100);
+    setTimeout(() => setFormVisible(true), 400);
   }, []);
 
   function handleChange(e) {
@@ -240,26 +238,24 @@ export default function Login() {
       flexDirection: "column",
       fontFamily: "'DM Sans', sans-serif",
       position: "relative",
-      overflow: "hidden",
-      color: "#fff"
+      overflow: "hidden"
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap');
         
         @keyframes twinkle { 0%,100%{opacity:0.15} 50%{opacity:0.85} }
         @keyframes roadMove { from { transform: translateX(0); } to { transform: translateX(-16%); } }
-        @keyframes busDrive { 0% { transform: translateX(0) rotateX(8deg); } 100% { transform: translateX(122vw) rotateX(8deg); } }
+        @keyframes busDrive { 0% { transform: translateX(0) rotateX(14deg); } 100% { transform: translateX(122vw) rotateX(14deg); } }
         @keyframes wheelSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes glow { from { box-shadow: 0 0 20px #67E8F9; } to { box-shadow: 0 0 35px #BAE6FD; } }
-        @keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+        @keyframes glow { from { box-shadow: 0 0 25px #67E8F9; } to { box-shadow: 0 0 45px #BAE6FD; } }
+        @keyframes scan { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
 
         @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-
-        input:focus { border-color: #00F0FF !important; box-shadow: 0 0 0 3px rgba(0,240,255,0.2); }
+        @keyframes borderGlow { 0%,100% { border-color: #00F0FF; } 50% { border-color: #FF5A1F; } }
       `}</style>
 
-      {/* Stars / Particles */}
+      {/* Stars */}
       {particles.map(p => (
         <div
           key={p.id}
@@ -273,16 +269,220 @@ export default function Login() {
             borderRadius: "50%",
             opacity: p.opacity,
             animation: `twinkle ${p.duration}s ease-in-out ${p.delay}s infinite`,
-            pointerEvents: "none",
-            willChange: "opacity"
+            pointerEvents: "none"
           }}
         />
       ))}
 
-      {/* Rest of your UI (Header + Form) remains the same */}
-      {/* ... [Keep your existing header, form card, etc.] ... */}
+      {/* Subtle Grid */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: "50px 50px",
+        pointerEvents: "none"
+      }} />
 
-      {/* Futuristic 3D Bus */}
+      {/* Header */}
+      <div style={{
+        padding: "28px 32px 0",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        animation: mounted ? "fadeIn 0.8s ease forwards" : "none"
+      }}>
+        <div style={{
+          width: 42, height: 42, background: "linear-gradient(135deg, #FF5A1F, #00F0FF)",
+          borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 22, boxShadow: "0 0 25px rgba(0,240,255,0.5)"
+        }}>🛰️</div>
+        <div>
+          <div style={{ color: "#fff", fontWeight: 700, fontSize: 18, letterSpacing: "-0.5px" }}>CampusMove</div>
+          <div style={{ color: "#00F0FF", fontSize: 11, fontWeight: 500, letterSpacing: "2px", textTransform: "uppercase" }}>LIVE BUS TRACKING</div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 24px 100px" }}>
+        <div style={{ maxWidth: 400, width: "100%", margin: "0 auto" }}>
+
+          {/* Futuristic Heading */}
+          <div style={{ marginBottom: 40, textAlign: "center", animation: formVisible ? "slideUp 0.7s ease forwards" : "none" }}>
+            <h1 style={{ 
+              color: "#fff", 
+              fontSize: 38, 
+              fontWeight: 700, 
+              letterSpacing: "-1.5px", 
+              margin: "0 0 12px",
+              background: "linear-gradient(90deg, #fff, #00F0FF)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent"
+            }}>
+              {mode === "login" ? "WELCOME BACK" : "JOIN THE GRID"}
+            </h1>
+            <p style={{ color: "#94A3B8", fontSize: 15 }}>
+              {mode === "login" ? "Access your campus mobility network" : "Create your secure transport profile"}
+            </p>
+          </div>
+
+          {/* Futuristic Glass Card */}
+          <div style={{
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(16px)",
+            border: "1px solid rgba(0, 240, 255, 0.3)",
+            borderRadius: 24,
+            padding: 32,
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,90,31,0.2) inset",
+            animation: formVisible ? "slideUp 0.8s ease 0.1s forwards" : "none",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            {/* Subtle inner grid */}
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: "linear-gradient(rgba(0,240,255,0.04) 1px, transparent 1px)",
+              backgroundSize: "30px 30px",
+              opacity: 0.6,
+              pointerEvents: "none"
+            }} />
+
+            {/* Mode Toggle */}
+            <div style={{ 
+              display: "flex", 
+              background: "rgba(0,0,0,0.4)", 
+              borderRadius: 16, 
+              padding: 4, 
+              marginBottom: 32,
+              border: "1px solid rgba(255,255,255,0.08)"
+            }}>
+              {["login", "register"].map(m => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 0",
+                    border: "none",
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    background: mode === m ? "linear-gradient(90deg, #FF5A1F, #F97316)" : "transparent",
+                    color: mode === m ? "#fff" : "#94A3B8",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    boxShadow: mode === m ? "0 4px 15px rgba(249, 115, 22, 0.4)" : "none"
+                  }}
+                >
+                  {m === "login" ? "SIGN IN" : "REGISTER"}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Form fields with neon style */}
+              {mode === "register" && (
+                <div>
+                  <label style={{ color: "#64748B", fontSize: 12, fontWeight: 500, marginBottom: 8, display: "block" }}>FULL NAME</label>
+                  <input name="name" value={form.name} onChange={handleChange} placeholder="Alex Rivera" required
+                    style={{
+                      width: "100%", background: "rgba(15,23,42,0.8)", border: "1px solid #334155",
+                      borderRadius: 14, padding: "14px 18px", color: "#fff", fontSize: 15
+                    }}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label style={{ color: "#64748B", fontSize: 12, fontWeight: 500, marginBottom: 8, display: "block" }}>EMAIL</label>
+                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="you@university.edu" required
+                  style={{
+                    width: "100%", background: "rgba(15,23,42,0.8)", border: "1px solid #334155",
+                    borderRadius: 14, padding: "14px 18px", color: "#fff", fontSize: 15
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ color: "#64748B", fontSize: 12, fontWeight: 500, marginBottom: 8, display: "block" }}>PASSWORD</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    name="password"
+                    type={showPwd ? "text" : "password"}
+                    value={form.password}
+                    onChange={handleChange}
+                    placeholder="••••••••"
+                    required
+                    style={{
+                      width: "100%", background: "rgba(15,23,42,0.8)", border: "1px solid #334155",
+                      borderRadius: 14, padding: "14px 18px 14px 18px", color: "#fff", fontSize: 15
+                    }}
+                  />
+                  <button type="button" onClick={() => setShowPwd(!showPwd)}
+                    style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#64748B", fontSize: 18, cursor: "pointer" }}>
+                    {showPwd ? "🙈" : "👁"}
+                  </button>
+                </div>
+              </div>
+
+              {mode === "register" && (
+                /* Role & Campus selectors - keep similar but styled */
+                <div style={{ display: "flex", gap: 12 }}>
+                  {["student", "driver", "admin"].map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setForm({ ...form, role: r })}
+                      style={{
+                        flex: 1,
+                        padding: "12px 8px",
+                        borderRadius: 12,
+                        border: `1px solid ${form.role === r ? "#00F0FF" : "#334155"}`,
+                        background: form.role === r ? "rgba(0,240,255,0.1)" : "rgba(15,23,42,0.6)",
+                        color: form.role === r ? "#00F0FF" : "#94A3B8",
+                        fontSize: 13,
+                        fontWeight: 600
+                      }}
+                    >
+                      {r === "student" ? "🎓 Student" : r === "driver" ? "🚌 Driver" : "⚡ Admin"}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {error && <p style={{ color: "#F87171", textAlign: "center", fontSize: 13 }}>{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  marginTop: 8,
+                  padding: "16px",
+                  background: "linear-gradient(90deg, #FF5A1F, #F97316)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 16,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: "0 10px 30px rgba(249, 115, 22, 0.4)",
+                  transition: "all 0.2s"
+                }}
+              >
+                {loading ? "CONNECTING..." : mode === "login" ? "SIGN IN →" : "CREATE ACCOUNT →"}
+              </button>
+            </form>
+          </div>
+
+          <p style={{ textAlign: "center", color: "#475569", fontSize: 12, marginTop: 24 }}>
+            Admin access • Invite only
+          </p>
+        </div>
+      </div>
+
       <AnimatedBus />
     </div>
   );
