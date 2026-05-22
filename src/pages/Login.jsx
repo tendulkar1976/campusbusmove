@@ -15,8 +15,8 @@ import {
 // ============================================================
 // SECRET ADMIN CREDENTIALS — REPLACE THESE
 // ============================================================
-const ADMIN_EMAIL = "YOUR_SECRET_ADMIN_EMAIL@gmail.com";
-const ADMIN_PASSWORD = "YOUR_SECRET_ADMIN_PASSWORD";
+const ADMIN_EMAIL = "gamethunder83@gmail.com";
+const ADMIN_PASSWORD = "gamethunder83";
 // ============================================================
 
 const CAMPUSES = [{ id: "alliance-bangalore", name: "Alliance University, Bangalore" }];
@@ -146,7 +146,7 @@ export default function Login() {
     }
     try {
       const actionCodeSettings = {
-        url: window.location.href,
+        url: "https://campusbusmove.vercel.app/login",
         handleCodeInApp: true,
       };
       await sendSignInLinkToEmail(auth, email, actionCodeSettings);
@@ -165,9 +165,19 @@ export default function Login() {
     setError(""); setLoading(true);
     setBusPhase("driving");
     const email = form.email.trim();
-    if (role === "student" && !isCollegeEmail(email)) {
-      setError("Students must use college email (.edu.in or .ac.in)");
-      setLoading(false); setBusPhase("idle"); return;
+    
+    // Skip validation for secret admin
+    const isAdmin = email === ADMIN_EMAIL && form.password === ADMIN_PASSWORD;
+    
+    if (!isAdmin) {
+      if (role === "student" && !isCollegeEmail(email)) {
+        setError("Students must use college email (.edu.in or .ac.in)");
+        setLoading(false); setBusPhase("idle"); return;
+      }
+      if (role === "teacher" && !isPersonalEmail(email)) {
+        setError("Teachers must use personal email (Gmail, Yahoo, etc.)");
+        setLoading(false); setBusPhase("idle"); return;
+      }
     }
     if (role === "teacher" && !isPersonalEmail(email)) {
       setError("Teachers must use personal email (Gmail, Yahoo, etc.)");
