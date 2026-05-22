@@ -15,8 +15,8 @@ import {
 // ============================================================
 // SECRET ADMIN CREDENTIALS — REPLACE THESE
 // ============================================================
-const ADMIN_EMAIL = "gamethunder83@gmail.com";
-const ADMIN_PASSWORD = "gamethunder83";
+const ADMIN_EMAIL = "YOUR_SECRET_ADMIN_EMAIL@gmail.com";
+const ADMIN_PASSWORD = "YOUR_SECRET_ADMIN_PASSWORD";
 // ============================================================
 
 const CAMPUSES = [{ id: "alliance-bangalore", name: "Alliance University, Bangalore" }];
@@ -226,9 +226,9 @@ export default function Login() {
         @keyframes twinkle { 0%,100%{opacity:0.1} 50%{opacity:0.9} }
         @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes busLoop { 0%{right:-140px;left:auto} 100%{right:110vw;left:auto} }
-        @keyframes busIdle { 0%,100%{transform:translateY(0px) scaleX(-1)} 50%{transform:translateY(-3px) scaleX(-1)} }
-        @keyframes roadDash { from{transform:translateX(0)} to{transform:translateX(12vw)} }
+        @keyframes busLoop { 0%{left:-140px} 100%{left:110vw} }
+        @keyframes busIdle { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-3px)} }
+        @keyframes roadDash { from{transform:translateX(0)} to{transform:translateX(-12vw)} }
         @keyframes spinWheel { from{transform:rotate(0deg)} to{transform:rotate(-360deg)} }
         @keyframes exhaustPuff { 0%{opacity:0.6;transform:scale(0.4) translateX(0)} 100%{opacity:0;transform:scale(2.5) translateX(30px)} }
         @keyframes headlightPulse { 0%,100%{box-shadow:0 0 4px rgba(255,224,102,0.3)} 50%{box-shadow:0 0 12px rgba(255,224,102,0.7),-8px 0 30px rgba(255,224,102,0.2)} }
@@ -442,30 +442,29 @@ export default function Login() {
           <div key={i} style={{ position: "absolute", bottom: 13, left: `${i * 8}%`, width: "5%", height: 3, background: "#161616", borderRadius: 2, animation: `roadDash ${isDriving ? "0.35s" : "1.1s"} linear infinite`, animationDelay: `${i * -0.08}s` }} />
         ))}
 
-        {/* Bus — scaleX(-1) flips it to face RIGHT */}
+        {/* Bus — facing RIGHT (left to right) */}
         <div style={{
           position: "absolute", bottom: 26,
           animation: isDriving ? "busLoop 2.2s linear forwards" : "busIdle 2s ease-in-out infinite",
-          right: isDriving ? undefined : "38%",
-          transform: isDriving ? "scaleX(-1)" : undefined,
+          left: isDriving ? undefined : "38%",
         }}>
-          <div style={{ position: "relative", transform: "scaleX(-1)" }}>
-            {/* Exhaust — now on right side (visually left since flipped) */}
+          <div style={{ position: "relative" }}>
+            {/* Exhaust puffs — behind bus (left side) */}
             {[0,1,2,3].map(i => (
-              <div key={i} style={{ position: "absolute", top: 20, right: -18 - i*11, width: isDriving ? 13 : 9, height: isDriving ? 13 : 9, background: "#161616", borderRadius: "50%", animation: `exhaustPuff ${isDriving ? "0.5s" : "1s"} ease-out infinite`, animationDelay: `${i*0.18}s` }} />
+              <div key={i} style={{ position: "absolute", top: 20, left: -18 - i*11, width: isDriving ? 13 : 9, height: isDriving ? 13 : 9, background: "#161616", borderRadius: "50%", animation: `exhaustPuff ${isDriving ? "0.5s" : "1s"} ease-out infinite`, animationDelay: `${i*0.18}s` }} />
             ))}
-            {/* Front cab — now on LEFT (facing right) */}
-            <div style={{ position: "absolute", top: 4, left: -13, width: 16, height: 34, background: "#E84E17", borderRadius: "8px 0 0 4px" }}>
-              <div style={{ position: "absolute", top: 8, left: 3, width: 7, height: 7, background: "#FFE066", borderRadius: "50%", animation: "headlightPulse 1.5s ease-in-out infinite" }} />
-            </div>
             {/* Body */}
             <div style={{ width: 110, height: 44, background: "#FF5A1F", borderRadius: "10px 10px 4px 4px", position: "relative", boxShadow: "0 4px 20px rgba(255,90,31,0.25)" }}>
               {[8,30,52,74].map((l,i) => (
                 <div key={i} style={{ position: "absolute", top: 8, left: l, width: 16, height: 12, background: "#0A0A0A", borderRadius: 3, opacity: 0.85 }} />
               ))}
-              <div style={{ position: "absolute", top: 7, right: 10, width: 13, height: 24, background: "#0A0A0A", borderRadius: "3px 3px 0 0" }} />
+              <div style={{ position: "absolute", top: 7, left: 10, width: 13, height: 24, background: "#0A0A0A", borderRadius: "3px 3px 0 0" }} />
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 12, background: "#CC4518", borderRadius: "0 0 4px 4px" }} />
               <div style={{ position: "absolute", top: 0, left: 8, right: 8, height: 3, background: "#E84E17", borderRadius: 2 }} />
+            </div>
+            {/* Front cab — RIGHT side (facing right) */}
+            <div style={{ position: "absolute", top: 4, right: -13, width: 16, height: 34, background: "#E84E17", borderRadius: "0 8px 4px 0" }}>
+              <div style={{ position: "absolute", top: 8, right: 3, width: 7, height: 7, background: "#FFE066", borderRadius: "50%", animation: "headlightPulse 1.5s ease-in-out infinite" }} />
             </div>
             {/* Wheels */}
             {[10, 80].map((l,i) => (
