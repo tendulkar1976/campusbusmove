@@ -27,8 +27,6 @@ export default function DriverDashboard() {
   const lastMapUpdate = useRef(0);
   const timerRef = useRef(null);
   const tripDocRef = useRef(null);
-  const lastMapUpdate = useRef(0);
-  const lastFirebaseUpdate = useRef(0);
 
   useEffect(() => {
     if (!user || tab !== "trips") return;
