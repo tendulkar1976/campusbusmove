@@ -74,9 +74,21 @@ export default function StudentDashboard() {
     if (!navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
       pos => setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {}, { enableHighAccuracy: true }
+      () => {}, { enableHighAccuracy: true, maximumAge: 8000, timeout: 20000 }
     );
     return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
+
+  // Pause GPS when app is backgrounded
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (watchIdRef && watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
   // ETA calculation + geofence check
