@@ -136,6 +136,7 @@ export default function Login() {
   async function sendEmailLink() {
     setError(""); setLoading(true);
     const email = form.email.trim();
+    if (!email) { setError("Enter your email first."); setLoading(false); return; }
     if (role === "student" && !isCollegeEmail(email)) {
       setError("Students must use college email (.edu.in)");
       setLoading(false); return;
