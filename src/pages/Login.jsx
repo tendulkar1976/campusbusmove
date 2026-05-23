@@ -98,13 +98,26 @@ export default function Login() {
     setError(""); setLoading(true);
     const phone = form.phone.startsWith("+") ? form.phone : "+91" + form.phone;
     try {
-      setupRecaptcha();
+      if (recaptchaVerifier.current) {
+        recaptchaVerifier.current.clear();
+        recaptchaVerifier.current = null;
+      }
+      recaptchaVerifier.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "normal",
+        callback: () => console.log("recaptcha solved"),
+        "expired-callback": () => { recaptchaVerifier.current = null; }
+      });
+      await recaptchaVerifier.current.render();
       const confirmation = await signInWithPhoneNumber(auth, phone, recaptchaVerifier.current);
       setConfirmObj(confirmation);
       setOtpSent(true);
       setStep("otp");
     } catch (err) {
-      setError("Failed to send OTP. Check phone number.");
+      console.error("OTP error:", err);
+      if (err.code === "auth/invalid-phone-number") setError("Invalid phone number. Use 10 digits.");
+      else if (err.code === "auth/too-many-requests") setError("Too many attempts. Try again later.");
+      else if (err.code === "auth/captcha-check-failed") setError("Please complete the captcha first.");
+      else setError("OTP failed: " + (err.message || err.code));
       recaptchaVerifier.current = null;
     } finally { setLoading(false); }
   }
@@ -136,7 +149,6 @@ export default function Login() {
   async function sendEmailLink() {
     setError(""); setLoading(true);
     const email = form.email.trim();
-    if (!email) { setError("Enter your email first."); setLoading(false); return; }
     if (role === "student" && !isCollegeEmail(email)) {
       setError("Students must use college email (.edu.in)");
       setLoading(false); return;
@@ -249,7 +261,7 @@ export default function Login() {
       `}</style>
 
       {/* Recaptcha container */}
-      <div id="recaptcha-container" style={{ marginBottom: 8 }} />
+      
 
       {/* Stars */}
       {particles.map(p => (
@@ -350,10 +362,11 @@ export default function Login() {
                             style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 16px 13px 48px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", letterSpacing: "1px" }} />
                         </div>
                       </div>
-                      {error && <div className="error-shake" style={{ background: "#0F0606", border: "1px solid #2A1010", borderRadius: 10, padding: "11px 14px" }}><p style={{ color: "#F87171", fontSize: 12, margin: 0 }}>⚠️ {error}</p></div>}
                       <button onClick={sendPhoneOTP} disabled={loading || form.phone.length < 10} style={{ width: "100%", background: loading ? "#1A0E06" : "#FF5A1F", border: "none", borderRadius: 12, padding: "15px 0", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 22px rgba(255,90,31,0.3)", opacity: form.phone.length < 10 ? 0.5 : 1 }}>
                         {loading ? "Sending OTP..." : "Send OTP →"}
                       </button>
+                      <div id="recaptcha-container" style={{ marginTop: 10 }} />
+                      {error && <div className="error-shake" style={{ background: "#0F0606", border: "1px solid #2A1010", borderRadius: 10, padding: "11px 14px" }}><p style={{ color: "#F87171", fontSize: 12, margin: 0 }}>⚠️ {error}</p></div>}
                     </>
                   )}
 
