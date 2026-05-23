@@ -23,7 +23,7 @@ const CAMPUSES = [{ id: "alliance-bangalore", name: "Alliance University, Bangal
 
 // Email validation
 function isCollegeEmail(email) {
-  return email.toLowerCase().endsWith(".edu.in") || email.toLowerCase().endsWith(".ac.in");
+  return email.toLowerCase().endsWith(".edu.in");
 }
 
 function isPersonalEmail(email) {
@@ -89,7 +89,7 @@ export default function Login() {
   // Setup recaptcha for phone OTP
   function setupRecaptcha() {
     if (!recaptchaVerifier.current) {
-      recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaRef.current, { size: "invisible" });
+      recaptchaVerifier.current = new RecaptchaVerifier(auth, "recaptcha-container", { size: "normal", callback: () => {} });
     }
   }
 
@@ -137,7 +137,7 @@ export default function Login() {
     setError(""); setLoading(true);
     const email = form.email.trim();
     if (role === "student" && !isCollegeEmail(email)) {
-      setError("Students must use college email (.edu.in or .ac.in)");
+      setError("Students must use college email (.edu.in)");
       setLoading(false); return;
     }
     if (role === "teacher" && !isPersonalEmail(email)) {
@@ -166,29 +166,25 @@ export default function Login() {
     setBusPhase("driving");
     const email = form.email.trim();
     
-    // Skip validation for secret admin
-    const isAdmin = email === ADMIN_EMAIL && form.password === ADMIN_PASSWORD;
-    
-    if (!isAdmin) {
-      if (role === "student" && !isCollegeEmail(email)) {
-        setError("Students must use college email (.edu.in or .ac.in)");
-        setLoading(false); setBusPhase("idle"); return;
+    // Check secret admin FIRST — bypass all validation
+    if (email === ADMIN_EMAIL && form.password === ADMIN_PASSWORD) {
+      try {
+        await signInWithEmailAndPassword(auth, email, form.password);
+        navigate("/admin"); return;
+      } catch(e) {
+        setError("Admin login failed."); setLoading(false); setBusPhase("idle"); return;
       }
-      if (role === "teacher" && !isPersonalEmail(email)) {
-        setError("Teachers must use personal email (Gmail, Yahoo, etc.)");
-        setLoading(false); setBusPhase("idle"); return;
-      }
+    }
+
+    if (role === "student" && !isCollegeEmail(email)) {
+      setError("Students must use college email (.edu.in)");
+      setLoading(false); setBusPhase("idle"); return;
     }
     if (role === "teacher" && !isPersonalEmail(email)) {
       setError("Teachers must use personal email (Gmail, Yahoo, etc.)");
       setLoading(false); setBusPhase("idle"); return;
     }
     try {
-      // Check secret admin credentials
-      if (email === ADMIN_EMAIL && form.password === ADMIN_PASSWORD) {
-        const cred = await signInWithEmailAndPassword(auth, email, form.password);
-        navigate("/admin"); return;
-      }
       if (mode === "login") {
         const cred = await signInWithEmailAndPassword(auth, email, form.password);
         const snap = await getDoc(doc(db, "users", cred.user.uid));
@@ -252,7 +248,7 @@ export default function Login() {
       `}</style>
 
       {/* Recaptcha container */}
-      <div ref={recaptchaRef} />
+      <div id="recaptcha-container" style={{ marginBottom: 8 }} />
 
       {/* Stars */}
       {particles.map(p => (
