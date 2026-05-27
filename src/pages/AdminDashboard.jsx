@@ -51,7 +51,7 @@ export default function AdminDashboard() {
       if (snap.exists() && snap.data()?.ids) setHiddenPresets(snap.data().ids);
     }).catch(() => {});
   }, []);
-  useEffect(() => { if (tab === "users") loadUsers(); }, [tab]);
+  useEffect(() => { loadUsers(); }, []);
 
   async function addRoute() {
     if (!newRoute.name || !newRoute.label) return;
@@ -193,14 +193,25 @@ export default function AdminDashboard() {
             <div style={S.card}>
               <div style={S.cardHead}><span style={S.cardLabel}>Live Bus Status</span></div>
               {PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(pr => {
-                const active = liveStatus[pr.id]?.live?.active;
+                const liveData = liveStatus[pr.id]?.live;
+                const active = liveData?.active;
                 const override = presetOverrides[pr.id] || {};
                 const displayRoute = { ...pr, ...override };
+                const driverUid = liveData?.driverUid;
+                const driverUser = users.find(u => u.id === driverUid);
+                const driverName = driverUser?.name || (driverUid ? "Driver" : null);
+                const speed = liveData?.speed || 0;
                 return (
                   <div key={pr.id} style={S.row}>
                     <div>
                       <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{displayRoute.name}</div>
                       <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{displayRoute.label}</div>
+                      {active && driverName && (
+                        <div style={{ fontSize: 11, color: "#FF5A1F", marginTop: 3 }}>🚌 {driverName} · {speed} km/h</div>
+                      )}
+                      {!active && (
+                        <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 3 }}>No driver active</div>
+                      )}
                     </div>
                     <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
                   </div>
