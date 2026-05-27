@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { ref, onValue } from "firebase/database";
 import { db, rtdb } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -45,13 +45,11 @@ export default function AdminDashboard() {
       const overrides = {};
       snap.docs.forEach(d => { overrides[d.id] = d.data(); });
       setPresetOverrides(overrides);
-    });
+    }).catch(() => {});
     // Load hidden presets
-    import("firebase/firestore").then(({ getDoc, doc: d }) => {
-      getDoc(d(db, "settings", "deletedPresets")).then(snap => {
-        if (snap.exists() && snap.data().ids) setHiddenPresets(snap.data().ids);
-      });
-    });
+    getDoc(doc(db, "settings", "deletedPresets")).then(snap => {
+      if (snap.exists() && snap.data()?.ids) setHiddenPresets(snap.data().ids);
+    }).catch(() => {});
   }, []);
   useEffect(() => { if (tab === "users") loadUsers(); }, [tab]);
 
@@ -199,30 +197,12 @@ export default function AdminDashboard() {
                 const override = presetOverrides[pr.id] || {};
                 const displayRoute = { ...pr, ...override };
                 return (
-                  <div key={pr.id} style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-                    {editingRoute?.id === pr.id ? (
-                      <div style={{ width: "100%" }}>
-                        <input value={editingRoute.name} onChange={e => setEditingRoute({...editingRoute, name: e.target.value})} style={S.input} placeholder="Route name" />
-                        <input value={editingRoute.label} onChange={e => setEditingRoute({...editingRoute, label: e.target.value})} style={S.input} placeholder="Label" />
-                        <input value={editingRoute.description || ""} onChange={e => setEditingRoute({...editingRoute, description: e.target.value})} style={{...S.input, marginBottom: 8}} placeholder="Description" />
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={saveEditRoute} disabled={editSaving} style={{ flex: 1, background: "#FF5A1F", border: "none", borderRadius: 8, padding: "8px 0", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{editSaving ? "Saving..." : "Save"}</button>
-                          <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: "1px solid #1A1A1A", borderRadius: 8, padding: "8px 0", color: "#444", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between" }}>
-                        <div>
-                          <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{displayRoute.name}</div>
-                          <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{displayRoute.label}</div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
-                          <button onClick={() => setEditingRoute({ id: pr.id, name: displayRoute.name, label: displayRoute.label, description: displayRoute.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
-                          <button onClick={() => deleteRoute(pr.id, true)} style={S.delBtn}>Delete</button>
-                        </div>
-                      </div>
-                    )}
+                  <div key={pr.id} style={S.row}>
+                    <div>
+                      <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{displayRoute.name}</div>
+                      <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{displayRoute.label}</div>
+                    </div>
+                    <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
                   </div>
                 );
               })}
