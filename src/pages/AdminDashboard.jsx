@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore";
 import { ref, onValue } from "firebase/database";
 import { db, rtdb } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [newRoute, setNewRoute] = useState({ name: "", label: "", description: "" });
   const [hiddenPresets, setHiddenPresets] = useState([]);
+  const [presetOverrides, setPresetOverrides] = useState({});
   const [saving, setSaving] = useState(false);
   const [userAction, setUserAction] = useState(null); // { uid, action }
   const [confirmId, setConfirmId] = useState(null);
@@ -37,7 +38,21 @@ export default function AdminDashboard() {
     getDocs(collection(db, "users")).then(snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   }
 
-  useEffect(() => { loadRoutes(); }, []);
+  useEffect(() => {
+    loadRoutes();
+    // Load preset overrides
+    getDocs(collection(db, "routeOverrides")).then(snap => {
+      const overrides = {};
+      snap.docs.forEach(d => { overrides[d.id] = d.data(); });
+      setPresetOverrides(overrides);
+    });
+    // Load hidden presets
+    import("firebase/firestore").then(({ getDoc, doc: d }) => {
+      getDoc(d(db, "settings", "deletedPresets")).then(snap => {
+        if (snap.exists() && snap.data().ids) setHiddenPresets(snap.data().ids);
+      });
+    });
+  }, []);
   useEffect(() => { if (tab === "users") loadUsers(); }, [tab]);
 
   async function addRoute() {
@@ -49,41 +64,49 @@ export default function AdminDashboard() {
     loadRoutes();
   }
 
+  const [editingRoute, setEditingRoute] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
+
   async function deleteRoute(id, isPreset) {
-    if (!isPreset) {
+    if (isPreset) {
+      // Store deleted preset in Firestore settings
+      try {
+        await setDoc(doc(db, "settings", "deletedPresets"), 
+          { ids: [...hiddenPresets, id] }, { merge: true });
+      } catch(e) {}
+      setHiddenPresets(h => [...h, id]);
+    } else {
       await deleteDoc(doc(db, "routes", id));
       setRoutes(r => r.filter(x => x.id !== id));
     }
-    // Preset routes can't be deleted from Firestore (they're hardcoded)
-    // Just hide them from view by storing in a hidden list
-    setHiddenPresets(h => [...h, id]);
     setConfirmId(null);
   }
-
-  const [editingRoute, setEditingRoute] = useState(null); // { id, name, label, description }
-  const [editSaving, setEditSaving] = useState(false);
 
   async function saveEditRoute() {
     if (!editingRoute) return;
     setEditSaving(true);
-    const { updateDoc: upd, doc: d } = await import("firebase/firestore");
-    if (editingRoute.isPreset) {
-      // Save preset route override to Firestore
-      await addDoc(collection(db, "routes"), {
-        name: editingRoute.name, label: editingRoute.label,
-        description: editingRoute.description,
-        campusId: "alliance-bangalore", path: [], stops: [], createdAt: Date.now()
-      });
-    } else {
-      const { updateDoc, doc } = await import("firebase/firestore");
-      await updateDoc(doc(db, "routes", editingRoute.id), {
-        name: editingRoute.name, label: editingRoute.label, description: editingRoute.description
-      });
-      setRoutes(r => r.map(x => x.id === editingRoute.id ? { ...x, ...editingRoute } : x));
-    }
+    try {
+      if (editingRoute.isPreset) {
+        // Save preset override with same preset ID in Firestore
+        await setDoc(doc(db, "routeOverrides", editingRoute.id), {
+          name: editingRoute.name,
+          label: editingRoute.label,
+          description: editingRoute.description,
+          updatedAt: Date.now(),
+        });
+        // Update local PRESET_ROUTES display
+        setPresetOverrides(p => ({ ...p, [editingRoute.id]: editingRoute }));
+      } else {
+        await updateDoc(doc(db, "routes", editingRoute.id), {
+          name: editingRoute.name,
+          label: editingRoute.label,
+          description: editingRoute.description,
+        });
+        setRoutes(r => r.map(x => x.id === editingRoute.id ? { ...x, ...editingRoute } : x));
+      }
+    } catch(e) { console.error(e); }
     setEditSaving(false);
     setEditingRoute(null);
-    loadRoutes();
   }
 
   async function blockUser(uid) {
@@ -173,6 +196,8 @@ export default function AdminDashboard() {
               <div style={S.cardHead}><span style={S.cardLabel}>Live Bus Status</span></div>
               {PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(pr => {
                 const active = liveStatus[pr.id]?.live?.active;
+                const override = presetOverrides[pr.id] || {};
+                const displayRoute = { ...pr, ...override };
                 return (
                   <div key={pr.id} style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
                     {editingRoute?.id === pr.id ? (
@@ -188,13 +213,13 @@ export default function AdminDashboard() {
                     ) : (
                       <div style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between" }}>
                         <div>
-                          <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{pr.name}</div>
-                          <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{pr.label}</div>
+                          <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{displayRoute.name}</div>
+                          <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{displayRoute.label}</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
-                          <button onClick={() => setEditingRoute({ id: pr.id, name: pr.name, label: pr.label, description: pr.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
-                          <button onClick={() => setConfirmId({ id: pr.id, action: 'delete', isPreset: true })} style={S.delBtn}>Delete</button>
+                          <button onClick={() => setEditingRoute({ id: pr.id, name: displayRoute.name, label: displayRoute.label, description: displayRoute.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
+                          <button onClick={() => deleteRoute(pr.id, true)} style={S.delBtn}>Delete</button>
                         </div>
                       </div>
                     )}
@@ -211,6 +236,8 @@ export default function AdminDashboard() {
               <div style={S.cardHead}><span style={S.cardLabel}>Default Routes (4)</span></div>
               {PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(pr => {
                 const active = liveStatus[pr.id]?.live?.active;
+                const override = presetOverrides[pr.id] || {};
+                const displayRoute = { ...pr, ...override };
                 return (
                   <div key={pr.id} style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
                     {editingRoute?.id === pr.id ? (
@@ -226,13 +253,13 @@ export default function AdminDashboard() {
                     ) : (
                       <div style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between" }}>
                         <div>
-                          <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{pr.name}</div>
-                          <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{pr.label}</div>
+                          <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{displayRoute.name}</div>
+                          <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{displayRoute.label}</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
-                          <button onClick={() => setEditingRoute({ id: pr.id, name: pr.name, label: pr.label, description: pr.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
-                          <button onClick={() => setConfirmId({ id: pr.id, action: 'delete', isPreset: true })} style={S.delBtn}>Delete</button>
+                          <button onClick={() => setEditingRoute({ id: pr.id, name: displayRoute.name, label: displayRoute.label, description: displayRoute.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
+                          <button onClick={() => deleteRoute(pr.id, true)} style={S.delBtn}>Delete</button>
                         </div>
                       </div>
                     )}
@@ -264,7 +291,7 @@ export default function AdminDashboard() {
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => setEditingRoute({ id: route.id, name: route.name, label: route.label, description: route.description || "" })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
-                          <button onClick={() => setConfirmId({ id: route.id, action: 'delete' })} style={S.delBtn}>Delete</button>
+                          <button onClick={() => deleteRoute(route.id, false)} style={S.delBtn}>Delete</button>
                         </div>
                       </div>
                     )}
