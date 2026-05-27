@@ -213,7 +213,7 @@ export default function AdminDashboard() {
         {tab === "routes" && (
           <>
             <div style={S.card}>
-              <div style={S.cardHead}><span style={S.cardLabel}>Default Routes (4)</span></div>
+              <div style={S.cardHead}><span style={S.cardLabel}>Routes ({PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + routes.length})</span></div>
               {PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(pr => {
                 const active = liveStatus[pr.id]?.live?.active;
                 const override = presetOverrides[pr.id] || {};
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
 
             {routes.length > 0 && (
               <div style={S.card}>
-                <div style={S.cardHead}><span style={S.cardLabel}>Custom Routes ({routes.length})</span></div>
+                <div style={S.cardHead}><span style={S.cardLabel}>Custom Routes</span></div>
                 {routes.map(route => (
                   <div key={route.id} style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
                     {editingRoute?.id === route.id ? (
