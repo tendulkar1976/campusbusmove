@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [newRoute, setNewRoute] = useState({ name: "", label: "", description: "" });
   const [hiddenPresets, setHiddenPresets] = useState([]);
   const [presetOverrides, setPresetOverrides] = useState({});
+  const [presetsLoaded, setPresetsLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [userAction, setUserAction] = useState(null); // { uid, action }
   const [confirmId, setConfirmId] = useState(null);
@@ -48,8 +49,13 @@ export default function AdminDashboard() {
     }).catch(() => {});
     // Load hidden presets
     getDoc(doc(db, "settings", "deletedPresets")).then(snap => {
-      if (snap.exists() && snap.data()?.ids) setHiddenPresets(snap.data().ids);
-    }).catch(() => {});
+      if (snap.exists() && Array.isArray(snap.data()?.ids)) {
+        setHiddenPresets(snap.data().ids);
+      } else {
+        setHiddenPresets([]); // No hidden presets
+      }
+      setPresetsLoaded(true);
+    }).catch(() => { setHiddenPresets([]); setPresetsLoaded(true); });
   }, []);
   useEffect(() => { loadUsers(); }, []);
 
@@ -186,7 +192,7 @@ export default function AdminDashboard() {
           <>
             <div style={S.grid}>
               <div style={S.statCard}><div style={S.statLabel}>Active Buses</div><div style={S.statVal("#4ADE80")}>{activeBuses}</div></div>
-              <div style={S.statCard}><div style={S.statLabel}>Total Routes</div><div style={S.statVal("#FF5A1F")}>{4 + routes.length}</div></div>
+              <div style={S.statCard}><div style={S.statLabel}>Total Routes</div><div style={S.statVal("#FF5A1F")}>{PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + routes.length}</div></div>
               <div style={S.statCard}><div style={S.statLabel}>Students</div><div style={S.statVal("#60A5FA")}>{studentCount || "—"}</div></div>
               <div style={S.statCard}><div style={S.statLabel}>Drivers</div><div style={S.statVal("#A78BFA")}>{driverCount || "—"}</div></div>
             </div>
