@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import PermissionsGate from "./components/PermissionsGate";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -8,12 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 
 function RoleRedirect() {
   const { role, loading } = useAuth();
-  if (loading) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#030712",color:"#f97316",fontSize:"18px"}}>
-      Loading...
-    </div>
-  );
-  if (!role) return <Navigate to="/login" replace />;
+  if (loading) return null;
   if (role === "admin") return <Navigate to="/admin" replace />;
   if (role === "driver") return <Navigate to="/driver" replace />;
   return <Navigate to="/student" replace />;
@@ -22,6 +18,7 @@ function RoleRedirect() {
 export default function App() {
   return (
     <AuthProvider>
+      <PermissionsGate>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -29,7 +26,7 @@ export default function App() {
           <Route
             path="/student"
             element={
-              <ProtectedRoute allowedRoles={["student"]}>
+              <ProtectedRoute allowedRoles={["student", "teacher"]}>
                 <StudentDashboard />
               </ProtectedRoute>
             }
@@ -53,6 +50,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </PermissionsGate>
     </AuthProvider>
   );
 }

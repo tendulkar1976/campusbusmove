@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const [routes, setRoutes] = useState([]);
   const [users, setUsers] = useState([]);
   const [newRoute, setNewRoute] = useState({ name: "", label: "", description: "" });
+  const [hiddenPresets, setHiddenPresets] = useState([]);
   const [saving, setSaving] = useState(false);
   const [userAction, setUserAction] = useState(null); // { uid, action }
   const [confirmId, setConfirmId] = useState(null);
@@ -48,9 +49,15 @@ export default function AdminDashboard() {
     loadRoutes();
   }
 
-  async function deleteRoute(id) {
-    await deleteDoc(doc(db, "routes", id));
-    setRoutes(r => r.filter(x => x.id !== id));
+  async function deleteRoute(id, isPreset) {
+    if (!isPreset) {
+      await deleteDoc(doc(db, "routes", id));
+      setRoutes(r => r.filter(x => x.id !== id));
+    }
+    // Preset routes can't be deleted from Firestore (they're hardcoded)
+    // Just hide them from view by storing in a hidden list
+    setHiddenPresets(h => [...h, id]);
+    setConfirmId(null);
   }
 
   const [editingRoute, setEditingRoute] = useState(null); // { id, name, label, description }
@@ -164,7 +171,7 @@ export default function AdminDashboard() {
             </div>
             <div style={S.card}>
               <div style={S.cardHead}><span style={S.cardLabel}>Live Bus Status</span></div>
-              {PRESET_ROUTES.map(pr => {
+              {PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(pr => {
                 const active = liveStatus[pr.id]?.live?.active;
                 return (
                   <div key={pr.id} style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
@@ -187,6 +194,7 @@ export default function AdminDashboard() {
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
                           <button onClick={() => setEditingRoute({ id: pr.id, name: pr.name, label: pr.label, description: pr.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
+                          <button onClick={() => setConfirmId({ id: pr.id, action: 'delete', isPreset: true })} style={S.delBtn}>Delete</button>
                         </div>
                       </div>
                     )}
@@ -201,7 +209,7 @@ export default function AdminDashboard() {
           <>
             <div style={S.card}>
               <div style={S.cardHead}><span style={S.cardLabel}>Default Routes (4)</span></div>
-              {PRESET_ROUTES.map(pr => {
+              {PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(pr => {
                 const active = liveStatus[pr.id]?.live?.active;
                 return (
                   <div key={pr.id} style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
@@ -224,6 +232,7 @@ export default function AdminDashboard() {
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
                           <button onClick={() => setEditingRoute({ id: pr.id, name: pr.name, label: pr.label, description: pr.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
+                          <button onClick={() => setConfirmId({ id: pr.id, action: 'delete', isPreset: true })} style={S.delBtn}>Delete</button>
                         </div>
                       </div>
                     )}
@@ -255,7 +264,7 @@ export default function AdminDashboard() {
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => setEditingRoute({ id: route.id, name: route.name, label: route.label, description: route.description || "" })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
-                          <button onClick={() => deleteRoute(route.id)} style={S.delBtn}>Delete</button>
+                          <button onClick={() => setConfirmId({ id: route.id, action: 'delete' })} style={S.delBtn}>Delete</button>
                         </div>
                       </div>
                     )}
