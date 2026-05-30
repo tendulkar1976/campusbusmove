@@ -121,7 +121,14 @@ export default function Login() {
     // Secret admin bypass — works from any role
     if (email === ADMIN_EMAIL && form.password === ADMIN_PASSWORD) {
       try {
-        await signInWithEmailAndPassword(auth, email, form.password);
+        const cred = await signInWithEmailAndPassword(auth, email, form.password);
+        const snap = await getDoc(doc(db, "users", cred.user.uid));
+        if (!snap.exists()) {
+          await setDoc(doc(db, "users", cred.user.uid), {
+            name: "Admin", email: ADMIN_EMAIL, role: "admin",
+            campusId: "alliance-bangalore", createdAt: Date.now(),
+          });
+        }
         navigate("/admin"); return;
       } catch (e) {
         setError("Admin login failed. Check credentials.");

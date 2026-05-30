@@ -1,16 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { ref, onValue } from "firebase/database";
-import { collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc } from "firebase/firestore";
-import { rtdb, db, auth } from "../firebase";
+import { collection, query, where, getDocs, addDoc, doc, getDoc } from "firebase/firestore";
+import { rtdb, db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import MapView from "../components/MapView";
-
-const ROUTES = [
-  { id: "route-1", name: "Route 1", label: "North Gate Loop", center: { lat: 12.9716, lng: 77.5946 }, path: [{ lat: 12.9716, lng: 77.5946 }, { lat: 12.9731, lng: 77.5925 }, { lat: 12.9748, lng: 77.5910 }], stops: [{ lat: 12.9716, lng: 77.5946, name: "Main Gate" }, { lat: 12.9731, lng: 77.5925, name: "Library" }, { lat: 12.9748, lng: 77.5910, name: "Engineering Block" }] },
-  { id: "route-2", name: "Route 2", label: "South Campus Loop", center: { lat: 12.9700, lng: 77.5960 }, path: [{ lat: 12.9700, lng: 77.5960 }, { lat: 12.9715, lng: 77.5980 }, { lat: 12.9730, lng: 77.5970 }], stops: [{ lat: 12.9700, lng: 77.5960, name: "Admin Block" }, { lat: 12.9715, lng: 77.5980, name: "Sports Complex" }, { lat: 12.9730, lng: 77.5970, name: "Hostel B" }] },
-  { id: "route-3", name: "Route 3", label: "East Wing Loop", center: { lat: 12.9725, lng: 77.5970 }, path: [{ lat: 12.9725, lng: 77.5970 }, { lat: 12.9740, lng: 77.5990 }, { lat: 12.9755, lng: 77.5975 }], stops: [{ lat: 12.9725, lng: 77.5970, name: "East Gate" }, { lat: 12.9740, lng: 77.5990, name: "Lab Block" }, { lat: 12.9755, lng: 77.5975, name: "Cafeteria" }] },
-  { id: "route-3a", name: "Route 3A", label: "Express Loop", center: { lat: 12.9710, lng: 77.5935 }, path: [{ lat: 12.9710, lng: 77.5935 }, { lat: 12.9722, lng: 77.5950 }, { lat: 12.9735, lng: 77.5940 }], stops: [{ lat: 12.9710, lng: 77.5935, name: "West Gate" }, { lat: 12.9722, lng: 77.5950, name: "Auditorium" }, { lat: 12.9735, lng: 77.5940, name: "PG Block" }] },
-];
 
 function getDistanceMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -35,32 +28,50 @@ export default function StudentDashboard() {
   const { user, campusId, logout } = useAuth();
   const [tab, setTab] = useState("track");
   const [myRoute, setMyRoute] = useState(null);
-  const [selected, setSelected] = useState(ROUTES[0]);
+  const [routes, setRoutes] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [busData, setBusData] = useState({});
   const [myLocation, setMyLocation] = useState(null);
   const [eta, setEta] = useState(null);
   const [distance, setDistance] = useState(null);
   const [attendanceLog, setAttendanceLog] = useState({});
-  const [attendanceStatus, setAttendanceStatus] = useState(null); // null | "pending" | "present" | "absent"
+  const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [inGeofence, setInGeofence] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [loading, setLoading] = useState(true);
   const geofenceTimerRef = useRef(null);
   const attendanceMarkedRef = useRef(false);
+  const gpsWatchRef = useRef(null);
+
+  // Load routes from Firestore only (admin-added routes)
+  useEffect(() => {
+    getDocs(collection(db, "routes")).then(snap => {
+      if (!snap.empty) {
+        const r = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setRoutes(r);
+        setSelected(r[0]);
+      } else {
+        setRoutes([]);
+        setSelected(null);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
   // Get student's assigned route
   useEffect(() => {
-    if (!user) return;
+    if (!user || routes.length === 0) return;
     getDoc(doc(db, "users", user.uid)).then(snap => {
       if (snap.exists()) {
         const data = snap.data();
         if (data.routeId) {
-          const r = ROUTES.find(x => x.id === data.routeId);
+          const r = routes.find(x => x.id === data.routeId);
           if (r) { setMyRoute(r); setSelected(r); }
         }
       }
     });
-  }, [user]);
+  }, [user, routes]);
 
   // Listen to all bus locations
   useEffect(() => {
@@ -72,52 +83,52 @@ export default function StudentDashboard() {
   // Get student GPS
   useEffect(() => {
     if (!navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
+    gpsWatchRef.current = navigator.geolocation.watchPosition(
       pos => setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => {}, { enableHighAccuracy: true, maximumAge: 8000, timeout: 20000 }
     );
-    return () => navigator.geolocation.clearWatch(id);
+    return () => { if (gpsWatchRef.current) navigator.geolocation.clearWatch(gpsWatchRef.current); };
   }, []);
 
-
-  // Pause GPS when app is backgrounded
+  // Pause GPS when app backgrounded
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.hidden) {
-        if (watchIdRef && watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
+      if (document.hidden && gpsWatchRef.current) {
+        navigator.geolocation.clearWatch(gpsWatchRef.current);
+        gpsWatchRef.current = null;
+      } else if (!document.hidden && !gpsWatchRef.current) {
+        gpsWatchRef.current = navigator.geolocation.watchPosition(
+          pos => setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => {}, { enableHighAccuracy: true, maximumAge: 8000, timeout: 20000 }
+        );
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
-  // ETA calculation + geofence check
+  // ETA + geofence
   useEffect(() => {
     const busLive = busData[selected?.id]?.live;
     if (!busLive?.active || !myLocation || !selected) { setEta(null); setDistance(null); return; }
-
-    const nearestStop = selected.stops.reduce((closest, stop) => {
-      const d = getDistanceMeters(myLocation.lat, myLocation.lng, stop.lat, stop.lng);
-      return d < closest.d ? { stop, d } : closest;
-    }, { stop: null, d: Infinity });
-
-    if (nearestStop.stop) {
-      const result = getETA(busLive.lat, busLive.lng, nearestStop.stop.lat, nearestStop.stop.lng, busLive.speed);
-      setEta(result.mins);
-      setDistance(result.dist);
+    if (selected.stops?.length > 0) {
+      const nearestStop = selected.stops.reduce((closest, stop) => {
+        const d = getDistanceMeters(myLocation.lat, myLocation.lng, stop.lat, stop.lng);
+        return d < closest.d ? { stop, d } : closest;
+      }, { stop: null, d: Infinity });
+      if (nearestStop.stop) {
+        const result = getETA(busLive.lat, busLive.lng, nearestStop.stop.lat, nearestStop.stop.lng, busLive.speed);
+        setEta(result.mins);
+        setDistance(result.dist);
+      }
     }
-
-    // Geofence: is bus within 300m of student?
     const busDist = getDistanceMeters(myLocation.lat, myLocation.lng, busLive.lat, busLive.lng);
     const inside = busDist <= 300;
     setInGeofence(inside);
-
     if (inside && !attendanceMarkedRef.current && attendanceStatus !== "present") {
       setAttendanceStatus("pending");
       if (!geofenceTimerRef.current) {
-        geofenceTimerRef.current = setTimeout(() => {
-          markAttendance("absent");
-        }, 15 * 60 * 1000); // 15 min timeout → absent
+        geofenceTimerRef.current = setTimeout(() => markAttendance("absent"), 15 * 60 * 1000);
       }
     }
   }, [busData, myLocation, selected, attendanceStatus]);
@@ -130,17 +141,12 @@ export default function StudentDashboard() {
     setAttendanceStatus(status);
     const today = new Date().toISOString().split("T")[0];
     await addDoc(collection(db, "attendance"), {
-      studentId: user.uid,
-      routeId: selected.id,
-      date: today,
-      status,
-      timestamp: Date.now(),
-      campusId,
+      studentId: user.uid, routeId: selected.id, date: today,
+      status, timestamp: Date.now(), campusId,
     });
     setAttendanceLog(prev => ({ ...prev, [today]: status }));
   }
 
-  // Load attendance for calendar
   useEffect(() => {
     if (!user || tab !== "attendance") return;
     const q = query(collection(db, "attendance"), where("studentId", "==", user.uid));
@@ -166,7 +172,7 @@ export default function StudentDashboard() {
     card: { background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
     label: { fontSize: 10, color: "#333", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 },
     pill: (color, bg, border) => ({ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 12, color, fontWeight: 500 }),
-    routeBtn: (sel) => ({ flex: 1, padding: "10px 6px", border: `1px solid ${sel ? "#FF5A1F" : "#1A1A1A"}`, borderRadius: 10, background: sel ? "#150D09" : "#0F0F0F", color: sel ? "#FF5A1F" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }),
+    routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#FF5A1F" : "#1A1A1A"}`, borderRadius: 10, background: sel ? "#150D09" : "#0F0F0F", color: sel ? "#FF5A1F" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
     etaBox: { background: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
     statBox: { flex: 1, textAlign: "center" },
     statVal: { fontSize: 26, fontWeight: 700, letterSpacing: "-1px", color: "#FF5A1F" },
@@ -174,7 +180,6 @@ export default function StudentDashboard() {
     attendBtn: (col, bg, bdr) => ({ width: "100%", padding: "16px", border: `1px solid ${bdr}`, borderRadius: 12, background: bg, color: col, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 10 }),
   };
 
-  // Calendar renderer
   function renderCalendar() {
     const days = getDaysInMonth(calYear, calMonth);
     const firstDay = new Date(calYear, calMonth, 1).getDay();
@@ -182,7 +187,6 @@ export default function StudentDashboard() {
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
     for (let d = 1; d <= days; d++) cells.push(d);
-
     return (
       <div style={S.card}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid #141414", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -216,11 +220,15 @@ export default function StudentDashboard() {
     );
   }
 
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: "#FF5A1F", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>Loading routes...</div>
+    </div>
+  );
+
   return (
     <div style={S.screen}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-
-      {/* Header */}
       <div style={S.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={S.logo}>🚌</div>
@@ -232,7 +240,6 @@ export default function StudentDashboard() {
         <button onClick={logout} style={{ background: "none", border: "1px solid #1E1E1E", borderRadius: 8, padding: "6px 14px", color: "#555", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
       </div>
 
-      {/* Tabs */}
       <div style={S.tabs}>
         {[["track","🗺 Track"],["attendance","📅 Attendance"]].map(([t,l]) => (
           <button key={t} style={S.tab(tab===t)} onClick={() => setTab(t)}>{l}</button>
@@ -242,94 +249,93 @@ export default function StudentDashboard() {
       <div style={S.body}>
         {tab === "track" && (
           <>
-            {/* Route selector */}
-            <div style={{ marginBottom: 14 }}>
-              <p style={S.label}>Select Bus Route</p>
-              <div style={{ display: "flex", gap: 6 }}>
-                {ROUTES.map(r => (
-                  <button key={r.id} style={S.routeBtn(selected?.id === r.id)} onClick={() => setSelected(r)}>{r.name}</button>
-                ))}
+            {routes.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "#2A2A2A", fontSize: 14 }}>
+                No routes added yet.<br />
+                <span style={{ fontSize: 12, color: "#1A1A1A" }}>Ask your admin to add routes.</span>
               </div>
-            </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <p style={S.label}>Select Bus Route</p>
+                  <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+                    {routes.map(r => (
+                      <button key={r.id} style={S.routeBtn(selected?.id === r.id)} onClick={() => setSelected(r)}>{r.name}</button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Live status */}
-            <div style={{ marginBottom: 14 }}>
-              {activeBus?.active ? (
-                <div style={{ ...S.pill("#4ADE80", "#0D1F12", "#1E4D2B"), marginBottom: 10 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ADE80", display: "inline-block" }} />
-                  {selected.name} is live
+                <div style={{ marginBottom: 14 }}>
+                  {activeBus?.active ? (
+                    <div style={{ ...S.pill("#4ADE80", "#0D1F12", "#1E4D2B"), marginBottom: 10 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ADE80", display: "inline-block" }} />
+                      {selected?.name} is live
+                    </div>
+                  ) : (
+                    <div style={{ ...S.pill("#444", "#111", "#1A1A1A"), marginBottom: 10 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#333", display: "inline-block" }} />
+                      Bus not active
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div style={{ ...S.pill("#444", "#111", "#1A1A1A"), marginBottom: 10 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#333", display: "inline-block" }} />
-                  Bus not active
-                </div>
-              )}
-            </div>
 
-            {/* ETA card */}
-            {activeBus?.active && (
-              <div style={S.etaBox}>
-                <div style={S.statBox}>
-                  <div style={S.statVal}>{eta !== null ? eta : "—"}</div>
-                  <div style={S.statLabel}>min to your stop</div>
+                {activeBus?.active && (
+                  <div style={S.etaBox}>
+                    <div style={S.statBox}>
+                      <div style={S.statVal}>{eta !== null ? eta : "—"}</div>
+                      <div style={S.statLabel}>min to your stop</div>
+                    </div>
+                    <div style={{ width: 1, height: 40, background: "#1A1A1A" }} />
+                    <div style={S.statBox}>
+                      <div style={S.statVal}>{distance !== null ? distance > 1000 ? `${(distance/1000).toFixed(1)}k` : distance : "—"}</div>
+                      <div style={S.statLabel}>meters away</div>
+                    </div>
+                    <div style={{ width: 1, height: 40, background: "#1A1A1A" }} />
+                    <div style={S.statBox}>
+                      <div style={S.statVal}>{activeBus.speed || 0}</div>
+                      <div style={S.statLabel}>km/h speed</div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ ...S.card, marginBottom: 14 }}>
+                  <MapView
+                    busLocation={activeBus?.active ? { lat: activeBus.lat, lng: activeBus.lng } : null}
+                    busMoving={activeBus?.speed > 0}
+                    routePath={selected?.path?.map(p => [p.lat, p.lng])}
+                    center={selected?.center ? [selected.center.lat, selected.center.lng] : null}
+                    myLocation={myLocation}
+                  />
                 </div>
-                <div style={{ width: 1, height: 40, background: "#1A1A1A" }} />
-                <div style={S.statBox}>
-                  <div style={S.statVal}>{distance !== null ? distance > 1000 ? `${(distance/1000).toFixed(1)}k` : distance : "—"}</div>
-                  <div style={S.statLabel}>meters away</div>
-                </div>
-                <div style={{ width: 1, height: 40, background: "#1A1A1A" }} />
-                <div style={S.statBox}>
-                  <div style={S.statVal}>{activeBus.speed || 0}</div>
-                  <div style={S.statLabel}>km/h speed</div>
-                </div>
-              </div>
+
+                {inGeofence && attendanceStatus === "pending" && (
+                  <div style={{ background: "#0D1520", border: "1px solid #1E3A5F", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", marginBottom: 4 }}>🚌 Bus is nearby!</div>
+                    <div style={{ fontSize: 12, color: "#444", marginBottom: 14 }}>Mark your attendance. Auto-marks absent in 15 min.</div>
+                    <button onClick={() => markAttendance("present")} style={S.attendBtn("#fff", "#FF5A1F", "#FF5A1F")}>✓ Mark Present</button>
+                  </div>
+                )}
+
+                {attendanceStatus === "present" && (
+                  <div style={{ background: "#0D1F12", border: "1px solid #1E4D2B", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <span style={{ fontSize: 20 }}>✅</span>
+                    <div><div style={{ fontSize: 13, fontWeight: 600, color: "#4ADE80" }}>Attendance marked</div><div style={{ fontSize: 11, color: "#1E4D2B" }}>Present for today</div></div>
+                  </div>
+                )}
+
+                {attendanceStatus === "absent" && (
+                  <div style={{ background: "#1A0808", border: "1px solid #3D1010", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <span style={{ fontSize: 20 }}>❌</span>
+                    <div><div style={{ fontSize: 13, fontWeight: 600, color: "#F87171" }}>Marked absent</div><div style={{ fontSize: 11, color: "#3D1010" }}>Didn't respond in time</div></div>
+                  </div>
+                )}
+              </>
             )}
-
-            {/* Map */}
-            <div style={{ ...S.card, marginBottom: 14 }}>
-              <MapView
-                busLocation={activeBus?.active ? { lat: activeBus.lat, lng: activeBus.lng } : null}
-                busMoving={activeBus?.speed > 0}
-                routePath={selected?.path?.map(p => [p.lat, p.lng])}
-
-                center={selected?.center ? [selected.center.lat, selected.center.lng] : null}
-                myLocation={myLocation}
-              />
-            </div>
-
-            {/* Geofence attendance */}
-            {inGeofence && attendanceStatus === "pending" && (
-              <div style={{ background: "#0D1520", border: "1px solid #1E3A5F", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", marginBottom: 4 }}>🚌 Bus is nearby!</div>
-                <div style={{ fontSize: 12, color: "#444", marginBottom: 14 }}>Mark your attendance. Auto-marks absent in 15 min.</div>
-                <button onClick={() => markAttendance("present")} style={S.attendBtn("#fff", "#FF5A1F", "#FF5A1F")}>
-                  ✓ Mark Present
-                </button>
-              </div>
-            )}
-
-            {attendanceStatus === "present" && (
-              <div style={{ background: "#0D1F12", border: "1px solid #1E4D2B", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 20 }}>✅</span>
-                <div><div style={{ fontSize: 13, fontWeight: 600, color: "#4ADE80" }}>Attendance marked</div><div style={{ fontSize: 11, color: "#1E4D2B" }}>Present for today</div></div>
-              </div>
-            )}
-
-            {attendanceStatus === "absent" && (
-              <div style={{ background: "#1A0808", border: "1px solid #3D1010", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 20 }}>❌</span>
-                <div><div style={{ fontSize: 13, fontWeight: 600, color: "#F87171" }}>Marked absent</div><div style={{ fontSize: 11, color: "#3D1010" }}>Didn't respond in time</div></div>
-              </div>
-            )}
-
           </>
         )}
 
         {tab === "attendance" && (
           <>
-            {/* Stats */}
             <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
               <div style={{ ...S.card, flex: 1, padding: "14px", textAlign: "center", marginBottom: 0 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: "#4ADE80", letterSpacing: "-1px" }}>{presentCount}</div>
@@ -344,8 +350,6 @@ export default function StudentDashboard() {
                 <div style={{ fontSize: 10, color: "#333", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.8px" }}>Rate</div>
               </div>
             </div>
-
-            {/* Calendar */}
             {renderCalendar()}
           </>
         )}
