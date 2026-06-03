@@ -143,23 +143,23 @@ export default function DriverDashboard() {
   const S = {
     screen: { minHeight: "100vh", background: "#0A0A0A", fontFamily: "'DM Sans', sans-serif", color: "#fff" },
     header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid #111", position: "sticky", top: 0, background: "#0A0A0A", zIndex: 10 },
-    logo: { width: 30, height: 30, background: "#FF5A1F", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
+    logo: { width: 30, height: 30, background: "#333", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
     badge: { background: "#0A1020", border: "1px solid #1A3060", borderRadius: 6, padding: "3px 8px", color: "#60A5FA", fontSize: 11, fontWeight: 600 },
-    signOut: { background: "none", border: "1px solid #161616", borderRadius: 8, padding: "6px 14px", color: "#FF5A1F", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
+    signOut: { background: "none", border: "1px solid #161616", borderRadius: 8, padding: "6px 14px", color: "#333", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
     tabs: { display: "flex", borderBottom: "1px solid #111", padding: "0 16px" },
-    tabBtn: (a) => ({ padding: "12px 16px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#FF5A1F" : "#FF5A1F", borderBottom: a ? "2px solid #FF5A1F" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif" }),
+    tabBtn: (a) => ({ padding: "12px 16px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#333" : "#333", borderBottom: a ? "2px solid #333" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif" }),
     body: { padding: "16px 16px 40px", maxWidth: 480, margin: "0 auto" },
     card: { background: "#0D0D0D", border: "1px solid #141414", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
-    label: { fontSize: 10, color: "#FF5A1F", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 },
-    routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#FF5A1F" : "#141414"}`, borderRadius: 10, background: sel ? "#150D09" : "#0D0D0D", color: sel ? "#FF5A1F" : "#FF5A1F", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
-    startBtn: { width: "100%", background: "#FF5A1F", border: "none", borderRadius: 14, padding: "18px 0", color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 12, boxShadow: "0 4px 20px rgba(255,90,31,0.3)" },
+    label: { fontSize: 10, color: "#333", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 },
+    routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#333" : "#141414"}`, borderRadius: 10, background: sel ? "#150D09" : "#0D0D0D", color: sel ? "#333" : "#333", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
+    startBtn: { width: "100%", background: "#333", border: "none", borderRadius: 14, padding: "18px 0", color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 12, boxShadow: "0 4px 20px rgba(255,90,31,0.3)" },
     stopBtn: { width: "100%", background: "#1A0808", border: "1px solid #3D1010", borderRadius: 14, padding: "18px 0", color: "#F87171", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 12 },
     tripCard: { background: "#0D0D0D", border: "1px solid #141414", borderRadius: 12, padding: "14px 16px", marginBottom: 10 },
   };
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ color: "#FF5A1F", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>Loading routes...</div>
+      <div style={{ color: "#333", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>Loading routes...</div>
     </div>
   );
 
@@ -185,9 +185,9 @@ export default function DriverDashboard() {
         {tab === "live" && (
           <>
             {routes.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "#FF5A1F", fontSize: 14 }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: "#333", fontSize: 14 }}>
                 No routes available.<br />
-                <span style={{ fontSize: 12, color: "#FF5A1F" }}>Ask your admin to add routes.</span>
+                <span style={{ fontSize: 12, color: "#333" }}>Ask your admin to add routes.</span>
               </div>
             ) : (
               <>
@@ -202,14 +202,14 @@ export default function DriverDashboard() {
 
                 <div style={S.card}>
                   <div style={{ textAlign: "center", padding: "28px 16px", borderBottom: "1px solid #111" }}>
-                    <div style={{ fontSize: 10, color: "#FF5A1F", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
                       {tracking ? "Trip Duration" : "Ready to Start"}
                     </div>
-                    <div style={{ fontSize: 48, fontWeight: 700, letterSpacing: "-2px", color: tracking ? "#FF5A1F" : "#1A1A1A", fontVariantNumeric: "tabular-nums" }}>
+                    <div style={{ fontSize: 48, fontWeight: 700, letterSpacing: "-2px", color: tracking ? "#333" : "#1A1A1A", fontVariantNumeric: "tabular-nums" }}>
                       {formatTime(elapsed)}
                     </div>
                     {tracking && tripStart && (
-                      <div style={{ fontSize: 11, color: "#FF5A1F", marginTop: 6 }}>
+                      <div style={{ fontSize: 11, color: "#333", marginTop: 6 }}>
                         Started at {new Date(tripStart).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
                     )}
@@ -222,7 +222,7 @@ export default function DriverDashboard() {
                     ].map(([val, label, color], i) => (
                       <div key={i} style={{ flex: 1, textAlign: "center" }}>
                         <div style={{ fontSize: 20, fontWeight: 700, color, letterSpacing: "-0.5px" }}>{val}</div>
-                        <div style={{ fontSize: 10, color: "#FF5A1F", marginTop: 2 }}>{label}</div>
+                        <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{label}</div>
                       </div>
                     ))}
                   </div>
@@ -246,8 +246,8 @@ export default function DriverDashboard() {
 
                 {myLocation && (
                   <div style={{ background: "#0D0D0D", border: "1px solid #141414", borderRadius: 12, padding: "12px 16px" }}>
-                    <p style={{ fontSize: 10, color: "#FF5A1F", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4 }}>GPS Location</p>
-                    <p style={{ fontSize: 12, color: "#FF5A1F", margin: 0, fontFamily: "monospace" }}>{myLocation.lat.toFixed(6)}, {myLocation.lng.toFixed(6)}</p>
+                    <p style={{ fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4 }}>GPS Location</p>
+                    <p style={{ fontSize: 12, color: "#333", margin: 0, fontFamily: "monospace" }}>{myLocation.lat.toFixed(6)}, {myLocation.lng.toFixed(6)}</p>
                   </div>
                 )}
               </>
@@ -259,33 +259,33 @@ export default function DriverDashboard() {
           <>
             <p style={S.label}>Trip History</p>
             {trips.length === 0
-              ? <div style={{ textAlign: "center", padding: "40px 0", color: "#FF5A1F", fontSize: 14 }}>No trips yet</div>
+              ? <div style={{ textAlign: "center", padding: "40px 0", color: "#333", fontSize: 14 }}>No trips yet</div>
               : trips.map(trip => (
                 <div key={trip.id} style={S.tripCard}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#bbb" }}>{trip.routeName}</div>
-                      <div style={{ fontSize: 11, color: "#FF5A1F", marginTop: 2 }}>{new Date(trip.startTime).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
+                      <div style={{ fontSize: 11, color: "#333", marginTop: 2 }}>{new Date(trip.startTime).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
                     </div>
-                    <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: trip.status === "active" ? "#0A1A0D" : "#0D0D0D", color: trip.status === "active" ? "#4ADE80" : "#FF5A1F", border: `1px solid ${trip.status === "active" ? "#1A3D22" : "#141414"}` }}>
+                    <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: trip.status === "active" ? "#0A1A0D" : "#0D0D0D", color: trip.status === "active" ? "#4ADE80" : "#333", border: `1px solid ${trip.status === "active" ? "#1A3D22" : "#141414"}` }}>
                       {trip.status === "active" ? "● Live" : "Done"}
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 16 }}>
                     <div>
-                      <div style={{ fontSize: 10, color: "#FF5A1F", textTransform: "uppercase", letterSpacing: "0.8px" }}>Start</div>
+                      <div style={{ fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: "0.8px" }}>Start</div>
                       <div style={{ fontSize: 13, color: "#777", marginTop: 2 }}>{new Date(trip.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                     </div>
                     {trip.endTime && (
                       <>
-                        <div style={{ color: "#FF5A1F", alignSelf: "flex-end" }}>→</div>
+                        <div style={{ color: "#333", alignSelf: "flex-end" }}>→</div>
                         <div>
-                          <div style={{ fontSize: 10, color: "#FF5A1F", textTransform: "uppercase", letterSpacing: "0.8px" }}>End</div>
+                          <div style={{ fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: "0.8px" }}>End</div>
                           <div style={{ fontSize: 13, color: "#777", marginTop: 2 }}>{new Date(trip.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 10, color: "#FF5A1F", textTransform: "uppercase", letterSpacing: "0.8px" }}>Duration</div>
-                          <div style={{ fontSize: 13, color: "#FF5A1F", marginTop: 2 }}>{formatDuration(trip.endTime - trip.startTime)}</div>
+                          <div style={{ fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: "0.8px" }}>Duration</div>
+                          <div style={{ fontSize: 13, color: "#333", marginTop: 2 }}>{formatDuration(trip.endTime - trip.startTime)}</div>
                         </div>
                       </>
                     )}
