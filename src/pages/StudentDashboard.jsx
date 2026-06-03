@@ -170,7 +170,7 @@ export default function StudentDashboard() {
     tab: (a) => ({ padding: "12px 14px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#FF5A1F" : "#444", borderBottom: a ? "2px solid #FF5A1F" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif" }),
     body: { padding: "16px 16px 100px", maxWidth: 480, margin: "0 auto" },
     card: { background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
-    label: { fontSize: 10, color: "#333", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 },
+    label: { fontSize: 10, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 },
     pill: (color, bg, border) => ({ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 12, color, fontWeight: 500 }),
     routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#FF5A1F" : "#1A1A1A"}`, borderRadius: 10, background: sel ? "#150D09" : "#0F0F0F", color: sel ? "#FF5A1F" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
     etaBox: { background: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
@@ -196,7 +196,7 @@ export default function StudentDashboard() {
         </div>
         <div style={{ padding: "12px 16px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 8 }}>
-            {["S","M","T","W","T","F","S"].map((d,i) => <div key={i} style={{ textAlign: "center", fontSize: 10, color: "#333", fontWeight: 600 }}>{d}</div>)}
+            {["S","M","T","W","T","F","S"].map((d,i) => <div key={i} style={{ textAlign: "center", fontSize: 10, color: "#999", fontWeight: 600 }}>{d}</div>)}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
             {cells.map((d, i) => {
@@ -250,9 +250,9 @@ export default function StudentDashboard() {
         {tab === "track" && (
           <>
             {routes.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "#2A2A2A", fontSize: 14 }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: "#888", fontSize: 14 }}>
                 No routes added yet.<br />
-                <span style={{ fontSize: 12, color: "#1A1A1A" }}>Ask your admin to add routes.</span>
+                <span style={{ fontSize: 12, color: "#666" }}>Ask your admin to add routes.</span>
               </div>
             ) : (
               <>
@@ -339,15 +339,15 @@ export default function StudentDashboard() {
             <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
               <div style={{ ...S.card, flex: 1, padding: "14px", textAlign: "center", marginBottom: 0 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: "#4ADE80", letterSpacing: "-1px" }}>{presentCount}</div>
-                <div style={{ fontSize: 10, color: "#333", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.8px" }}>Present</div>
+                <div style={{ fontSize: 10, color: "#999", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.8px" }}>Present</div>
               </div>
               <div style={{ ...S.card, flex: 1, padding: "14px", textAlign: "center", marginBottom: 0 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: "#F87171", letterSpacing: "-1px" }}>{totalCount - presentCount}</div>
-                <div style={{ fontSize: 10, color: "#333", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.8px" }}>Absent</div>
+                <div style={{ fontSize: 10, color: "#999", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.8px" }}>Absent</div>
               </div>
               <div style={{ ...S.card, flex: 1, padding: "14px", textAlign: "center", marginBottom: 0 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: pct >= 75 ? "#4ADE80" : "#F87171", letterSpacing: "-1px" }}>{pct}%</div>
-                <div style={{ fontSize: 10, color: "#333", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.8px" }}>Rate</div>
+                <div style={{ fontSize: 10, color: "#999", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.8px" }}>Rate</div>
               </div>
             </div>
             {renderCalendar()}
