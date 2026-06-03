@@ -19,7 +19,8 @@ const ADMIN_PASSWORD = "gamethunder83";
 const CAMPUSES = [{ id: "alliance-bangalore", name: "Alliance University, Bangalore" }];
 
 function isCollegeEmail(email) {
-  return email.toLowerCase().endsWith(".edu.in");
+  return email.toLowerCase().endsWith("@ced.alliance.edu.in") || 
+         email.toLowerCase().endsWith("alliance.edu.in");
 }
 
 function isPersonalEmail(email) {
@@ -254,7 +255,7 @@ export default function Login() {
               <h1 style={{ color: "#fff", fontSize: 32, fontWeight: 600, letterSpacing: "-1px", margin: "0 0 8px", lineHeight: 1.1 }}>
                 Who are<br /><span style={{ color: "#FF5A1F" }}>you?</span>
               </h1>
-              <p style={{ color: "#2A2A2A", fontSize: 14, margin: "0 0 28px" }}>Select your role to continue</p>
+              <p style={{ color: "#fff", fontSize: 14, margin: "0 0 28px" }}>Select your role to continue</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {Object.entries(ROLE_CONFIG).map(([r, cfg]) => (
                   <button key={r} onClick={() => selectRole(r)} style={{ display: "flex", alignItems: "center", gap: 16, padding: "18px 20px", background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 16, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s", textAlign: "left" }}
@@ -263,9 +264,9 @@ export default function Login() {
                     <div style={{ width: 44, height: 44, borderRadius: 12, background: "#0A0A0A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{cfg.icon}</div>
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 600, color: cfg.color, letterSpacing: "-0.3px" }}>{cfg.label}</div>
-                      <div style={{ fontSize: 11, color: "#333", marginTop: 3 }}>{cfg.hint}</div>
+                      <div style={{ fontSize: 11, color: "#fff", marginTop: 3 }}>{cfg.hint}</div>
                     </div>
-                    <div style={{ marginLeft: "auto", color: "#222", fontSize: 18 }}>›</div>
+                    <div style={{ marginLeft: "auto", color: "#fff", fontSize: 18 }}>›</div>
                   </button>
                 ))}
               </div>
@@ -275,20 +276,20 @@ export default function Login() {
           {/* STEP 2 — Form */}
           {step === "form" && !emailLinkSent && (
             <div style={{ animation: "slideUp 0.4s ease forwards" }}>
-              <button onClick={() => { setStep("role"); setError(""); }} style={{ background: "none", border: "none", color: "#444", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 20, padding: 0 }}>← Back</button>
+              <button onClick={() => { setStep("role"); setError(""); }} style={{ background: "none", border: "none", color: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 20, padding: 0 }}>← Back</button>
 
               <h1 style={{ color: "#fff", fontSize: 30, fontWeight: 600, letterSpacing: "-1px", margin: "0 0 6px", lineHeight: 1.1 }}>
                 {mode === "login" ? "Welcome back" : "Create account"}
                 <span style={{ color: ROLE_CONFIG[role]?.color }}> {ROLE_CONFIG[role]?.icon}</span>
               </h1>
-              <p style={{ color: "#2A2A2A", fontSize: 13, margin: "0 0 24px" }}>
+              <p style={{ color: "#fff", fontSize: 13, margin: "0 0 24px" }}>
                 {role === "driver" ? "Enter your phone number & password" : role === "student" ? "Use your college email (.edu.in)" : "Use your personal email"}
               </p>
 
               {/* Mode toggle */}
               <div style={{ display: "flex", background: "#070707", borderRadius: 12, padding: 3, marginBottom: 20, border: "1px solid #111" }}>
                 {["login", "register"].map(m => (
-                  <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif", background: mode === m ? "#FF5A1F" : "transparent", color: mode === m ? "#fff" : "#333", transition: "all 0.2s", boxShadow: mode === m ? "0 2px 14px rgba(255,90,31,0.35)" : "none" }}>
+                  <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "'DM Sans', sans-serif", background: mode === m ? "#FF5A1F" : "transparent", color: mode === m ? "#fff" : "#fff", transition: "all 0.2s", boxShadow: mode === m ? "0 2px 14px rgba(255,90,31,0.35)" : "none" }}>
                     {m === "login" ? "Sign In" : "Register"}
                   </button>
                 ))}
@@ -302,26 +303,26 @@ export default function Login() {
                     <>
                       {mode === "register" && (
                         <div>
-                          <label style={{ color: "#333", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Full Name</label>
+                          <label style={{ color: "#fff", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Full Name</label>
                           <input name="name" value={form.name} onChange={handleChange} placeholder="Driver name"
                             style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
                         </div>
                       )}
                       <div>
-                        <label style={{ color: "#333", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Phone Number</label>
+                        <label style={{ color: "#fff", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Phone Number</label>
                         <div style={{ position: "relative" }}>
-                          <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#444", fontSize: 14, fontWeight: 600 }}>+91</div>
+                          <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 14, fontWeight: 600 }}>+91</div>
                           <input name="phone" value={form.phone} onChange={handleChange} placeholder="9876543210" maxLength={10} type="tel"
                             style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 16px 13px 48px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", letterSpacing: "1px" }} />
                         </div>
                       </div>
                       <div>
-                        <label style={{ color: "#333", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Password</label>
+                        <label style={{ color: "#fff", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Password</label>
                         <div style={{ position: "relative" }}>
                           <input name="password" type={showPwd ? "text" : "password"} value={form.password} onChange={handleChange} placeholder="••••••••"
                             style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 46px 13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
-                          <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#2A2A2A", padding: 0 }}
-                            onMouseEnter={e => e.target.style.color = "#FF5A1F"} onMouseLeave={e => e.target.style.color = "#2A2A2A"}>
+                          <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#fff", padding: 0 }}
+                            onMouseEnter={e => e.target.style.color = "#FF5A1F"} onMouseLeave={e => e.target.style.color = "#fff"}>
                             {showPwd ? "🙈" : "👁"}
                           </button>
                         </div>
@@ -338,26 +339,26 @@ export default function Login() {
                     <>
                       {mode === "register" && (
                         <div>
-                          <label style={{ color: "#333", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Full Name</label>
+                          <label style={{ color: "#fff", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Full Name</label>
                           <input name="name" value={form.name} onChange={handleChange} placeholder="Your full name" required
                             style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
                         </div>
                       )}
                       <div>
-                        <label style={{ color: "#333", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>
+                        <label style={{ color: "#fff", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>
                           {role === "student" ? "College Email" : "Personal Email"}
                         </label>
                         <input name="email" type="email" value={form.email} onChange={handleChange}
-                          placeholder={role === "student" ? "you@college.edu.in" : "you@gmail.com"}
+                          placeholder={role === "student" ? "College ID" : "you@gmail.com"}
                           style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
                       </div>
                       <div>
-                        <label style={{ color: "#333", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Password</label>
+                        <label style={{ color: "#fff", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: 6 }}>Password</label>
                         <div style={{ position: "relative" }}>
                           <input name="password" type={showPwd ? "text" : "password"} value={form.password} onChange={handleChange} placeholder="••••••••"
                             style={{ width: "100%", background: "#0A0A0A", border: `1px solid ${error && error.toLowerCase().includes("password") ? "#F87171" : "#161616"}`, borderRadius: 11, padding: "13px 46px 13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
-                          <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#2A2A2A", padding: 0 }}
-                            onMouseEnter={e => e.target.style.color = "#FF5A1F"} onMouseLeave={e => e.target.style.color = "#2A2A2A"}>
+                          <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#fff", padding: 0 }}
+                            onMouseEnter={e => e.target.style.color = "#FF5A1F"} onMouseLeave={e => e.target.style.color = "#fff"}>
                             {showPwd ? "🙈" : "👁"}
                           </button>
                         </div>
@@ -367,7 +368,7 @@ export default function Login() {
                         {loading ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
                       </button>
                       <div style={{ textAlign: "center" }}>
-                        <span style={{ color: "#222", fontSize: 11 }}>or </span>
+                        <span style={{ color: "#fff", fontSize: 11 }}>or </span>
                         <button onClick={sendEmailLink} disabled={loading} style={{ background: "none", border: "none", color: "#FF5A1F", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textDecoration: "underline" }}>
                           Sign in with email link (OTP-free)
                         </button>
@@ -384,9 +385,9 @@ export default function Login() {
             <div style={{ animation: "slideUp 0.4s ease forwards", textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
               <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Check your email</h2>
-              <p style={{ color: "#333", fontSize: 14, lineHeight: 1.6 }}>We sent a sign-in link to<br /><span style={{ color: "#FF5A1F" }}>{form.email}</span></p>
-              <p style={{ color: "#222", fontSize: 12, marginTop: 16 }}>Click the link in your email to sign in instantly. No password needed.</p>
-              <button onClick={() => { setEmailLinkSent(false); setError(""); }} style={{ marginTop: 20, background: "none", border: "1px solid #161616", borderRadius: 10, padding: "10px 20px", color: "#444", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+              <p style={{ color: "#fff", fontSize: 14, lineHeight: 1.6 }}>We sent a sign-in link to<br /><span style={{ color: "#FF5A1F" }}>{form.email}</span></p>
+              <p style={{ color: "#fff", fontSize: 12, marginTop: 16 }}>Click the link in your email to sign in instantly. No password needed.</p>
+              <button onClick={() => { setEmailLinkSent(false); setError(""); }} style={{ marginTop: 20, background: "none", border: "1px solid #161616", borderRadius: 10, padding: "10px 20px", color: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
                 Use password instead
               </button>
             </div>
@@ -418,7 +419,7 @@ export default function Login() {
             </div>
             {[10, 80].map((l, i) => (
               <div key={i} style={{ position: "absolute", bottom: -11, left: l, width: 22, height: 22, background: "#0A0A0A", border: "2px solid #222", borderRadius: "50%", animation: `spinWheel ${isDriving ? "0.2s" : "0.5s"} linear infinite` }}>
-                <div style={{ position: "absolute", inset: 3, background: "#111", border: "1px solid #2A2A2A", borderRadius: "50%" }} />
+                <div style={{ position: "absolute", inset: 3, background: "#111", border: "1px solid #fff", borderRadius: "50%" }} />
               </div>
             ))}
           </div>

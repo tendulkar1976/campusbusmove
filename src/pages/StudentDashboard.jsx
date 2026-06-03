@@ -167,16 +167,16 @@ export default function StudentDashboard() {
     header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid #141414", position: "sticky", top: 0, background: "#0A0A0A", zIndex: 10 },
     logo: { width: 30, height: 30, background: "#FF5A1F", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
     tabs: { display: "flex", borderBottom: "1px solid #141414", padding: "0 16px" },
-    tab: (a) => ({ padding: "12px 14px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#FF5A1F" : "#444", borderBottom: a ? "2px solid #FF5A1F" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif" }),
+    tab: (a) => ({ padding: "12px 14px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#FF5A1F" : "#FF5A1F", borderBottom: a ? "2px solid #FF5A1F" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif" }),
     body: { padding: "16px 16px 100px", maxWidth: 480, margin: "0 auto" },
     card: { background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
     label: { fontSize: 10, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 },
     pill: (color, bg, border) => ({ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 12, color, fontWeight: 500 }),
-    routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#FF5A1F" : "#1A1A1A"}`, borderRadius: 10, background: sel ? "#150D09" : "#0F0F0F", color: sel ? "#FF5A1F" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
+    routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#FF5A1F" : "#1A1A1A"}`, borderRadius: 10, background: sel ? "#150D09" : "#0F0F0F", color: sel ? "#FF5A1F" : "#FF5A1F", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
     etaBox: { background: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
     statBox: { flex: 1, textAlign: "center" },
     statVal: { fontSize: 26, fontWeight: 700, letterSpacing: "-1px", color: "#FF5A1F" },
-    statLabel: { fontSize: 10, color: "#444", marginTop: 2 },
+    statLabel: { fontSize: 10, color: "#FF5A1F", marginTop: 2 },
     attendBtn: (col, bg, bdr) => ({ width: "100%", padding: "16px", border: `1px solid ${bdr}`, borderRadius: 12, background: bg, color: col, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 10 }),
   };
 
@@ -190,9 +190,9 @@ export default function StudentDashboard() {
     return (
       <div style={S.card}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid #141414", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 18 }}>‹</button>
+          <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }} style={{ background: "none", border: "none", color: "#FF5A1F", cursor: "pointer", fontSize: 18 }}>‹</button>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{monthName} {calYear}</span>
-          <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 18 }}>›</button>
+          <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }} style={{ background: "none", border: "none", color: "#FF5A1F", cursor: "pointer", fontSize: 18 }}>›</button>
         </div>
         <div style={{ padding: "12px 16px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 8 }}>
@@ -205,7 +205,7 @@ export default function StudentDashboard() {
               const status = attendanceLog[dateStr];
               const isToday = new Date().toISOString().split("T")[0] === dateStr;
               return (
-                <div key={i} style={{ aspectRatio: "1", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: isToday ? 700 : 400, background: status === "present" ? "#0D1F12" : status === "absent" ? "#1A0808" : isToday ? "#1A1A1A" : "transparent", color: status === "present" ? "#4ADE80" : status === "absent" ? "#F87171" : isToday ? "#fff" : "#555", border: isToday ? "1px solid #333" : "none" }}>
+                <div key={i} style={{ aspectRatio: "1", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: isToday ? 700 : 400, background: status === "present" ? "#0D1F12" : status === "absent" ? "#1A0808" : isToday ? "#1A1A1A" : "transparent", color: status === "present" ? "#4ADE80" : status === "absent" ? "#F87171" : isToday ? "#fff" : "#FF5A1F", border: isToday ? "1px solid #333" : "none" }}>
                   {d}
                 </div>
               );
@@ -213,8 +213,8 @@ export default function StudentDashboard() {
           </div>
         </div>
         <div style={{ padding: "12px 16px", borderTop: "1px solid #141414", display: "flex", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#0D1F12", border: "1px solid #1E4D2B" }} /><span style={{ fontSize: 11, color: "#444" }}>Present</span></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#1A0808", border: "1px solid #3D1010" }} /><span style={{ fontSize: 11, color: "#444" }}>Absent</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#0D1F12", border: "1px solid #1E4D2B" }} /><span style={{ fontSize: 11, color: "#FF5A1F" }}>Present</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#1A0808", border: "1px solid #3D1010" }} /><span style={{ fontSize: 11, color: "#FF5A1F" }}>Absent</span></div>
         </div>
       </div>
     );
@@ -237,7 +237,7 @@ export default function StudentDashboard() {
             {myRoute && <div style={{ fontSize: 10, color: "#FF5A1F", fontWeight: 500 }}>{myRoute.name} assigned</div>}
           </div>
         </div>
-        <button onClick={logout} style={{ background: "none", border: "1px solid #1E1E1E", borderRadius: 8, padding: "6px 14px", color: "#555", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
+        <button onClick={logout} style={{ background: "none", border: "1px solid #1E1E1E", borderRadius: 8, padding: "6px 14px", color: "#FF5A1F", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
       </div>
 
       <div style={S.tabs}>
@@ -252,7 +252,7 @@ export default function StudentDashboard() {
             {routes.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#888", fontSize: 14 }}>
                 No routes added yet.<br />
-                <span style={{ fontSize: 12, color: "#666" }}>Ask your admin to add routes.</span>
+                <span style={{ fontSize: 12, color: "#FF5A1F" }}>Ask your admin to add routes.</span>
               </div>
             ) : (
               <>
@@ -272,7 +272,7 @@ export default function StudentDashboard() {
                       {selected?.name} is live
                     </div>
                   ) : (
-                    <div style={{ ...S.pill("#444", "#111", "#1A1A1A"), marginBottom: 10 }}>
+                    <div style={{ ...S.pill("#FF5A1F", "#111", "#1A1A1A"), marginBottom: 10 }}>
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#333", display: "inline-block" }} />
                       Bus not active
                     </div>
@@ -311,7 +311,7 @@ export default function StudentDashboard() {
                 {inGeofence && attendanceStatus === "pending" && (
                   <div style={{ background: "#0D1520", border: "1px solid #1E3A5F", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", marginBottom: 4 }}>🚌 Bus is nearby!</div>
-                    <div style={{ fontSize: 12, color: "#444", marginBottom: 14 }}>Mark your attendance. Auto-marks absent in 15 min.</div>
+                    <div style={{ fontSize: 12, color: "#FF5A1F", marginBottom: 14 }}>Mark your attendance. Auto-marks absent in 15 min.</div>
                     <button onClick={() => markAttendance("present")} style={S.attendBtn("#fff", "#FF5A1F", "#FF5A1F")}>✓ Mark Present</button>
                   </div>
                 )}
