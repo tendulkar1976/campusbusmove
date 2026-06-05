@@ -24,10 +24,6 @@ function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 
-function getTodayStr() {
-  return new Date().toISOString().split("T")[0];
-}
-
 export default function StudentDashboard() {
   const { user, campusId, logout } = useAuth();
   const [tab, setTab] = useState("track");
@@ -39,17 +35,16 @@ export default function StudentDashboard() {
   const [eta, setEta] = useState(null);
   const [distance, setDistance] = useState(null);
   const [attendanceLog, setAttendanceLog] = useState({});
-  const [attendanceStatus, setAttendanceStatus] = useState(null); // null | "pending" | "present" | "absent"
+  const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [inGeofence, setInGeofence] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const geofenceTimerRef = useRef(null);
-  // FIX 3: Track today's date so ref resets on new day
-  const markedDateRef = useRef(null);
+  const attendanceMarkedRef = useRef(false);
   const gpsWatchRef = useRef(null);
 
-  // Load routes
+  // Load routes from Firestore only (admin-added routes)
   useEffect(() => {
     getDocs(collection(db, "routes")).then(snap => {
       if (!snap.empty) {
@@ -78,25 +73,6 @@ export default function StudentDashboard() {
     });
   }, [user, routes]);
 
-  // FIX 3: On mount, check if already marked present/absent today
-  useEffect(() => {
-    if (!user) return;
-    const today = getTodayStr();
-    const q = query(
-      collection(db, "attendance"),
-      where("studentId", "==", user.uid),
-      where("date", "==", today)
-    );
-    getDocs(q).then(snap => {
-      if (!snap.empty) {
-        const data = snap.docs[0].data();
-        markedDateRef.current = today;
-        setAttendanceStatus(data.status);
-        setAttendanceLog(prev => ({ ...prev, [today]: data.status }));
-      }
-    });
-  }, [user]);
-
   // Listen to all bus locations
   useEffect(() => {
     const r = ref(rtdb, "routes");
@@ -104,7 +80,7 @@ export default function StudentDashboard() {
     return () => unsub();
   }, []);
 
-  // Student GPS
+  // Get student GPS
   useEffect(() => {
     if (!navigator.geolocation) return;
     gpsWatchRef.current = navigator.geolocation.watchPosition(
@@ -114,7 +90,7 @@ export default function StudentDashboard() {
     return () => { if (gpsWatchRef.current) navigator.geolocation.clearWatch(gpsWatchRef.current); };
   }, []);
 
-  // Pause GPS when backgrounded
+  // Pause GPS when app backgrounded
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden && gpsWatchRef.current) {
@@ -134,11 +110,7 @@ export default function StudentDashboard() {
   // ETA + geofence
   useEffect(() => {
     const busLive = busData[selected?.id]?.live;
-    if (!busLive?.active || !myLocation || !selected) {
-      setEta(null); setDistance(null); return;
-    }
-
-    // ETA to nearest stop
+    if (!busLive?.active || !myLocation || !selected) { setEta(null); setDistance(null); return; }
     if (selected.stops?.length > 0) {
       const nearestStop = selected.stops.reduce((closest, stop) => {
         const d = getDistanceMeters(myLocation.lat, myLocation.lng, stop.lat, stop.lng);
@@ -150,53 +122,31 @@ export default function StudentDashboard() {
         setDistance(result.dist);
       }
     }
-
-    // Geofence: 300m from bus
     const busDist = getDistanceMeters(myLocation.lat, myLocation.lng, busLive.lat, busLive.lng);
     const inside = busDist <= 300;
     setInGeofence(inside);
-
-    const today = getTodayStr();
-    // FIX 3: Only trigger if not already marked today
-    const alreadyMarked = markedDateRef.current === today;
-
-    if (inside && !alreadyMarked) {
-      // Show prompt if not already pending
-      if (attendanceStatus !== "pending") {
-        setAttendanceStatus("pending");
-      }
-      // Start 15-min timer for auto-absent (only once)
+    if (inside && !attendanceMarkedRef.current && attendanceStatus !== "present") {
+      setAttendanceStatus("pending");
       if (!geofenceTimerRef.current) {
-        geofenceTimerRef.current = setTimeout(() => {
-          markAttendance("absent");
-        }, 15 * 60 * 1000);
+        geofenceTimerRef.current = setTimeout(() => markAttendance("absent"), 15 * 60 * 1000);
       }
-    } else if (!inside && attendanceStatus === "pending") {
-      // Bus left before student responded — reset prompt, cancel timer
-      clearTimeout(geofenceTimerRef.current);
-      geofenceTimerRef.current = null;
-      setAttendanceStatus(null);
     }
   }, [busData, myLocation, selected, attendanceStatus]);
 
   async function markAttendance(status) {
-    const today = getTodayStr();
-    // FIX 3: Guard with date, not just a boolean ref
-    if (markedDateRef.current === today) return;
-    markedDateRef.current = today;
-
+    if (attendanceMarkedRef.current) return;
+    attendanceMarkedRef.current = true;
     clearTimeout(geofenceTimerRef.current);
     geofenceTimerRef.current = null;
     setAttendanceStatus(status);
-
+    const today = new Date().toISOString().split("T")[0];
     await addDoc(collection(db, "attendance"), {
-      studentId: user.uid, routeId: selected?.id, date: today,
+      studentId: user.uid, routeId: selected.id, date: today,
       status, timestamp: Date.now(), campusId,
     });
     setAttendanceLog(prev => ({ ...prev, [today]: status }));
   }
 
-  // Load full attendance log on Attendance tab
   useEffect(() => {
     if (!user || tab !== "attendance") return;
     const q = query(collection(db, "attendance"), where("studentId", "==", user.uid));
@@ -215,18 +165,18 @@ export default function StudentDashboard() {
   const S = {
     screen: { minHeight: "100vh", background: "#0A0A0A", fontFamily: "'DM Sans', sans-serif", color: "#fff" },
     header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid #141414", position: "sticky", top: 0, background: "#0A0A0A", zIndex: 10 },
-    logo: { width: 30, height: 30, background: "#0A1020", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
+    logo: { width: 30, height: 30, background: "#FF5A1F", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
     tabs: { display: "flex", borderBottom: "1px solid #141414", padding: "0 16px" },
-    tab: (a) => ({ padding: "12px 14px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#60A5FA" : "#555", borderBottom: a ? "2px solid #60A5FA" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif", transition: "color 0.2s" }),
+    tab: (a) => ({ padding: "12px 14px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#FF5A1F" : "#444", borderBottom: a ? "2px solid #FF5A1F" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif" }),
     body: { padding: "16px 16px 100px", maxWidth: 480, margin: "0 auto" },
     card: { background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
     label: { fontSize: 10, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 },
     pill: (color, bg, border) => ({ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 12, color, fontWeight: 500 }),
-    routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#1A3060" : "#1A1A1A"}`, borderRadius: 10, background: sel ? "#0A1020" : "#0F0F0F", color: sel ? "#60A5FA" : "#666", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
+    routeBtn: (sel) => ({ flex: "0 0 auto", padding: "10px 14px", border: `1px solid ${sel ? "#FF5A1F" : "#1A1A1A"}`, borderRadius: 10, background: sel ? "#150D09" : "#0F0F0F", color: sel ? "#FF5A1F" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }),
     etaBox: { background: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
     statBox: { flex: 1, textAlign: "center" },
-    statVal: { fontSize: 26, fontWeight: 700, letterSpacing: "-1px", color: "#fff" },
-    statLabel: { fontSize: 10, color: "#555", marginTop: 2 },
+    statVal: { fontSize: 26, fontWeight: 700, letterSpacing: "-1px", color: "#FF5A1F" },
+    statLabel: { fontSize: 10, color: "#ccc", marginTop: 2 },
     attendBtn: (col, bg, bdr) => ({ width: "100%", padding: "16px", border: `1px solid ${bdr}`, borderRadius: 12, background: bg, color: col, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 10 }),
   };
 
@@ -240,20 +190,20 @@ export default function StudentDashboard() {
     return (
       <div style={S.card}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid #141414", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>‹</button>
+          <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18 }}>‹</button>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{monthName} {calYear}</span>
-          <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>›</button>
+          <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18 }}>›</button>
         </div>
         <div style={{ padding: "12px 16px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 8 }}>
-            {["S","M","T","W","T","F","S"].map((d,i) => <div key={i} style={{ textAlign: "center", fontSize: 10, color: "#666", fontWeight: 600 }}>{d}</div>)}
+            {["S","M","T","W","T","F","S"].map((d,i) => <div key={i} style={{ textAlign: "center", fontSize: 10, color: "#999", fontWeight: 600 }}>{d}</div>)}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
             {cells.map((d, i) => {
               if (!d) return <div key={i} />;
               const dateStr = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
               const status = attendanceLog[dateStr];
-              const isToday = getTodayStr() === dateStr;
+              const isToday = new Date().toISOString().split("T")[0] === dateStr;
               return (
                 <div key={i} style={{ aspectRatio: "1", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: isToday ? 700 : 400, background: status === "present" ? "#0D1F12" : status === "absent" ? "#1A0808" : isToday ? "#1A1A1A" : "transparent", color: status === "present" ? "#4ADE80" : status === "absent" ? "#F87171" : isToday ? "#fff" : "#555", border: isToday ? "1px solid #333" : "none" }}>
                   {d}
@@ -263,8 +213,8 @@ export default function StudentDashboard() {
           </div>
         </div>
         <div style={{ padding: "12px 16px", borderTop: "1px solid #141414", display: "flex", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#0D1F12", border: "1px solid #1E4D2B" }} /><span style={{ fontSize: 11, color: "#666" }}>Present</span></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#1A0808", border: "1px solid #3D1010" }} /><span style={{ fontSize: 11, color: "#666" }}>Absent</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#0D1F12", border: "1px solid #1E4D2B" }} /><span style={{ fontSize: 11, color: "#ccc" }}>Present</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#1A0808", border: "1px solid #3D1010" }} /><span style={{ fontSize: 11, color: "#ccc" }}>Absent</span></div>
         </div>
       </div>
     );
@@ -272,7 +222,7 @@ export default function StudentDashboard() {
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ color: "#555", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>Loading routes...</div>
+      <div style={{ color: "#FF5A1F", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>Loading routes...</div>
     </div>
   );
 
@@ -281,13 +231,13 @@ export default function StudentDashboard() {
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <div style={S.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={S.logo}>🎓</div>
+          <div style={S.logo}>🚌</div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.3px" }}>CampusMove</div>
-            {myRoute && <div style={{ fontSize: 10, color: "#60A5FA", fontWeight: 500 }}>{myRoute.name} assigned</div>}
+            {myRoute && <div style={{ fontSize: 10, color: "#FF5A1F", fontWeight: 500 }}>{myRoute.name} assigned</div>}
           </div>
         </div>
-        <button onClick={logout} style={{ background: "none", border: "1px solid #1E1E1E", borderRadius: 8, padding: "6px 14px", color: "#666", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
+        <button onClick={logout} style={{ background: "none", border: "1px solid #1E1E1E", borderRadius: 8, padding: "6px 14px", color: "#ccc", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
       </div>
 
       <div style={S.tabs}>
@@ -302,7 +252,7 @@ export default function StudentDashboard() {
             {routes.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#888", fontSize: 14 }}>
                 No routes added yet.<br />
-                <span style={{ fontSize: 12, color: "#555" }}>Ask your admin to add routes.</span>
+                <span style={{ fontSize: 12, color: "#666" }}>Ask your admin to add routes.</span>
               </div>
             ) : (
               <>
@@ -322,7 +272,7 @@ export default function StudentDashboard() {
                       {selected?.name} is live
                     </div>
                   ) : (
-                    <div style={{ ...S.pill("#666", "#111", "#1A1A1A"), marginBottom: 10 }}>
+                    <div style={{ ...S.pill("#444", "#111", "#1A1A1A"), marginBottom: 10 }}>
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#333", display: "inline-block" }} />
                       Bus not active
                     </div>
@@ -358,11 +308,10 @@ export default function StudentDashboard() {
                   />
                 </div>
 
-                {/* FIX 3: Only show prompt when pending AND not already marked today */}
-                {inGeofence && attendanceStatus === "pending" && markedDateRef.current !== getTodayStr() && (
+                {inGeofence && attendanceStatus === "pending" && (
                   <div style={{ background: "#0D1520", border: "1px solid #1E3A5F", borderRadius: 14, padding: "16px", marginBottom: 14 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", marginBottom: 4 }}>🚌 Bus is nearby!</div>
-                    <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>Mark your attendance. Auto-marks absent in 15 min.</div>
+                    <div style={{ fontSize: 12, color: "#ccc", marginBottom: 14 }}>Mark your attendance. Auto-marks absent in 15 min.</div>
                     <button onClick={() => markAttendance("present")} style={S.attendBtn("#fff", "#FF5A1F", "#FF5A1F")}>✓ Mark Present</button>
                   </div>
                 )}
@@ -370,20 +319,14 @@ export default function StudentDashboard() {
                 {attendanceStatus === "present" && (
                   <div style={{ background: "#0D1F12", border: "1px solid #1E4D2B", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                     <span style={{ fontSize: 20 }}>✅</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#4ADE80" }}>Attendance marked</div>
-                      <div style={{ fontSize: 11, color: "#1E4D2B" }}>Present for today</div>
-                    </div>
+                    <div><div style={{ fontSize: 13, fontWeight: 600, color: "#4ADE80" }}>Attendance marked</div><div style={{ fontSize: 11, color: "#1E4D2B" }}>Present for today</div></div>
                   </div>
                 )}
 
                 {attendanceStatus === "absent" && (
                   <div style={{ background: "#1A0808", border: "1px solid #3D1010", borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                     <span style={{ fontSize: 20 }}>❌</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#F87171" }}>Marked absent</div>
-                      <div style={{ fontSize: 11, color: "#3D1010" }}>Didn't respond in time</div>
-                    </div>
+                    <div><div style={{ fontSize: 13, fontWeight: 600, color: "#F87171" }}>Marked absent</div><div style={{ fontSize: 11, color: "#3D1010" }}>Didn't respond in time</div></div>
                   </div>
                 )}
               </>
