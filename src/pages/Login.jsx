@@ -355,7 +355,6 @@ export default function Login() {
                           {role === "student" ? "College Email" : "Personal Email"}
                         </label>
                         <input name="email" type="email" value={form.email} onChange={handleChange}
-                          {/* FIX 7: student placeholder updated */}
                           placeholder={role === "student" ? "College ID (e.g. abc@ced.alliance.edu.in)" : "you@gmail.com"}
                           style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
                       </div>
