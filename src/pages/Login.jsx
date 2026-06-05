@@ -134,7 +134,7 @@ export default function Login() {
       } catch (e) {
         setError("Admin login failed. Check credentials.");
         setLoading(false); setBusPhase("idle"); return;
-      }
+      } finally { setLoading(false); setBusPhase("idle"); }
     }
 
     if (role === "student" && !isCollegeEmail(email)) {
@@ -326,8 +326,8 @@ export default function Login() {
                         <div style={{ position: "relative" }}>
                           <input name="password" type={showPwd ? "text" : "password"} value={form.password} onChange={handleChange} placeholder="••••••••"
                             style={{ width: "100%", background: "#0A0A0A", border: "1px solid #161616", borderRadius: 11, padding: "13px 46px 13px 16px", color: "#fff", fontSize: 14, boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+                          {/* FIX 6: eye button hover restore — was #2A2A2A (invisible), now #888 */}
                           <button type="button" onClick={() => setShowPwd(p => !p)} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#888", padding: 0 }}
-                            {/* FIX 6: eye button hover restore — was #2A2A2A (invisible), now #888 */}
                             onMouseEnter={e => e.target.style.color = "#FF5A1F"} onMouseLeave={e => e.target.style.color = "#888"}>
                             {showPwd ? "🙈" : "👁"}
                           </button>

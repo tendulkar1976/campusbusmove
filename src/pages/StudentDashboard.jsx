@@ -164,9 +164,9 @@ export default function StudentDashboard() {
 
   const S = {
     screen: { minHeight: "100vh", background: "#0A0A0A", fontFamily: "'DM Sans', sans-serif", color: "#fff" },
-    header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid #141414", position: "sticky", top: 0, background: "#0A0A0A", zIndex: 10 },
+    header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid #777", position: "sticky", top: 0, background: "#0A0A0A", zIndex: 10 },
     logo: { width: 30, height: 30, background: "#FF5A1F", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
-    tabs: { display: "flex", borderBottom: "1px solid #141414", padding: "0 16px" },
+    tabs: { display: "flex", borderBottom: "1px solid #777", padding: "0 16px" },
     tab: (a) => ({ padding: "12px 14px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#FF5A1F" : "#444", borderBottom: a ? "2px solid #FF5A1F" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif" }),
     body: { padding: "16px 16px 100px", maxWidth: 480, margin: "0 auto" },
     card: { background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
@@ -189,7 +189,7 @@ export default function StudentDashboard() {
     for (let d = 1; d <= days; d++) cells.push(d);
     return (
       <div style={S.card}>
-        <div style={{ padding: "14px 16px", borderBottom: "1px solid #141414", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #777", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18 }}>‹</button>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{monthName} {calYear}</span>
           <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18 }}>›</button>
@@ -212,7 +212,7 @@ export default function StudentDashboard() {
             })}
           </div>
         </div>
-        <div style={{ padding: "12px 16px", borderTop: "1px solid #141414", display: "flex", gap: 16 }}>
+        <div style={{ padding: "12px 16px", borderTop: "1px solid #777", display: "flex", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#0D1F12", border: "1px solid #1E4D2B" }} /><span style={{ fontSize: 11, color: "#ccc" }}>Present</span></div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#1A0808", border: "1px solid #3D1010" }} /><span style={{ fontSize: 11, color: "#ccc" }}>Absent</span></div>
         </div>
@@ -357,4 +357,5 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
 

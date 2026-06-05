@@ -140,26 +140,26 @@ export default function AdminDashboard() {
   const S = {
     screen: { minHeight: "100vh", background: "#0A0A0A", fontFamily: "'DM Sans', sans-serif", color: "#fff" },
     header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid #111", position: "sticky", top: 0, background: "#0A0A0A", zIndex: 10 },
-    logo: { width: 30, height: 30, background: "#2A2A2A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
+    logo: { width: 30, height: 30, background: "#aaa", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
     badge: { background: "#1A0F2A", border: "1px solid #2D1F55", borderRadius: 6, padding: "3px 8px", color: "#A78BFA", fontSize: 11, fontWeight: 600 },
-    signOut: { background: "none", border: "1px solid #161616", borderRadius: 8, padding: "6px 14px", color: "#2A2A2A", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
+    signOut: { background: "none", border: "1px solid #161616", borderRadius: 8, padding: "6px 14px", color: "#aaa", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
     tabs: { display: "flex", borderBottom: "1px solid #111", padding: "0 16px" },
-    tabBtn: (a) => ({ padding: "12px 16px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#2A2A2A" : "#2A2A2A", borderBottom: a ? "2px solid #2A2A2A" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif", transition: "color 0.2s" }),
+    tabBtn: (a) => ({ padding: "12px 16px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: a ? "#aaa" : "#aaa", borderBottom: a ? "2px solid #aaa" : "2px solid transparent", fontFamily: "'DM Sans', sans-serif", transition: "color 0.2s" }),
     body: { padding: "16px 16px 40px", maxWidth: 560, margin: "0 auto" },
     grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 },
-    statCard: { background: "#0D0D0D", border: "1px solid #141414", borderRadius: 14, padding: "16px" },
+    statCard: { background: "#0D0D0D", border: "1px solid #777", borderRadius: 14, padding: "16px" },
     statVal: (c) => ({ fontSize: 30, fontWeight: 700, color: c, letterSpacing: "-1px", margin: "4px 0 0" }),
-    statLabel: { fontSize: 10, color: "#2A2A2A", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px" },
-    card: { background: "#0D0D0D", border: "1px solid #141414", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
+    statLabel: { fontSize: 10, color: "#aaa", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px" },
+    card: { background: "#0D0D0D", border: "1px solid #777", borderRadius: 14, overflow: "hidden", marginBottom: 14 },
     cardHead: { padding: "12px 16px", borderBottom: "1px solid #111" },
-    cardLabel: { fontSize: 10, color: "#2A2A2A", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px" },
+    cardLabel: { fontSize: 10, color: "#aaa", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px" },
     row: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #0D0D0D" },
-    input: { width: "100%", background: "#0A0A0A", border: "1px solid #141414", borderRadius: 10, padding: "12px 14px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", marginBottom: 8, transition: "border-color 0.2s" },
-    addBtn: { width: "100%", background: "#2A2A2A", border: "none", borderRadius: 10, padding: "13px 0", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, boxShadow: "0 4px 16px rgba(255,90,31,0.25)" },
+    input: { width: "100%", background: "#0A0A0A", border: "1px solid #777", borderRadius: 10, padding: "12px 14px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", marginBottom: 8, transition: "border-color 0.2s" },
+    addBtn: { width: "100%", background: "#aaa", border: "none", borderRadius: 10, padding: "13px 0", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, boxShadow: "0 4px 16px rgba(255,90,31,0.25)" },
     delBtn: { background: "none", border: "1px solid #1E1010", borderRadius: 6, padding: "4px 10px", color: "#F87171", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
     liveDot: (a) => ({ width: 6, height: 6, borderRadius: "50%", background: a ? "#4ADE80" : "#1A1A1A", display: "inline-block", marginRight: 6, boxShadow: a ? "0 0 6px #4ADE80" : "none" }),
-    routePill: (a) => ({ fontSize: 10, padding: "3px 8px", borderRadius: 20, background: a ? "#0A1A0D" : "#0D0D0D", color: a ? "#4ADE80" : "#2A2A2A", border: `1px solid ${a ? "#1A3D22" : "#141414"}` }),
-    rolePill: (r) => ({ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: r === "admin" ? "#1A0F2A" : r === "driver" ? "#0A1020" : "#111", color: r === "admin" ? "#A78BFA" : r === "driver" ? "#60A5FA" : "#2A2A2A", border: `1px solid ${r === "admin" ? "#2D1F55" : r === "driver" ? "#1A2D55" : "#141414"}` }),
+    routePill: (a) => ({ fontSize: 10, padding: "3px 8px", borderRadius: 20, background: a ? "#0A1A0D" : "#0D0D0D", color: a ? "#4ADE80" : "#aaa", border: `1px solid ${a ? "#1A3D22" : "#777"}` }),
+    rolePill: (r) => ({ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: r === "admin" ? "#1A0F2A" : r === "driver" ? "#0A1020" : "#111", color: r === "admin" ? "#A78BFA" : r === "driver" ? "#60A5FA" : "#aaa", border: `1px solid ${r === "admin" ? "#2D1F55" : r === "driver" ? "#1A2D55" : "#777"}` }),
     blockBtn: (blocked) => ({ background: "none", border: `1px solid ${blocked ? "#1A3D22" : "#1E1A0A"}`, borderRadius: 6, padding: "4px 10px", color: blocked ? "#4ADE80" : "#FBBF24", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }),
   };
 
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
 
   return (
     <div style={S.screen}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap'); input:focus{border-color:#2A2A2A!important;}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap'); input:focus{border-color:#aaa!important;}`}</style>
 
       <div style={S.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -192,7 +192,7 @@ export default function AdminDashboard() {
           <>
             <div style={S.grid}>
               <div style={S.statCard}><div style={S.statLabel}>Active Buses</div><div style={S.statVal("#4ADE80")}>{activeBuses}</div></div>
-              <div style={S.statCard}><div style={S.statLabel}>Total Routes</div><div style={S.statVal("#2A2A2A")}>{PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + routes.length}</div></div>
+              <div style={S.statCard}><div style={S.statLabel}>Total Routes</div><div style={S.statVal("#aaa")}>{PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + routes.length}</div></div>
               <div style={S.statCard}><div style={S.statLabel}>Students</div><div style={S.statVal("#60A5FA")}>{studentCount || "—"}</div></div>
               <div style={S.statCard}><div style={S.statLabel}>Drivers</div><div style={S.statVal("#A78BFA")}>{driverCount || "—"}</div></div>
             </div>
@@ -211,12 +211,12 @@ export default function AdminDashboard() {
                   <div key={pr.id} style={S.row}>
                     <div>
                       <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{displayRoute.name}</div>
-                      <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{displayRoute.label}</div>
+                      <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{displayRoute.label}</div>
                       {active && driverName && (
-                        <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 3 }}>🚌 {driverName} · {speed} km/h</div>
+                        <div style={{ fontSize: 11, color: "#aaa", marginTop: 3 }}>🚌 {driverName} · {speed} km/h</div>
                       )}
                       {!active && (
-                        <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 3 }}>No driver active</div>
+                        <div style={{ fontSize: 11, color: "#aaa", marginTop: 3 }}>No driver active</div>
                       )}
                     </div>
                     <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
@@ -243,15 +243,15 @@ export default function AdminDashboard() {
                         <input value={editingRoute.label} onChange={e => setEditingRoute({...editingRoute, label: e.target.value})} style={S.input} placeholder="Label" />
                         <input value={editingRoute.description || ""} onChange={e => setEditingRoute({...editingRoute, description: e.target.value})} style={{...S.input, marginBottom: 8}} placeholder="Description" />
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={saveEditRoute} disabled={editSaving} style={{ flex: 1, background: "#2A2A2A", border: "none", borderRadius: 8, padding: "8px 0", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{editSaving ? "Saving..." : "Save"}</button>
-                          <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: "1px solid #1A1A1A", borderRadius: 8, padding: "8px 0", color: "#2A2A2A", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                          <button onClick={saveEditRoute} disabled={editSaving} style={{ flex: 1, background: "#aaa", border: "none", borderRadius: 8, padding: "8px 0", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{editSaving ? "Saving..." : "Save"}</button>
+                          <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: "1px solid #1A1A1A", borderRadius: 8, padding: "8px 0", color: "#aaa", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
                         </div>
                       </div>
                     ) : (
                       <div style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between" }}>
                         <div>
                           <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{displayRoute.name}</div>
-                          <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{displayRoute.label}</div>
+                          <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{displayRoute.label}</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
@@ -276,15 +276,15 @@ export default function AdminDashboard() {
                         <input value={editingRoute.label} onChange={e => setEditingRoute({...editingRoute, label: e.target.value})} style={S.input} placeholder="Label" />
                         <input value={editingRoute.description || ""} onChange={e => setEditingRoute({...editingRoute, description: e.target.value})} style={{...S.input, marginBottom: 8}} placeholder="Description" />
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={saveEditRoute} disabled={editSaving} style={{ flex: 1, background: "#2A2A2A", border: "none", borderRadius: 8, padding: "8px 0", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{editSaving ? "Saving..." : "Save"}</button>
-                          <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: "1px solid #1A1A1A", borderRadius: 8, padding: "8px 0", color: "#2A2A2A", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                          <button onClick={saveEditRoute} disabled={editSaving} style={{ flex: 1, background: "#aaa", border: "none", borderRadius: 8, padding: "8px 0", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{editSaving ? "Saving..." : "Save"}</button>
+                          <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: "1px solid #1A1A1A", borderRadius: 8, padding: "8px 0", color: "#aaa", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
                         </div>
                       </div>
                     ) : (
                       <div style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between" }}>
                         <div>
                           <div style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{route.name}</div>
-                          <div style={{ fontSize: 11, color: "#2A2A2A", marginTop: 2 }}>{route.label}</div>
+                          <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{route.label}</div>
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => setEditingRoute({ id: route.id, name: route.name, label: route.label, description: route.description || "" })} style={{ background: "none", border: "1px solid #1A1A1A", borderRadius: 6, padding: "4px 10px", color: "#555", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
@@ -314,9 +314,9 @@ export default function AdminDashboard() {
             {/* User stats */}
             <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
               {[["Total", users.length, "#fff"], ["Students", studentCount, "#60A5FA"], ["Drivers", driverCount, "#A78BFA"], ["Blocked", blockedCount, "#F87171"]].map(([l, v, c]) => (
-                <div key={l} style={{ flex: 1, background: "#0D0D0D", border: "1px solid #141414", borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
+                <div key={l} style={{ flex: 1, background: "#0D0D0D", border: "1px solid #777", borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: c, letterSpacing: "-0.5px" }}>{v}</div>
-                  <div style={{ fontSize: 10, color: "#2A2A2A", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.6px" }}>{l}</div>
+                  <div style={{ fontSize: 10, color: "#aaa", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.6px" }}>{l}</div>
                 </div>
               ))}
             </div>
@@ -330,7 +330,7 @@ export default function AdminDashboard() {
                     <div style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ fontSize: 13, color: u.blocked ? "#2A2A2A" : "#bbb", fontWeight: 500, textDecoration: u.blocked ? "line-through" : "none" }}>{u.name || "—"}</div>
+                          <div style={{ fontSize: 13, color: u.blocked ? "#aaa" : "#bbb", fontWeight: 500, textDecoration: u.blocked ? "line-through" : "none" }}>{u.name || "—"}</div>
                           {u.blocked && <span style={{ fontSize: 10, color: "#F87171", background: "#1A0808", border: "1px solid #2A1010", borderRadius: 4, padding: "2px 6px" }}>Blocked</span>}
                         </div>
                         <div style={{ fontSize: 11, color: "#222", marginTop: 2 }}>{u.email}</div>
@@ -348,7 +348,7 @@ export default function AdminDashboard() {
 
                         {/* Change role */}
                         <select value={u.role} onChange={e => changeRole(u.id, e.target.value)}
-                          style={{ flex: 1, background: "#0A0A0A", border: "1px solid #141414", borderRadius: 6, padding: "4px 8px", color: "#555", fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: "pointer" }}>
+                          style={{ flex: 1, background: "#0A0A0A", border: "1px solid #777", borderRadius: 6, padding: "4px 8px", color: "#555", fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: "pointer" }}>
                           <option value="student">Student</option>
                           <option value="driver">Driver</option>
                           <option value="admin">Admin</option>
@@ -387,3 +387,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
