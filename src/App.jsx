@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PermissionsGate from "./components/PermissionsGate";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import StudentDashboard from "./pages/StudentDashboard";
@@ -17,40 +18,33 @@ function RoleRedirect() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <PermissionsGate>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<RoleRedirect />} />
-          <Route
-            path="/student"
-            element={
-              <ProtectedRoute allowedRoles={["student", "teacher"]}>
-                <StudentDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/driver"
-            element={
-              <ProtectedRoute allowedRoles={["driver"]}>
-                <DriverDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-      </PermissionsGate>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <PermissionsGate>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<RoleRedirect />} />
+              <Route path="/student" element={
+                <ProtectedRoute allowedRoles={["student", "teacher"]}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              }/>
+              <Route path="/driver" element={
+                <ProtectedRoute allowedRoles={["driver"]}>
+                  <DriverDashboard />
+                </ProtectedRoute>
+              }/>
+              <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }/>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </PermissionsGate>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
