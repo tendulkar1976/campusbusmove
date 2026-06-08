@@ -1,3 +1,6 @@
+// At top of file, outside component — temporary
+let routeCache = null; // already exists, just make sure it's null on reload
+// 
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
 import { ref, onValue } from "firebase/database";
 import { collection, query, where, getDocs, addDoc, doc, getDoc } from "firebase/firestore";
