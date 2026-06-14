@@ -141,9 +141,9 @@ export default function DriverDashboard() {
         }
       },
       {
-        enableHighAccuracy: true,
-        maximumAge: 3000,   // FIX: allow 3s cached — prevents timeout on Android
-        timeout: 30000,     // FIX: 30s timeout — enough for Android cold GPS start
+        enableHighAccuracy: false,
+        maximumAge: 10000,
+        timeout: 60000,
       }
     );
   }

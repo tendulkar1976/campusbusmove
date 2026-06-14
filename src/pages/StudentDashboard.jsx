@@ -1,6 +1,3 @@
-// At top of file, outside component — temporary
-let routeCache = null; // already exists, just make sure it's null on reload
-// 
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
 import { ref, onValue } from "firebase/database";
 import { collection, query, where, getDocs, addDoc, doc, getDoc } from "firebase/firestore";
@@ -72,7 +69,7 @@ export default function StudentDashboard() {
   const markedDateRef    = useRef(null);
   const gpsWatchRef      = useRef(null);
   const rtdbUnsubRef     = useRef(null);
-  const busUpdateTimer   = useRef(null); // debounce RTDB updates
+  const busUpdateTimer   = useRef(null);
 
   // ── Load routes (cache hit = instant) ──
   useEffect(() => {
@@ -140,15 +137,32 @@ export default function StudentDashboard() {
     return () => document.removeEventListener("visibilitychange", handle);
   }, [onGpsSuccess]);
 
-  // ── ETA + geofence — memoized computation ──
+  // ── ETA + geofence ──
   useEffect(() => {
     if (!activeBus || activeBus.active!==true || !myLocation || !selected) {
       setEta(null); setDistance(null); setInGeofence(false); return;
     }
+
+    // ETA calculation — uses stops if available, falls back to student location
     if (selected.stops?.length) {
-      const nearest = selected.stops.reduce((c,s)=>{const d=getDistanceMeters(myLocation.lat,myLocation.lng,s.lat,s.lng);return d<c.d?{stop:s,d}:c},{stop:null,d:Infinity});
-      if (nearest.stop) { const r=getETA(activeBus.lat,activeBus.lng,nearest.stop.lat,nearest.stop.lng,activeBus.speed); setEta(r.mins); setDistance(r.dist); }
+      const nearest = selected.stops.reduce((c,s)=>{
+        const d=getDistanceMeters(myLocation.lat,myLocation.lng,s.lat,s.lng);
+        return d<c.d?{stop:s,d}:c;
+      },{stop:null,d:Infinity});
+      if (nearest.stop) {
+        const r=getETA(activeBus.lat,activeBus.lng,nearest.stop.lat,nearest.stop.lng,activeBus.speed);
+        setEta(r.mins); setDistance(r.dist);
+      } else {
+        const r=getETA(activeBus.lat,activeBus.lng,myLocation.lat,myLocation.lng,activeBus.speed);
+        setEta(r.mins); setDistance(r.dist);
+      }
+    } else {
+      // No stops in Firestore — calculate directly bus → student
+      const r=getETA(activeBus.lat,activeBus.lng,myLocation.lat,myLocation.lng,activeBus.speed);
+      setEta(r.mins); setDistance(r.dist);
     }
+
+    // Geofence — 300m radius
     const bd = getDistanceMeters(myLocation.lat, myLocation.lng, activeBus.lat, activeBus.lng);
     const inside = bd <= 300;
     setInGeofence(inside);
@@ -186,7 +200,6 @@ export default function StudentDashboard() {
   const totalCount   = useMemo(() => Object.values(attendanceLog).length, [attendanceLog]);
   const pct          = useMemo(() => totalCount>0?Math.round(presentCount/totalCount*100):0, [presentCount, totalCount]);
 
-  // ── Stable tab change ──
   const handleTabChange = useCallback(v => setTab(v), []);
   const handleRouteSelect = useCallback(r => setSelected(r), []);
 
