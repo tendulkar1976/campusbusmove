@@ -74,8 +74,13 @@ export default function Login() {
     setError("");setLoading(true);setBusPhase("driving");
     const email=form.email.trim();
     if(email===ADMIN_EMAIL&&form.password===ADMIN_PASSWORD){
-      try{await signInWithEmailAndPassword(auth,email,form.password);navigate("/admin");return;}
-      catch{setError("Admin login failed.");setLoading(false);setBusPhase("idle");return;}
+  try{
+    await signInWithEmailAndPassword(auth,email,form.password);
+    setTimeout(()=>navigate("/admin"),600);
+    return;
+  }
+  catch{setError("Admin login failed.");setLoading(false);setBusPhase("idle");return;}
+}
     }
     if(role==="student"&&!isCollegeEmail(email)){setError("Students must use college email.");setLoading(false);setBusPhase("idle");return;}
     if(role==="teacher"&&!isPersonalEmail(email)){setError("Teachers must use personal email.");setLoading(false);setBusPhase("idle");return;}
