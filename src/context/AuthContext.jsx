@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser) {
         const snap = await getDoc(doc(db, "users", firebaseUser.uid));
         if (snap.exists()) {
@@ -28,6 +29,14 @@ export function AuthProvider({ children }) {
           setRole(data.role);
           setCampusId(data.campusId);
           setBlocked(false);
+        } else {
+          // Fallback if user doc doesn't exist yet
+          if (firebaseUser.email === "gamethunder83@gmail.com") {
+            setRole("admin");
+            setBlocked(false);
+          } else {
+            setRole(null);
+          }
         }
         setUser(firebaseUser);
       } else {
