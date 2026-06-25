@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import MapView from "../components/MapView";
 
-// ── Pure helpers (defined outside component — never recreated) ──
+// ── Pure helpers ──
 function getDistanceMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
@@ -23,24 +23,50 @@ function getTodayStr() { return new Date().toISOString().split("T")[0]; }
 let routeCache = null;
 
 // ── Memoized sub-components ──
-const StatBox = memo(({ val, label, color }) => (
-  <div style={{ flex: 1, textAlign: "center" }}>
-    <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-1px", color }}>{val}</div>
-    <div style={{ fontSize: 10, color: "#666", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.8px" }}>{label}</div>
+const StatBox = memo(({ val, label, color, dark }) => (
+  <div style={{ flex: 1, textAlign: "center", padding: "8px 0" }}>
+    <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-1px", color, fontFamily: "'DM Sans', sans-serif" }}>{val}</div>
+    <div style={{ fontSize: 9, color: "#666", marginTop: 4, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>{label}</div>
   </div>
 ));
 
 const AttendanceBadge = memo(({ status, dark }) => {
   if (status === "present") return (
-    <div style={{ background: dark?"#0D1F12":"#ECFDF5", border: `1px solid ${dark?"#1E4D2B":"#6EE7B7"}`, borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-      <span style={{ fontSize: 22 }}>✅</span>
-      <div><div style={{ fontSize: 14, fontWeight: 700, color: dark?"#4ADE80":"#065F46" }}>Attendance marked</div><div style={{ fontSize: 12, color: "#666" }}>Present for today</div></div>
+    <div style={{
+      background: dark?"#0D1F12":"#ECFDF5",
+      border: `1px solid ${dark?"#1E4D2B":"#A7F3D0"}`,
+      borderRadius: 16,
+      padding: "16px 20px",
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 16,
+      boxShadow: dark ? "0 4px 12px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.02)"
+    }}>
+      <span style={{ fontSize: 24 }}>✅</span>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: dark?"#4ADE80":"#047857" }}>Attendance Marked</div>
+        <div style={{ fontSize: 12, color: dark?"#888":"#6B7280", marginTop: 2 }}>Marked present for today</div>
+      </div>
     </div>
   );
   if (status === "absent") return (
-    <div style={{ background: dark?"#1A0808":"#FEF2F2", border: `1px solid ${dark?"#3D1010":"#FCA5A5"}`, borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-      <span style={{ fontSize: 22 }}>❌</span>
-      <div><div style={{ fontSize: 14, fontWeight: 700, color: dark?"#F87171":"#991B1B" }}>Marked absent</div><div style={{ fontSize: 12, color: "#666" }}>Didn't respond in time</div></div>
+    <div style={{
+      background: dark?"#1A0808":"#FEF2F2",
+      border: `1px solid ${dark?"#3D1010":"#FEE2E2"}`,
+      borderRadius: 16,
+      padding: "16px 20px",
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 16,
+      boxShadow: dark ? "0 4px 12px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.02)"
+    }}>
+      <span style={{ fontSize: 24 }}>❌</span>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: dark?"#F87171":"#B91C1C" }}>Marked Absent</div>
+        <div style={{ fontSize: 12, color: dark?"#888":"#6B7280", marginTop: 2 }}>Didn't respond to geofence check</div>
+      </div>
     </div>
   );
   return null;
@@ -69,9 +95,8 @@ export default function StudentDashboard() {
   const markedDateRef    = useRef(null);
   const gpsWatchRef      = useRef(null);
   const rtdbUnsubRef     = useRef(null);
-  const busUpdateTimer   = useRef(null);
 
-  // ── Load routes (cache hit = instant) ──
+  // ── Load routes ──
   useEffect(() => {
     if (routeCache) { setRoutes(routeCache); setSelected(routeCache[0]); setLoading(false); return; }
     getDocs(collection(db, "routes")).then(snap => {
@@ -93,18 +118,20 @@ export default function StudentDashboard() {
     });
   }, [user, routes]);
 
-  // ── RTDB listener — debounced 300ms to prevent rapid re-renders ──
+  // ── RTDB listener — immediate updates, no debounce ──
   useEffect(() => {
     if (!selected?.id) { setActiveBus(null); return; }
     if (rtdbUnsubRef.current) { rtdbUnsubRef.current(); rtdbUnsubRef.current = null; }
     const unsub = onValue(ref(rtdb, `routes/${selected.id}/live`), snap => {
-      clearTimeout(busUpdateTimer.current);
-      busUpdateTimer.current = setTimeout(() => {
-        setActiveBus(snap.exists() ? { ...snap.val() } : null);
-      }, 300);
+      console.log("RTDB snap:", snap.val());
+      if (snap.exists() && snap.val().active === true) {
+        setActiveBus({ ...snap.val() }); // spread = force re-render
+      } else {
+        setActiveBus(null);
+      }
     });
     rtdbUnsubRef.current = unsub;
-    return () => { unsub(); clearTimeout(busUpdateTimer.current); rtdbUnsubRef.current = null; };
+    return () => { unsub(); rtdbUnsubRef.current = null; };
   }, [selected?.id]);
 
   // ── Today's attendance check ──
@@ -116,7 +143,7 @@ export default function StudentDashboard() {
     });
   }, [user]);
 
-  // ── GPS — stable callback via useCallback ──
+  // ── GPS watch ──
   const onGpsSuccess = useCallback(pos => {
     setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
   }, []);
@@ -127,7 +154,7 @@ export default function StudentDashboard() {
     return () => { if (gpsWatchRef.current) navigator.geolocation.clearWatch(gpsWatchRef.current); };
   }, [onGpsSuccess]);
 
-  // ── Visibility — pause GPS in background ──
+  // ── Visibility check ──
   useEffect(() => {
     const handle = () => {
       if (document.hidden && gpsWatchRef.current) { navigator.geolocation.clearWatch(gpsWatchRef.current); gpsWatchRef.current=null; }
@@ -143,7 +170,6 @@ export default function StudentDashboard() {
       setEta(null); setDistance(null); setInGeofence(false); return;
     }
 
-    // ETA calculation — uses stops if available, falls back to student location
     if (selected.stops?.length) {
       const nearest = selected.stops.reduce((c,s)=>{
         const d=getDistanceMeters(myLocation.lat,myLocation.lng,s.lat,s.lng);
@@ -157,12 +183,10 @@ export default function StudentDashboard() {
         setEta(r.mins); setDistance(r.dist);
       }
     } else {
-      // No stops in Firestore — calculate directly bus → student
       const r=getETA(activeBus.lat,activeBus.lng,myLocation.lat,myLocation.lng,activeBus.speed);
       setEta(r.mins); setDistance(r.dist);
     }
 
-    // Geofence — 300m radius
     const bd = getDistanceMeters(myLocation.lat, myLocation.lng, activeBus.lat, activeBus.lng);
     const inside = bd <= 300;
     setInGeofence(inside);
@@ -185,7 +209,7 @@ export default function StudentDashboard() {
     setAttendanceLog(p=>({...p,[today]:status}));
   }, [user, selected, campusId]);
 
-  // ── Attendance tab load ──
+  // ── Load attendance log ──
   useEffect(() => {
     if (!user||tab!=="attendance") return;
     getDocs(query(collection(db,"attendance"),where("studentId","==",user.uid))).then(snap=>{
@@ -193,7 +217,7 @@ export default function StudentDashboard() {
     });
   }, [user, tab]);
 
-  // ── Derived values — memoized ──
+  // ── Derived values ──
   const isActive     = useMemo(() => activeBus?.active===true, [activeBus]);
   const busMapLoc    = useMemo(() => isActive ? { lat: activeBus.lat, lng: activeBus.lng } : null, [isActive, activeBus]);
   const presentCount = useMemo(() => Object.values(attendanceLog).filter(v=>v==="present").length, [attendanceLog]);
@@ -204,100 +228,219 @@ export default function StudentDashboard() {
   const handleRouteSelect = useCallback(r => setSelected(r), []);
 
   if (loading) return (
-    <div style={{ minHeight:"100vh", background:t.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, fontFamily:"'DM Sans',sans-serif" }}>
-      <div style={{ fontSize:32 }}>🚌</div>
-      <div style={{ color:t.accent, fontSize:14 }}>Loading...</div>
+    <div style={{ minHeight:"100vh", background:t.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, fontFamily:"'DM Sans',sans-serif" }}>
+      <div style={{ fontSize:36 }}>🚌</div>
+      <div style={{ width: 140, height: 3, background: t.border, borderRadius: 2, overflow: "hidden", position: "relative" }}>
+        <div style={{ height: "100%", width: "40%", background: t.accent, borderRadius: 2, position: "absolute", animation: "loadingSwipe 1.2s ease-in-out infinite alternate" }} />
+      </div>
+      <style>{`
+        @keyframes loadingSwipe { from{left:0%} to{left:60%} }
+      `}</style>
+      <div style={{ color:t.accent, fontSize:12, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase" }}>Loading Portal</div>
     </div>
   );
 
   return (
     <div style={{ minHeight:"100vh", background:t.bg, fontFamily:"'DM Sans',sans-serif", color:t.text, willChange:"background", transition:"background 0.25s,color 0.25s" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap');
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        .custom-scroll::-webkit-scrollbar { height: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: ${t.borderStrong}; border-radius: 2px; }
+      `}</style>
 
       {/* HEADER */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px", borderBottom:`1px solid ${t.border}`, position:"sticky", top:0, background:t.headerBg, backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", zIndex:20, willChange:"transform" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:34, height:34, background:t.accent, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🎓</div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", borderBottom:`1px solid ${t.border}`, position:"sticky", top:0, background:t.headerBg, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", zIndex:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:38, height:38, background:t.accent, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, boxShadow: `0 4px 12px ${t.accent}33` }}>🎓</div>
           <div>
-            <div style={{ fontSize:15, fontWeight:700, color:t.text }}>CampusMove</div>
-            {myRoute ? <div style={{ fontSize:11, color:t.accent, fontWeight:600 }}>{myRoute.name}</div>
-                     : <div style={{ fontSize:11, color:t.textMuted }}>Student</div>}
+            <div style={{ fontSize:16, fontWeight:800, color:t.text, letterSpacing: "-0.3px" }}>CampusMove</div>
+            {myRoute ? <div style={{ fontSize:11, color:t.accent, fontWeight:700, marginTop: 1 }}>{myRoute.name}</div>
+                     : <div style={{ fontSize:11, color:t.textMuted, marginTop: 1 }}>Alliance Tracking</div>}
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <button onClick={toggle} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${t.border}`, background:t.bgCard, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <button onClick={toggle} style={{ width:38, height:38, borderRadius:12, border:`1px solid ${t.border}`, background:t.bgCard, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", transition: "all 0.2s", boxShadow: dark ? "0 4px 10px rgba(0,0,0,0.3)" : "0 4px 10px rgba(0,0,0,0.03)" }}>
             {dark?"☀️":"🌙"}
           </button>
-          <button onClick={logout} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 12px", border:`1px solid ${t.border}`, borderRadius:10, background:t.bgCard, color:t.textSub, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>
-            <span>↩</span> Sign out
+          <button onClick={logout} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", border:`1px solid ${t.border}`, borderRadius:12, background:t.bgCard, color:t.textSub, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition: "all 0.2s", boxShadow: dark ? "0 4px 10px rgba(0,0,0,0.3)" : "0 4px 10px rgba(0,0,0,0.03)" }}>
+            <span>↩</span> Sign Out
           </button>
         </div>
       </div>
 
-      {/* TABS */}
-      <div style={{ display:"flex", borderBottom:`1px solid ${t.border}`, padding:"0 16px", background:t.bg }}>
-        {[["track","🗺️  Track"],["attendance","📅  Attendance"]].map(([v,l]) => (
-          <button key={v} onClick={() => handleTabChange(v)} style={{ padding:"13px 18px", border:"none", background:"none", cursor:"pointer", fontSize:13, fontWeight:600, color:tab===v?t.tabActive:t.tabInactive, borderBottom:tab===v?`2px solid ${t.tabActive}`:"2px solid transparent", fontFamily:"'DM Sans',sans-serif", transition:"color 0.15s" }}>
-            {l}
-          </button>
-        ))}
+      {/* TABS CONTAINER */}
+      <div style={{ display:"flex", padding:"12px 20px", background:t.bg, borderBottom:`1px solid ${t.border}` }}>
+        <div style={{ display:"flex", background:dark ? "#121212" : "#E5E5DF", borderRadius:14, padding:4, gap:4 }}>
+          {[["track","🗺️  Live Tracking"],["attendance","📅  My Attendance"]].map(([v,l]) => (
+            <button key={v} onClick={() => handleTabChange(v)} style={{
+              padding:"8px 18px",
+              border:"none",
+              borderRadius:10,
+              background:tab===v ? (dark ? "#222" : "#FFFFFF") : "transparent",
+              cursor:"pointer",
+              fontSize:13,
+              fontWeight:700,
+              color:tab===v?t.text:t.textMuted,
+              boxShadow:tab===v ? (dark ? "0 2px 10px rgba(0,0,0,0.5)" : "0 2px 10px rgba(0,0,0,0.05)") : "none",
+              fontFamily:"'DM Sans',sans-serif",
+              transition:"all 0.2s ease-in-out"
+            }}>
+              {l}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div style={{ padding:"16px 16px 100px", maxWidth:480, margin:"0 auto" }}>
+      <div style={{ padding:"20px 20px 80px", maxWidth:480, margin:"0 auto" }}>
 
         {tab==="track" && (
           <>
             {!routes.length ? (
-              <div style={{ textAlign:"center", padding:"60px 0", color:t.textMuted, fontSize:14 }}>No routes yet.<br/><span style={{ fontSize:12, color:t.textHint }}>Ask admin to add routes.</span></div>
+              <div style={{ textAlign:"center", padding:"80px 0", color:t.textMuted, background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 20, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)" }}>
+                <span style={{ fontSize: 44 }}>🚌</span>
+                <div style={{ fontSize:15, fontWeight: 700, marginTop: 16, color: t.text }}>No Routes Available</div>
+                <div style={{ fontSize:13, color:t.textMuted, marginTop: 6 }}>Please contact transport administration.</div>
+              </div>
             ) : (
               <>
-                {/* Route selector */}
-                <div style={{ marginBottom:14 }}>
-                  <p style={{ fontSize:10, color:t.textMuted, fontWeight:700, textTransform:"uppercase", letterSpacing:"1.2px", marginBottom:8 }}>Select Bus Route</p>
-                  <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
+                {/* Route Selector */}
+                <div style={{ marginBottom:18 }}>
+                  <p style={{ fontSize:10, color:t.textMuted, fontWeight:800, textTransform:"uppercase", letterSpacing:"1.5px", marginBottom:10 }}>Select Active Route</p>
+                  <div className="custom-scroll" style={{ display:"flex", gap:10, overflowX:"auto", paddingBottom:8 }}>
                     {routes.map(r => (
-                      <button key={r.id} onClick={() => handleRouteSelect(r)} style={{ flex:"0 0 auto", padding:"10px 16px", border:`1px solid ${selected?.id===r.id?t.accent:t.border}`, borderRadius:10, background:selected?.id===r.id?t.accentSub:t.bgCard, color:selected?.id===r.id?t.accent:t.textSub, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap", transition:"all 0.12s" }}>
+                      <button key={r.id} onClick={() => handleRouteSelect(r)} style={{
+                        flex:"0 0 auto",
+                        padding:"10px 18px",
+                        border:`1px solid ${selected?.id===r.id ? t.accent : t.border}`,
+                        borderRadius:12,
+                        background:selected?.id===r.id ? t.accentSub : t.bgCard,
+                        color:selected?.id===r.id ? t.accent : t.textSub,
+                        fontSize:12,
+                        fontWeight:700,
+                        cursor:"pointer",
+                        fontFamily:"'DM Sans',sans-serif",
+                        whiteSpace:"nowrap",
+                        transition:"all 0.2s",
+                        boxShadow: selected?.id===r.id ? `0 4px 14px ${t.accent}15` : "none"
+                      }}>
                         {r.name}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Status pill */}
-                <div style={{ marginBottom:14 }}>
+                {/* Status Pill Banner */}
+                <div style={{ marginBottom:18 }}>
                   {isActive ? (
-                    <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"9px 16px", borderRadius:20, background:t.pill.activeBg, border:`1px solid ${t.pill.activeBorder}`, fontSize:13, color:t.pill.activeText, fontWeight:600 }}>
-                      <span style={{ width:8, height:8, borderRadius:"50%", background:"#4ADE80", display:"inline-block", boxShadow:"0 0 6px #4ADE80" }}/>
-                      {selected?.name} is live · {activeBus.speed||0} km/h
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:10, padding:"10px 18px", borderRadius:24, background:t.pill.activeBg, border:`1px solid ${t.pill.activeBorder}`, fontSize:13, color:t.pill.activeText, fontWeight:700, boxShadow: `0 4px 12px ${t.pill.activeBorder}22` }}>
+                      <span style={{ width:10, height:10, borderRadius:"50%", background:"#4ADE80", display:"inline-block", boxShadow:"0 0 10px #4ADE80", animation: "pulse 1.4s infinite alternate" }}/>
+                      {selected?.name} is Live · {activeBus.speed||0} km/h
                     </div>
                   ) : (
-                    <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"9px 16px", borderRadius:20, background:t.pill.inactiveBg, border:`1px solid ${t.pill.inactiveBorder}`, fontSize:13, color:t.pill.inactiveText, fontWeight:600 }}>
-                      <span style={{ width:8, height:8, borderRadius:"50%", background:t.textHint, display:"inline-block" }}/>
-                      Bus not active
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:10, padding:"10px 18px", borderRadius:24, background:t.pill.inactiveBg, border:`1px solid ${t.pill.inactiveBorder}`, fontSize:13, color:t.pill.inactiveText, fontWeight:700 }}>
+                      <span style={{ width:10, height:10, borderRadius:"50%", background:t.textHint, display:"inline-block" }}/>
+                      Bus Offline
                     </div>
                   )}
+                  <style>{`@keyframes pulse{from{transform:scale(1);opacity:0.8}to{transform:scale(1.25);opacity:1}}`}</style>
                 </div>
 
-                {/* ETA */}
+                {/* Stats Widget */}
                 {isActive && (
-                  <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, padding:"16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-                    {[[eta!==null?eta:"—","min to stop"],[distance!==null?(distance>1000?`${(distance/1000).toFixed(1)}k`:distance):"—","meters away"],[activeBus?.speed||0,"km/h"]].map(([val,label],i) => (
-                      <StatBox key={i} val={val} label={label} color={t.accent}/>
+                  <div style={{
+                    background:t.bgCard,
+                    border:`1px solid ${t.border}`,
+                    borderRadius:18,
+                    padding:"16px",
+                    display:"flex",
+                    justifyContent:"space-between",
+                    alignItems:"center",
+                    marginBottom:18,
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.03)"
+                  }}>
+                    {[[eta!==null?`${eta} mins`:"—","ETA to Stop"],[distance!==null?(distance>1000?`${(distance/1000).toFixed(1)} km`:`${distance} m`):"—","Distance"],[activeBus?.speed||0,"Speed"]].map(([val,label],i) => (
+                      <StatBox key={i} val={val} label={label} color={t.accent} dark={dark}/>
                     ))}
                   </div>
                 )}
 
-                {/* Map */}
-                <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:16, overflow:"hidden", marginBottom:14 }}>
-                  <MapView busLocation={busMapLoc} busMoving={isActive&&activeBus.speed>0} routePath={selected?.path?.map(p=>[p.lat,p.lng])} center={selected?.center?[selected.center.lat,selected.center.lng]:null} myLocation={myLocation} dark={dark}/>
+                {/* Map View Frame */}
+                <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:20, overflow:"hidden", marginBottom:18, boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)" }}>
+                  <MapView busLocation={busMapLoc} busMoving={isActive&&activeBus.speed>0} routePath={selected?.path?.map(p=>[p.lat,p.lng])} center={busMapLoc ? null : (selected?.center ? [selected.center.lat,selected.center.lng] : null)} myLocation={myLocation} dark={dark}/>
                 </div>
 
-                {/* Attendance prompt */}
+                {/* Vertical Timeline Stops Tracker */}
+                {selected?.stops?.length > 0 && (
+                  <div style={{
+                    background: t.bgCard,
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 20,
+                    padding: "18px 20px",
+                    marginBottom: 18,
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.03)"
+                  }}>
+                    <p style={{ fontSize:10, color:t.textMuted, fontWeight:800, textTransform:"uppercase", letterSpacing:"1.5px", marginBottom:16 }}>Stops & Real-time ETA</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 20, position: "relative", paddingLeft: 18 }}>
+                      {/* Central Line */}
+                      <div style={{ position: "absolute", left: 4, top: 8, bottom: 8, width: 2, background: dark ? "#222" : "#E5E5DF" }} />
+                      {selected.stops.map((stop, index) => {
+                        const stopDist = activeBus && isActive ? getDistanceMeters(activeBus.lat, activeBus.lng, stop.lat, stop.lng) : null;
+                        const isNear = stopDist !== null && stopDist <= 300;
+                        const stopEta = activeBus && isActive ? getETA(activeBus.lat, activeBus.lng, stop.lat, stop.lng, activeBus.speed).mins : null;
+                        
+                        return (
+                          <div key={index} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative" }}>
+                            {/* Bullet Dot */}
+                            <div style={{
+                              position: "absolute",
+                              left: -18,
+                              top: 6,
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              background: isNear ? "#4ADE80" : (dark ? "#333" : "#C5C5BF"),
+                              border: `2px solid ${isNear ? (dark ? "#0D1F12" : "#fff") : t.bgCard}`,
+                              boxShadow: isNear ? "0 0 10px #4ADE80" : "none",
+                              zIndex: 1,
+                              transition: "all 0.25s"
+                            }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: isNear ? "#4ADE80" : t.text, transition: "color 0.25s" }}>{stop.name}</div>
+                              {stopDist !== null && (
+                                <div style={{ fontSize: 11, color: isNear ? "#4ADE80" : t.textMuted, marginTop: 4 }}>
+                                  {isNear ? "Active stop now" : `${stopDist > 1000 ? `${(stopDist/1000).toFixed(1)} km` : `${Math.round(stopDist)} m`} away`}
+                                </div>
+                              )}
+                            </div>
+                            {stopEta !== null && !isNear && (
+                              <div style={{ fontSize: 12, fontWeight: 700, color: t.accent, background: t.accentSub, padding: "3px 8px", borderRadius: 8, border: `1px solid ${t.accentBorder}` }}>
+                                {stopEta} min
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Attendance Prompt Geofence */}
                 {inGeofence && attendanceStatus==="pending" && markedDateRef.current!==getTodayStr() && (
-                  <div style={{ background:dark?"#0D1520":"#EFF6FF", border:`1px solid ${dark?"#1E3A5F":"#93C5FD"}`, borderRadius:14, padding:"16px", marginBottom:14 }}>
-                    <div style={{ fontSize:14, fontWeight:700, color:"#3B82F6", marginBottom:4 }}>🚌 Bus is nearby!</div>
-                    <div style={{ fontSize:13, color:t.textSub, marginBottom:14 }}>Mark attendance. Auto-absent in 15 min.</div>
-                    <button onClick={() => markAttendance("present")} style={{ width:"100%", padding:"15px", border:"none", borderRadius:12, background:t.accent, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>
+                  <div style={{
+                    background:dark?"#0D1D30":"#EFF6FF",
+                    border:`1px solid ${dark?"#1E3A8A":"#BFDBFE"}`,
+                    borderRadius:18,
+                    padding:"18px",
+                    marginBottom:18,
+                    boxShadow: dark ? "0 8px 24px rgba(30,58,138,0.25)" : "0 8px 24px rgba(191,219,254,0.25)"
+                  }}>
+                    <div style={{ fontSize:15, fontWeight:800, color:"#3B82F6", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>
+                      <span>🚌</span> Bus Nearby!
+                    </div>
+                    <div style={{ fontSize:13, color:t.textSub, marginBottom:16 }}>Mark present now. Auto-absent will trigger in 15 minutes.</div>
+                    <button onClick={() => markAttendance("present")} style={{ width:"100%", padding:"14px", border:"none", borderRadius:12, background:"#3B82F6", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.3)", transition: "all 0.2s" }}>
                       ✓ Mark Present
                     </button>
                   </div>
@@ -309,13 +452,14 @@ export default function StudentDashboard() {
           </>
         )}
 
+        {/* ATTENDANCE CALENDAR TAB */}
         {tab==="attendance" && (
           <>
-            <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+            <div style={{ display:"flex", gap:10, marginBottom:18 }}>
               {[[presentCount,"#4ADE80","Present"],[totalCount-presentCount,"#F87171","Absent"],[`${pct}%`,pct>=75?"#4ADE80":"#F87171","Rate"]].map(([val,color,label],i) => (
-                <div key={i} style={{ flex:1, background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, padding:"14px", textAlign:"center" }}>
-                  <div style={{ fontSize:28, fontWeight:700, color, letterSpacing:"-1px" }}>{val}</div>
-                  <div style={{ fontSize:11, color:t.textMuted, marginTop:4, textTransform:"uppercase", letterSpacing:"0.8px" }}>{label}</div>
+                <div key={i} style={{ flex:1, background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:16, padding:"16px 12px", textAlign:"center", boxShadow: dark ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize:26, fontWeight:800, color, letterSpacing:"-1px", fontFamily: "'DM Sans', sans-serif" }}>{val}</div>
+                  <div style={{ fontSize:10, color:t.textMuted, marginTop:4, textTransform:"uppercase", letterSpacing:"1px", fontWeight: 700 }}>{label}</div>
                 </div>
               ))}
             </div>
@@ -327,38 +471,72 @@ export default function StudentDashboard() {
   );
 }
 
-// Memoized calendar — only re-renders when month/log changes
+// Memoized Calendar
 const CalendarView = memo(function CalendarView({ calYear, calMonth, attendanceLog, t, dark, onPrev, onNext }) {
   const days     = getDaysInMonth(calYear, calMonth);
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const monthName = new Date(calYear, calMonth).toLocaleString("default", { month: "long" });
   const cells = useMemo(() => {
     const c = []; for(let i=0;i<firstDay;i++)c.push(null); for(let d=1;d<=days;d++)c.push(d); return c;
-  }, [calYear, calMonth]);
+  }, [calYear, calMonth, firstDay, days]);
   const today = getTodayStr();
+
   return (
-    <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:16, overflow:"hidden" }}>
-      <div style={{ padding:"14px 16px", borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <button onClick={onPrev} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:32, height:32, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
-        <span style={{ fontSize:14, fontWeight:700, color:t.text }}>{monthName} {calYear}</span>
-        <button onClick={onNext} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:32, height:32, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>›</button>
+    <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:20, overflow:"hidden", boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)" }}>
+      <div style={{ padding:"16px 20px", borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyBetween: "center", justifyContent:"space-between" }}>
+        <button onClick={onPrev} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:34, height:34, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
+        <span style={{ fontSize:15, fontWeight:800, color:t.text }}>{monthName} {calYear}</span>
+        <button onClick={onNext} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:34, height:34, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center" }}>›</button>
       </div>
-      <div style={{ padding:"12px 16px" }}>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:8 }}>
-          {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{ textAlign:"center", fontSize:11, color:t.textMuted, fontWeight:700 }}>{d}</div>)}
+      <div style={{ padding:"16px" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6, marginBottom:10 }}>
+          {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d,i)=><div key={i} style={{ textAlign:"center", fontSize:11, color:t.textMuted, fontWeight:700, textTransform: "uppercase", letterSpacing: "0.5px" }}>{d}</div>)}
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6 }}>
           {cells.map((d,i) => {
             if (!d) return <div key={i}/>;
             const ds = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
             const st = attendanceLog[ds]; const isToday = today===ds;
-            return <div key={i} style={{ aspectRatio:"1", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:isToday?700:500, background:st==="present"?(dark?"#0D1F12":"#ECFDF5"):st==="absent"?(dark?"#1A0808":"#FEF2F2"):isToday?t.accentSub:"transparent", color:st==="present"?(dark?"#4ADE80":"#065F46"):st==="absent"?(dark?"#F87171":"#991B1B"):isToday?t.accent:t.textSub, border:isToday?`1px solid ${t.accent}`:"none" }}>{d}</div>;
+            
+            let cellBg = "transparent";
+            let cellColor = t.textSub;
+            let cellBorder = "none";
+            
+            if (st === "present") {
+              cellBg = dark ? "#0D1F12" : "#ECFDF5";
+              cellColor = dark ? "#4ADE80" : "#047857";
+              cellBorder = `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`;
+            } else if (st === "absent") {
+              cellBg = dark ? "#1A0808" : "#FEF2F2";
+              cellColor = dark ? "#F87171" : "#B91C1C";
+              cellBorder = `1px solid ${dark ? "#3D1010" : "#FEE2E2"}`;
+            } else if (isToday) {
+              cellBg = t.accentSub;
+              cellColor = t.accent;
+              cellBorder = `1px solid ${t.accent}`;
+            }
+
+            return (
+              <div key={i} style={{
+                aspectRatio:"1",
+                borderRadius:10,
+                display:"flex",
+                alignItems:"center",
+                justifyContent:"center",
+                fontSize:12,
+                fontWeight:isToday ? 800 : 600,
+                background: cellBg,
+                color: cellColor,
+                border: cellBorder,
+                transition: "all 0.2s"
+              }}>{d}</div>
+            );
           })}
         </div>
       </div>
-      <div style={{ padding:"12px 16px", borderTop:`1px solid ${t.border}`, display:"flex", gap:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:10, height:10, borderRadius:3, background:dark?"#0D1F12":"#ECFDF5", border:`1px solid ${dark?"#1E4D2B":"#6EE7B7"}` }}/><span style={{ fontSize:12, color:t.textSub }}>Present</span></div>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:10, height:10, borderRadius:3, background:dark?"#1A0808":"#FEF2F2", border:`1px solid ${dark?"#3D1010":"#FCA5A5"}` }}/><span style={{ fontSize:12, color:t.textSub }}>Absent</span></div>
+      <div style={{ padding:"14px 20px", borderTop:`1px solid ${t.border}`, display:"flex", gap:20, background: dark ? "#0A0A0A" : "#FBFBFA" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:12, height:12, borderRadius:4, background:dark?"#0D1F12":"#ECFDF5", border:`1px solid ${dark?"#1E4D2B":"#6EE7B7"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600 }}>Present</span></div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:12, height:12, borderRadius:4, background:dark?"#1A0808":"#FEF2F2", border:`1px solid ${dark?"#3D1010":"#FCA5A5"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600 }}>Absent</span></div>
       </div>
     </div>
   );

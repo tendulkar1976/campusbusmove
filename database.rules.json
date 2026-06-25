@@ -1,0 +1,14 @@
+{
+  "rules": {
+    "routes": {
+      "$routeId": {
+        "live": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    ".read": false,
+    ".write": false
+  }
+}
