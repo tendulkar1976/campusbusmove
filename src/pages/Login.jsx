@@ -11,6 +11,19 @@ const ADMIN_PASSWORD = "gamethunder83";
 // Username → virtual email for Firebase Auth
 function toVirtualEmail(username) { return username.trim().toLowerCase() + "@campusmove.user"; }
 
+function getDaysUntilExpiry(validityMonth, validityYear) {
+  const monthMap = {
+    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
+  };
+  let m = typeof validityMonth === "string" ? monthMap[validityMonth.toLowerCase().trim()] : (validityMonth - 1);
+  if (m === undefined || isNaN(m)) m = 11;
+  const y = parseInt(validityYear) || new Date().getFullYear();
+  const lastDay = new Date(y, m + 1, 0);
+  const diffTime = lastDay.getTime() - new Date().getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const { dark, toggle } = useTheme();
@@ -24,6 +37,88 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [busPhase, setBusPhase] = useState("idle");
+
+  // Bus Pass OCR Scanner states
+  const [scanStep, setScanStep] = useState("capture"); // "capture" | "confirm"
+  const [scanData, setScanData] = useState({ name: "", program: "", pickupPoint: "", validityMonth: "December", validityYear: "2026" });
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanLog, setScanLog] = useState([]);
+  const [selectedPass, setSelectedPass] = useState(null);
+
+  const SAMPLE_PASSES = [
+    {
+      name: "Aditya Sharma",
+      program: "B.Tech Computer Science",
+      pickupPoint: "Silk Board Junction",
+      validityMonth: "December",
+      validityYear: "2026",
+      label: "Active Pass (Aditya)"
+    },
+    {
+      name: "Meera Nair",
+      program: "MBA Business Analytics",
+      pickupPoint: "Electronic City Phase 1",
+      validityMonth: "August",
+      validityYear: "2026",
+      label: "Near Expiry (Meera)"
+    },
+    {
+      name: "Karan Patel",
+      program: "B.Com Honors",
+      pickupPoint: "Bannerghatta Road",
+      validityMonth: "May",
+      validityYear: "2026",
+      label: "Expired Pass (Karan)"
+    }
+  ];
+
+  function runScanningSimulation(passIndex) {
+    const pass = SAMPLE_PASSES[passIndex];
+    setSelectedPass(passIndex);
+    setIsScanning(true);
+    setScanLog([]);
+    setError("");
+
+    const logs = [
+      "📷 Camera initialized. Aligning bus pass...",
+      "🔍 Card detected: 'ALLIANCE UNIVERSITY BUS PASS'",
+      "⚡ Running OCR text recognition...",
+      `✅ Name read: "${pass.name}"`,
+      `✅ Program read: "${pass.program}"`,
+      `✅ Stop read: "${pass.pickupPoint}"`,
+      `✅ Expiration read: "${pass.validityMonth} ${pass.validityYear}"`,
+      "🎉 Scanning complete. Preparing profile details..."
+    ];
+
+    logs.forEach((txt, idx) => {
+      setTimeout(() => {
+        setScanLog(prev => [...prev, txt]);
+      }, (idx + 1) * 300);
+    });
+
+    setTimeout(() => {
+      setIsScanning(false);
+      setScanStep("confirm");
+      setScanData({
+        name: pass.name,
+        program: pass.program,
+        pickupPoint: pass.pickupPoint,
+        validityMonth: pass.validityMonth,
+        validityYear: pass.validityYear
+      });
+      // Set the name and default username in form
+      setForm(prev => ({
+        ...prev,
+        username: pass.name.toLowerCase().replace(/ /g, ".")
+      }));
+    }, logs.length * 320);
+  }
+
+  function handleFileUpload(e) {
+    if (e.target.files && e.target.files.length > 0) {
+      runScanningSimulation(0);
+    }
+  }
 
   useEffect(() => {
     setTimeout(() => setMounted(true), 80);
@@ -81,6 +176,19 @@ export default function Login() {
         const cred = await signInWithEmailAndPassword(auth, virtualEmail, form.password);
         const snap = await getDoc(doc(db, "users", cred.user.uid));
         if (!snap.exists()) { setError("Account not found. Contact admin."); setLoading(false); setBusPhase("idle"); return; }
+        
+        const userRole = snap.data().role;
+        if (role === "student" && userRole !== "student") {
+          setError("This account is not registered as a Student.");
+          await auth.signOut();
+          setLoading(false); setBusPhase("idle"); return;
+        }
+        if (role === "teacher" && userRole !== "teacher") {
+          setError("This account is not registered as Faculty.");
+          await auth.signOut();
+          setLoading(false); setBusPhase("idle"); return;
+        }
+
         setTimeout(() => navigate("/student"), 600);
       } else {
         if (!form.name.trim()) { setError("Enter your full name."); setLoading(false); setBusPhase("idle"); return; }
@@ -105,11 +213,43 @@ export default function Login() {
     } finally { setLoading(false); }
   }
 
+  async function handleStudentRegister() {
+    setError(""); setLoading(true); setBusPhase("driving");
+    if (!scanData.name.trim()) { setError("Full name is required."); setLoading(false); setBusPhase("idle"); return; }
+    const username = form.username.trim().toLowerCase();
+    if (!username || username.length < 3) { setError("Username must be at least 3 characters."); setLoading(false); setBusPhase("idle"); return; }
+    if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); setBusPhase("idle"); return; }
+
+    const virtualEmail = toVirtualEmail(username);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, virtualEmail, form.password);
+      await setDoc(doc(db, "users", cred.user.uid), {
+        name: scanData.name.trim(),
+        username: username,
+        role: "student",
+        program: scanData.program.trim(),
+        pickupPoint: scanData.pickupPoint.trim(),
+        validityMonth: scanData.validityMonth,
+        validityYear: parseInt(scanData.validityYear) || new Date().getFullYear(),
+        campusId: "alliance-bangalore",
+        createdAt: Date.now(),
+      });
+      setTimeout(() => navigate("/student"), 600);
+    } catch (err) {
+      const c = err.code;
+      if (c === "auth/email-already-in-use") setError("Username already taken. Try another.");
+      else if (c === "auth/weak-password") setError("Password must be at least 6 characters.");
+      else setError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
+      setBusPhase("idle");
+    } finally { setLoading(false); }
+  }
+
   const isDriving = busPhase === "driving";
 
   const ROLES = [
-    { id:"student", label:"Student / Faculty", sub:"Username & password login", icon:"🎓", color:"#3B82F6" },
-    { id:"driver",  label:"Driver",            sub:"Phone number & password",   icon:"🚌", color:"#F59E0B" },
+    { id:"student", label:"Student",           sub:"Scan bus pass to register or sign in", icon:"🎓", color:"#3B82F6" },
+    { id:"teacher", label:"Faculty / Teacher", sub:"Username & password sign in",          icon:"🧑‍🏫", color:"#10B981" },
+    { id:"driver",  label:"Driver",            sub:"Phone number & password",              icon:"🚌", color:"#F59E0B" },
   ];
 
   const inp = {
@@ -131,6 +271,7 @@ export default function Login() {
         @keyframes headlightPulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
         @keyframes exhaustPuff { 0%{opacity:0.5;transform:scale(0.4) translateX(0)} 100%{opacity:0;transform:scale(2) translateX(-28px)} }
         @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+        @keyframes laserScan { 0% { top: 4px; } 50% { top: calc(100% - 8px); } 100% { top: 4px; } }
         input:focus { border-color:#2563EB !important; box-shadow:0 0 0 3px rgba(37,99,235,0.1) !important; }
         input::placeholder { color:#9CA3AF; }
         .err-shake { animation:shake 0.35s ease; }
@@ -198,20 +339,22 @@ export default function Login() {
               </button>
 
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
-                <div style={{ width:38, height:38, borderRadius:9, background: role==="driver"?"#F59E0B15":"#3B82F615", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>
-                  {role === "driver" ? "🚌" : "🎓"}
+                <div style={{
+                  width:38, height:38, borderRadius:9,
+                  background: role==="driver"?"#F59E0B15":role==="teacher"?"#10B98115":"#3B82F615",
+                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:18
+                }}>
+                  {role === "driver" ? "🚌" : role === "teacher" ? "🧑‍🏫" : "🎓"}
                 </div>
                 <div>
                   <div style={{ fontSize:18, fontWeight:800, color:"#0F172A", letterSpacing:"-0.3px" }}>
                     {mode === "login" ? "Sign in" : "Create account"}
                   </div>
                   <div style={{ fontSize:12, color:"#9CA3AF" }}>
-                    {role === "driver" ? "Driver · Phone & password" : "Student / Faculty · Username & password"}
+                    {role === "driver" ? "Driver · Phone & password" : role === "teacher" ? "Faculty · Username & password" : "Student · Scan pass or credentials"}
                   </div>
                 </div>
               </div>
-
-              {/* No register for students — accounts created by admin */}
 
               <div style={{ background:"#fff", border:"1px solid #E5E7EB", borderRadius:14, padding:"20px", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
                 <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
@@ -252,13 +395,234 @@ export default function Login() {
                     </>
                   )}
 
-                  {/* STUDENT / FACULTY FORM — login only, accounts created by admin */}
-                  {role !== "driver" && (
+                  {/* STUDENT REGISTER FLOW */}
+                  {role === "student" && mode === "register" && (
+                    <>
+                      {scanStep === "capture" && (
+                        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                          {/* Visual Scanner Area */}
+                          <div style={{
+                            width:"100%", height:200, background:"#0F172A", borderRadius:12,
+                            position:"relative", display:"flex", flexDirection:"column",
+                            alignItems:"center", justifyContent:"center", overflow:"hidden", border:"1px solid #334155"
+                          }}>
+                            {/* Scanning line */}
+                            {isScanning && (
+                              <div style={{
+                                position:"absolute", left:0, right:0, height:2,
+                                background:"rgba(239, 68, 68, 0.8)", boxShadow:"0 0 10px rgba(239, 68, 68, 0.8)",
+                                zIndex:5, animation:"laserScan 2s infinite linear"
+                              }}/>
+                            )}
+
+                            {/* Pass Card Preview or Scanning State */}
+                            {selectedPass !== null ? (
+                              <div style={{
+                                width:"85%", height:130, background:"#1E293B", borderRadius:8,
+                                border:"1.5px solid #FF5A1F", padding:12, color:"#fff",
+                                position:"relative", display:"flex", flexDirection:"column", justifyContent:"space-between",
+                                opacity: isScanning ? 0.6 : 1, transition:"opacity 0.3s"
+                              }}>
+                                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                                  <div>
+                                    <div style={{ fontSize:8, textTransform:"uppercase", letterSpacing:1, color:"#FF5A1F", fontWeight:700 }}>Alliance University</div>
+                                    <div style={{ fontSize:10, fontWeight:700, color:"#fff", marginTop:1 }}>BUS TRACKING PASS</div>
+                                  </div>
+                                  <div style={{ fontSize:12 }}>🚌</div>
+                                </div>
+                                <div style={{ margin:"6px 0" }}>
+                                  <div style={{ fontSize:12, fontWeight:700 }}>{SAMPLE_PASSES[selectedPass].name}</div>
+                                  <div style={{ fontSize:8, color:"#94A3B8", marginTop:1 }}>{SAMPLE_PASSES[selectedPass].program}</div>
+                                </div>
+                                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
+                                  <div>
+                                    <div style={{ fontSize:6, color:"#94A3B8", textTransform:"uppercase" }}>Pick Up Stop</div>
+                                    <div style={{ fontSize:8, fontWeight:700, color:"#F8FAFC" }}>{SAMPLE_PASSES[selectedPass].pickupPoint}</div>
+                                  </div>
+                                  <div style={{ textAlign:"right" }}>
+                                    <div style={{ fontSize:6, color:"#94A3B8", textTransform:"uppercase" }}>Validity</div>
+                                    <div style={{ fontSize:8, fontWeight:700, color:"#10B981" }}>{SAMPLE_PASSES[selectedPass].validityMonth} {SAMPLE_PASSES[selectedPass].validityYear}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ textAlign:"center", color:"#94A3B8", padding:"0 20px" }}>
+                                <div style={{ fontSize:32, marginBottom:8 }}>📷</div>
+                                <div style={{ fontSize:12, fontWeight:600 }}>Align Bus Pass in Viewport</div>
+                                <div style={{ fontSize:10, color:"#64748B", marginTop:4 }}>Select a template below to simulate scan</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Scanner Logs */}
+                          {scanLog.length > 0 && (
+                            <div style={{
+                              background:"#020617", border:"1px solid #1E293B", borderRadius:8,
+                              padding:10, fontFamily:"monospace", fontSize:11, color:"#38BDF8",
+                              maxHeight:100, overflowY:"auto", display:"flex", flexDirection:"column", gap:4
+                            }}>
+                              {scanLog.map((l, i) => <div key={i}>{l}</div>)}
+                            </div>
+                          )}
+
+                          {/* Sample pass templates selection */}
+                          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                            <div style={{ fontSize:11, fontWeight:600, color:"#475569", textTransform:"uppercase", letterSpacing:0.5 }}>Simulate Scan with Samples:</div>
+                            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6 }}>
+                              {SAMPLE_PASSES.map((pass, index) => (
+                                <button key={index} type="button" disabled={isScanning} onClick={() => runScanningSimulation(index)}
+                                  style={{
+                                    padding:"8px 4px", fontSize:10, fontWeight:700, borderRadius:8,
+                                    background: selectedPass === index ? "#3B82F6" : "#F1F5F9",
+                                    color: selectedPass === index ? "#fff" : "#475569",
+                                    border: `1.5px solid ${selectedPass === index ? "#2563EB" : "#E2E8F0"}`,
+                                    cursor: isScanning ? "not-allowed" : "pointer", transition:"all 0.15s"
+                                  }}>
+                                  {pass.label.split(" (")[0]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* File input fallback */}
+                          <div style={{ borderTop:"1px solid #E2E8F0", paddingTop:14, display:"flex", flexDirection:"column", gap:8 }}>
+                            <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center" }}>Or capture using your device camera</div>
+                            <label style={{
+                              display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                              background:"#F1F5F9", border:"1.5px dashed #CBD5E1", borderRadius:10,
+                              padding:"12px", color:"#475569", fontSize:13, fontWeight:600, cursor:"pointer"
+                            }}>
+                              📸 Capture / Upload Pass Image
+                              <input type="file" accept="image/*" disabled={isScanning} onChange={handleFileUpload} style={{ display:"none" }} />
+                            </label>
+                          </div>
+
+                          <div style={{ textAlign:"center", marginTop:6 }}>
+                            <button type="button" onClick={() => { setMode("login"); setError(""); }} style={{ background:"none", border:"none", color:"#1D4ED8", fontSize:13, fontWeight:600, cursor:"pointer", padding:0, fontFamily:"'Inter',sans-serif" }}>
+                              Already have an account? Sign In
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {scanStep === "confirm" && (
+                        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                          <div style={{ background:"#ECFDF5", border:"1px solid #A7F3D0", borderRadius:10, padding:"12px 14px" }}>
+                            <div style={{ fontSize:12, fontWeight:700, color:"#065F46" }}>✅ Pass Scanned Successfully!</div>
+                            <div style={{ fontSize:11, color:"#047857", marginTop:2 }}>Verify extracted details. Edit any field that requires correction.</div>
+                          </div>
+
+                          {/* Calculated countdown badge */}
+                          <div style={{
+                            background: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#EFF6FF" : "#FEF2F2",
+                            border: `1px solid ${getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#BFDBFE" : "#FEE2E2"}`,
+                            borderRadius:8, padding:10, textAlign:"center"
+                          }}>
+                            <div style={{ fontSize:11, fontWeight:600, color: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#1E40AF" : "#991B1B" }}>
+                              Calculated Pass Validity:
+                            </div>
+                            <div style={{ fontSize:14, fontWeight:800, color: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#2563EB" : "#DC2626", marginTop:2 }}>
+                              {getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0
+                                ? `Active (Expires in ${getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear)} days)`
+                                : `Expired (${scanData.validityMonth} ${scanData.validityYear})`
+                              }
+                            </div>
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Full Name</label>
+                            <input value={scanData.name} onChange={(e) => setScanData({...scanData, name: e.target.value})} style={inp} placeholder="Full Name" />
+                          </div>
+
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                            <div>
+                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Program / Course</label>
+                              <input value={scanData.program} onChange={(e) => setScanData({...scanData, program: e.target.value})} style={inp} placeholder="e.g. B.Tech CSE" />
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Pick Up Stop</label>
+                              <input value={scanData.pickupPoint} onChange={(e) => setScanData({...scanData, pickupPoint: e.target.value})} style={inp} placeholder="e.g. Silk Board" />
+                            </div>
+                          </div>
+
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                            <div>
+                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Validity Month</label>
+                              <select value={scanData.validityMonth} onChange={(e) => setScanData({...scanData, validityMonth: e.target.value})} style={{ ...inp, height:44, padding:"0 12px" }}>
+                                {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
+                                  <option key={m} value={m}>{m}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Validity Year</label>
+                              <input type="number" value={scanData.validityYear} onChange={(e) => setScanData({...scanData, validityYear: e.target.value})} style={inp} placeholder="Year" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Account Username</label>
+                            <input name="username" value={form.username} onChange={handleChange} style={inp} placeholder="Choose username" />
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Password</label>
+                            <div style={{ position:"relative" }}>
+                              <input name="password" type={showPwd?"text":"password"} value={form.password} onChange={handleChange} placeholder="Set password (min 6 chars)" style={{ ...inp, paddingRight:44 }} />
+                              <button type="button" onClick={() => setShowPwd(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#9CA3AF", padding:0 }}>{showPwd?"🙈":"👁"}</button>
+                            </div>
+                          </div>
+
+                          {error && <div className="err-shake" style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:8, padding:"10px 14px" }}><p style={{ color:"#DC2626", fontSize:12, margin:0, fontWeight:500 }}>⚠ {error}</p></div>}
+
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 2fr", gap:10, marginTop:6 }}>
+                            <button type="button" onClick={() => setScanStep("capture")} style={{ width:"100%", background:"#F1F5F9", border:"1px solid #CBD5E1", borderRadius:10, padding:"14px 0", color:"#475569", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'Inter',sans-serif" }}>
+                              ← Rescan
+                            </button>
+                            <button onClick={handleStudentRegister} disabled={loading}
+                              style={{ width:"100%", background:loading?"#93C5FD":"#1D4ED8", border:"none", borderRadius:10, padding:"14px 0", color:"#fff", fontSize:14, fontWeight:700, cursor:loading?"not-allowed":"pointer", fontFamily:"'Inter',sans-serif" }}>
+                              {loading ? "Creating..." : "Create Profile ✓"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* STUDENT SIGN IN FLOW */}
+                  {role === "student" && mode === "login" && (
                     <>
                       <div>
                         <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Username</label>
                         <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. john123 or AU2024001" style={inp} autoCapitalize="none" autoCorrect="off" />
-                        <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>Letters, numbers, or a combination — assigned by admin</div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Password</label>
+                        <div style={{ position:"relative" }}>
+                          <input name="password" type={showPwd?"text":"password"} value={form.password} onChange={handleChange} placeholder="••••••••" style={{ ...inp, paddingRight:44 }} />
+                          <button type="button" onClick={() => setShowPwd(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#9CA3AF", padding:0 }}>{showPwd?"🙈":"👁"}</button>
+                        </div>
+                      </div>
+                      {error && <div className="err-shake" style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:8, padding:"10px 14px" }}><p style={{ color:"#DC2626", fontSize:12, margin:0, fontWeight:500 }}>⚠ {error}</p></div>}
+                      <button onClick={handleUserLogin} disabled={loading}
+                        style={{ width:"100%", background:loading?"#93C5FD":"#1D4ED8", border:"none", borderRadius:10, padding:"14px 0", color:"#fff", fontSize:14, fontWeight:700, cursor:loading?"not-allowed":"pointer", fontFamily:"'Inter',sans-serif" }}>
+                        {loading ? "Please wait..." : "Sign In →"}
+                      </button>
+                      <div style={{ textAlign:"center", marginTop:10 }}>
+                        <button type="button" onClick={() => { setMode("register"); setScanStep("capture"); setSelectedPass(null); setError(""); }} style={{ background:"none", border:"none", color:"#1D4ED8", fontSize:13, fontWeight:600, cursor:"pointer", padding:0, fontFamily:"'Inter',sans-serif" }}>
+                          New Student? Scan Bus Pass to Register
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* TEACHER SIGN IN FLOW */}
+                  {role === "teacher" && (
+                    <>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Username</label>
+                        <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. prof.nair or AU-FAC-992" style={inp} autoCapitalize="none" autoCorrect="off" />
+                        <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>Enter your university-assigned faculty username</div>
                       </div>
                       <div>
                         <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Password</label>

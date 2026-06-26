@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
 import { ref, onValue } from "firebase/database";
-import { collection, query, where, getDocs, addDoc, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, getDoc, setDoc } from "firebase/firestore";
 import { rtdb, db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -273,7 +273,7 @@ export default function StudentDashboard() {
       {/* TABS CONTAINER */}
       <div style={{ display:"flex", padding:"12px 20px", background:t.bg, borderBottom:`1px solid ${t.border}` }}>
         <div style={{ display:"flex", background:dark ? "#121212" : "#E5E5DF", borderRadius:14, padding:4, gap:4 }}>
-          {[["track","🗺️  Live Tracking"],["attendance","📅  My Attendance"]].map(([v,l]) => (
+          {[["track","🗺️  Live Tracking"],["attendance","📅  My Attendance"],["profile","👤  My Profile"]].map(([v,l]) => (
             <button key={v} onClick={() => handleTabChange(v)} style={{
               padding:"8px 18px",
               border:"none",
@@ -466,6 +466,10 @@ export default function StudentDashboard() {
             <CalendarView calYear={calYear} calMonth={calMonth} attendanceLog={attendanceLog} t={t} dark={dark} onPrev={()=>{if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1);}else setCalMonth(m=>m-1);}} onNext={()=>{if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1);}else setCalMonth(m=>m+1);}}/>
           </>
         )}
+
+        {tab==="profile" && (
+          <ProfileView user={user} routes={routes} t={t} dark={dark} />
+        )}
       </div>
     </div>
   );
@@ -538,6 +542,266 @@ const CalendarView = memo(function CalendarView({ calYear, calMonth, attendanceL
         <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:12, height:12, borderRadius:4, background:dark?"#0D1F12":"#ECFDF5", border:`1px solid ${dark?"#1E4D2B":"#6EE7B7"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600 }}>Present</span></div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:12, height:12, borderRadius:4, background:dark?"#1A0808":"#FEF2F2", border:`1px solid ${dark?"#3D1010":"#FCA5A5"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600 }}>Absent</span></div>
       </div>
+    </div>
+  );
+});
+
+const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    name: "",
+    program: "",
+    pickupPoint: "",
+    validityMonth: "December",
+    validityYear: new Date().getFullYear(),
+    routeId: ""
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    getDoc(doc(db, "users", user.uid)).then(snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setProfile(data);
+        setForm({
+          name: data.name || "",
+          program: data.program || "",
+          pickupPoint: data.pickupPoint || "",
+          validityMonth: data.validityMonth || "December",
+          validityYear: data.validityYear || new Date().getFullYear(),
+          routeId: data.routeId || ""
+        });
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, [user]);
+
+  function handleChange(e) {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setSuccess(false);
+    setError("");
+  }
+
+  function getDaysUntilExpiry(validityMonth, validityYear) {
+    const monthMap = {
+      january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+      july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
+    };
+    let m = typeof validityMonth === "string" ? monthMap[validityMonth.toLowerCase().trim()] : (validityMonth - 1);
+    if (m === undefined || isNaN(m)) m = 11;
+    const y = parseInt(validityYear) || new Date().getFullYear();
+    const lastDay = new Date(y, m + 1, 0);
+    const diffTime = lastDay.getTime() - new Date().getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (!form.name.trim()) { setError("Name cannot be empty."); return; }
+    
+    setSaving(true);
+    setSuccess(false);
+    setError("");
+    
+    try {
+      const updates = {
+        name: form.name.trim()
+      };
+
+      if (profile.role === "student") {
+        updates.program = form.program.trim();
+        updates.pickupPoint = form.pickupPoint.trim();
+        updates.validityMonth = form.validityMonth;
+        updates.validityYear = parseInt(form.validityYear) || new Date().getFullYear();
+        updates.routeId = form.routeId;
+      }
+
+      await setDoc(doc(db, "users", user.uid), updates, { merge: true });
+      setProfile(prev => ({ ...prev, ...updates }));
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      setError("Failed to save changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return (
+    <div style={{ textAlign: "center", padding: "40px 0", color: t.textMuted }}>
+      <div style={{ fontSize: 24 }}>👤</div>
+      <div style={{ fontSize: 12, marginTop: 8 }}>Loading profile...</div>
+    </div>
+  );
+
+  const isTeacher = profile?.role === "teacher";
+  const daysLeft = profile ? getDaysUntilExpiry(form.validityMonth, form.validityYear) : 0;
+  const isExpired = daysLeft <= 0;
+  const isNearExpiry = daysLeft > 0 && daysLeft <= 30;
+
+  const inputStyle = {
+    width: "100%",
+    background: dark ? "#111" : "#F8F9FA",
+    border: `1.5px solid ${t.border}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    color: t.text,
+    fontSize: 13,
+    outline: "none",
+    fontFamily: "inherit",
+    marginTop: 4
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {/* DIGITAL BUS PASS (STUDENTS ONLY) */}
+      {!isTeacher && profile && (
+        <div style={{
+          width: "100%",
+          background: dark ? "linear-gradient(135deg, #1E293B, #0F172A)" : "linear-gradient(135deg, #FFFFFF, #F1F5F9)",
+          border: `1.5px solid ${isExpired ? "#DC2626" : isNearExpiry ? "#F59E0B" : t.border}`,
+          borderRadius: 20,
+          padding: "18px 20px",
+          boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)",
+          position: "relative",
+          overflow: "hidden"
+        }}>
+          {/* Card background watermarks/decorations */}
+          <div style={{
+            position: "absolute", right: "-30px", bottom: "-30px", fontSize: 150,
+            opacity: 0.05, pointerEvents: "none", transform: "rotate(-15deg)"
+          }}>🎓</div>
+
+          {/* Card Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: `1px solid ${t.border}`, paddingBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.accent, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase" }}>Alliance University</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginTop: 2 }}>STUDENT BUS PASS</div>
+            </div>
+            <div style={{ fontSize: 24 }}>🚌</div>
+          </div>
+
+          {/* Card Body */}
+          <div style={{ margin: "18px 0", display: "flex", gap: 14, alignItems: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: t.accentSub, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, border: `1.5px solid ${t.accent}` }}>
+              🎓
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{profile.name}</div>
+              <div style={{ fontSize: 12, color: t.textSub, marginTop: 2 }}>{form.program || "Course details not set"}</div>
+            </div>
+          </div>
+
+          {/* Card Meta details */}
+          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 10, background: dark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)", padding: 12, borderRadius: 12, border: `1px solid ${t.border}` }}>
+            <div>
+              <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Pick Up Stop</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: t.text, marginTop: 2 }}>{form.pickupPoint || "Not configured"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Expiry Date</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: isExpired ? "#DC2626" : t.text, marginTop: 2 }}>{form.validityMonth} {form.validityYear}</div>
+            </div>
+          </div>
+
+          {/* Card Expiry countdown badge */}
+          <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 10, color: t.textMuted }}>Pass Status:</div>
+            <div style={{
+              fontSize: 11, fontWeight: 800, borderRadius: 8, padding: "4px 10px",
+              background: isExpired ? "#FEF2F2" : isNearExpiry ? "#FFF7ED" : "#ECFDF5",
+              color: isExpired ? "#DC2626" : isNearExpiry ? "#C2410C" : "#047857",
+              border: `1px solid ${isExpired ? "#FCA5A5" : isNearExpiry ? "#FDBA74" : "#A7F3D0"}`
+            }}>
+              {isExpired ? "🔴 Pass Expired" : isNearExpiry ? `⚠️ Expires in ${daysLeft} days` : `🟢 Active (${daysLeft} days left)`}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT PROFILE FORM */}
+      <form onSubmit={handleSave} style={{
+        background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 20, padding: 20,
+        boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)"
+      }}>
+        <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px", color: t.text, margin: "0 0 16px" }}>
+          Edit Profile Details
+        </h3>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Full Name</label>
+            <input name="name" value={form.name} onChange={handleChange} style={inputStyle} placeholder="Your name" />
+          </div>
+
+          {!isTeacher && (
+            <>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Program / Course</label>
+                <input name="program" value={form.program} onChange={handleChange} style={inputStyle} placeholder="e.g. B.Tech Computer Science" />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Pick Up Stop</label>
+                <input name="pickupPoint" value={form.pickupPoint} onChange={handleChange} style={inputStyle} placeholder="e.g. Silk Board Junction" />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Validity Month</label>
+                  <select name="validityMonth" value={form.validityMonth} onChange={handleChange} style={{ ...inputStyle, height: 40, padding: "0 10px" }}>
+                    {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Validity Year</label>
+                  <input type="number" name="validityYear" value={form.validityYear} onChange={handleChange} style={inputStyle} placeholder="Year" />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Assigned Bus Route</label>
+                <select name="routeId" value={form.routeId} onChange={handleChange} style={{ ...inputStyle, height: 40, padding: "0 10px" }}>
+                  <option value="">Select Route</option>
+                  {routes.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {isTeacher && (
+            <div style={{ background: dark ? "#111" : "#F8F9FA", padding: 12, borderRadius: 10, border: `1.5px solid ${t.border}`, fontSize: 12, color: t.textMuted, lineHeight: 1.6 }}>
+              ℹ️ <strong>Faculty Account</strong>: Faculty accounts utilize a credentials-only login profile. Bus pass configurations, validity tracking, and stops assignments are restricted to students.
+            </div>
+          )}
+
+          {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: 10, color: "#DC2626", fontSize: 12, fontWeight: 600 }}>⚠️ {error}</div>}
+          {success && <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, padding: 10, color: "#047857", fontSize: 12, fontWeight: 600 }}>✓ Profile updated successfully!</div>}
+
+          <button type="submit" disabled={saving} style={{
+            width: "100%", background: saving ? t.border : t.accent, color: "#fff",
+            border: "none", borderRadius: 10, padding: "12px 0", fontSize: 13, fontWeight: 700,
+            cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit", marginTop: 6,
+            boxShadow: `0 4px 12px ${t.accent}33`, transition: "all 0.2s"
+          }}>
+            {saving ? "Saving Changes..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 });
