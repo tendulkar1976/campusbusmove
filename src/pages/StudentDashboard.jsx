@@ -698,6 +698,9 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{profile.name}</div>
+              {profile.username && (
+                <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 1 }}>@{profile.username}</div>
+              )}
               <div style={{ fontSize: 12, color: t.textSub, marginTop: 2 }}>{form.program || "Course details not set"}</div>
             </div>
           </div>
@@ -739,6 +742,12 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
         </h3>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {profile?.username && (
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Login Username</label>
+              <input value={profile.username} readOnly style={{ ...inputStyle, background: dark ? "#1E1E20" : "#E2E8F0", color: t.textSub, cursor: "not-allowed" }} />
+            </div>
+          )}
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Full Name</label>
             <input name="name" value={form.name} onChange={handleChange} style={inputStyle} placeholder="Your name" />

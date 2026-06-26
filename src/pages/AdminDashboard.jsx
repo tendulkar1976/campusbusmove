@@ -159,6 +159,14 @@ export default function AdminDashboard() {
     setUserCreateSuccess("");
     if (!newUser.name.trim()) return setUserCreateError("Please enter full name.");
     if (!newUser.identifier.trim()) return setUserCreateError("Please enter username, phone, or email.");
+    
+    if (newUser.role === "student") {
+      const id = newUser.identifier.trim().toLowerCase();
+      if (id.includes("..") || id.startsWith(".") || id.endsWith(".") || /[^a-z0-9.]/.test(id)) {
+        return setUserCreateError("Invalid username format. Student username can only contain lowercase letters, numbers, and single dots (no spaces or consecutive/leading/trailing dots).");
+      }
+    }
+    
     if (newUser.role === "driver" && newUser.identifier.trim().length !== 10) {
       return setUserCreateError("Driver phone number must be exactly 10 digits.");
     }
@@ -192,7 +200,12 @@ export default function AdminDashboard() {
       loadUsers();
     } catch (err) {
       console.error("User creation failed:", err);
-      setUserCreateError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
+      const c = err.code;
+      if (c === "auth/invalid-email") {
+        setUserCreateError("Invalid identifier format. Please check the username or email.");
+      } else {
+        setUserCreateError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
+      }
     } finally {
       setUserCreating(false);
     }

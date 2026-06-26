@@ -11,6 +11,15 @@ const ADMIN_PASSWORD = "gamethunder83";
 // Username → virtual email for Firebase Auth
 function toVirtualEmail(username) { return username.trim().toLowerCase() + "@campusmove.user"; }
 
+// Clean username generation to avoid double/leading/trailing dots and special characters
+function generateCleanUsername(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s.]/g, "") // remove special characters except spaces and dots
+    .replace(/[\s.]+/g, ".")       // collapse spaces and consecutive dots into a single dot
+    .replace(/^\.+|\.+$/g, "");    // trim leading/trailing dots
+}
+
 function getDaysUntilExpiry(validityMonth, validityYear) {
   const monthMap = {
     january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
@@ -182,6 +191,7 @@ export default function Login() {
       else if (c==="auth/user-not-found") setError("Username not found. Register or contact admin.");
       else if (c==="auth/email-already-in-use") setError("Username already taken. Try another.");
       else if (c==="auth/weak-password") setError("Password must be at least 6 characters.");
+      else if (c==="auth/invalid-email") setError("Invalid username format. Use only letters, numbers, and single dots (no spaces or consecutive/leading/trailing dots).");
       else setError(err.message.replace("Firebase:","").replace(/\(auth.*\)/,"").trim());
       setBusPhase("idle");
     } finally { setLoading(false); }
@@ -191,9 +201,9 @@ export default function Login() {
     setError(""); setLoading(true); setBusPhase("driving");
     if (!scanData.name.trim()) { setError("Full name is required."); setLoading(false); setBusPhase("idle"); return; }
     
-    // Auto-generate username from Full Name (e.g., "Karan Tendulkar" -> "karan.tendulkar")
-    const username = scanData.name.trim().toLowerCase().replace(/\s+/g, ".");
-    if (username.length < 3) { setError("Full name must be at least 3 characters to generate a valid username."); setLoading(false); setBusPhase("idle"); return; }
+    // Auto-generate username from Full Name (e.g., "K. Tendulkar" -> "k.tendulkar")
+    const username = generateCleanUsername(scanData.name);
+    if (username.length < 3) { setError("Full name must contain at least 3 valid characters to generate a username."); setLoading(false); setBusPhase("idle"); return; }
     if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); setBusPhase("idle"); return; }
 
     const virtualEmail = toVirtualEmail(username);
@@ -213,9 +223,15 @@ export default function Login() {
       setTimeout(() => navigate("/student"), 600);
     } catch (err) {
       const c = err.code;
-      if (c === "auth/email-already-in-use") setError("Username generated from your name is already taken. Please customize your name slightly or check with admin.");
-      else if (c === "auth/weak-password") setError("Password must be at least 6 characters.");
-      else setError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
+      if (c === "auth/email-already-in-use") {
+        setError("Username generated from your name is already taken. Please customize your name slightly or check with admin.");
+      } else if (c === "auth/weak-password") {
+        setError("Password must be at least 6 characters.");
+      } else if (c === "auth/invalid-email") {
+        setError("Invalid characters in your name. Use only letters, numbers, and spaces.");
+      } else {
+        setError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
+      }
       setBusPhase("idle");
     } finally { setLoading(false); }
   }
