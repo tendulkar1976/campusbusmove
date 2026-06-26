@@ -45,31 +45,31 @@ export function ThemeProvider({ children }) {
       inactiveText:"#9CA3AF",
     },
   } : {
-    bg:          "#F8FAFC", // Clean Slate Gray 50
+    bg:          "#F1F5F9", // Cool Slate Gray from Login background
     bgCard:      "#FFFFFF", // Pure Crisp White
-    bgCard2:     "#F1F5F9", // Slate Gray 100
-    border:      "#E2E8F0", // Slate Gray 200
-    borderStrong:"#CBD5E1", // Slate Gray 300
+    bgCard2:     "#F8F9FA", // Cool gray/slate 50 from Login inputs
+    border:      "#E5E7EB", // Clean slate 200 from Login borders
+    borderStrong:"#D1D5DB", // Slate Gray 300
     text:        "#0F172A", // Slate Gray 900
     textSub:     "#475569", // Slate Gray 600
-    textMuted:   "#64748B", // Slate Gray 500
-    textHint:    "#94A3B8", // Slate Gray 400
+    textMuted:   "#6B7280", // Slate Gray 500
+    textHint:    "#9CA3AF", // Slate Gray 400
     accent:      "#2563EB", // Trust Blue 600
     accentSub:   "#EFF6FF", // Light Blue Highlight 50
     accentBorder:"#BFDBFE", // Blue border highlight 200
     tabActive:   "#2563EB",
-    tabInactive: "#64748B",
+    tabInactive: "#6B7280",
     btnText:     "#475569",
     headerBg:    "rgba(255,255,255,0.92)",
     inputBg:     "#FFFFFF",
-    inputBorder: "#E2E8F0",
+    inputBorder: "#E5E7EB",
     pill: {
       activeBg:    "#EFF6FF",
       activeBorder:"#BFDBFE",
       activeText:  "#1E40AF",
-      inactiveBg:  "#F1F5F9",
-      inactiveBorder:"#E2E8F0",
-      inactiveText:"#475569",
+      inactiveBg:  "#F8F9FA",
+      inactiveBorder:"#E5E7EB",
+      inactiveText:"#6B7280",
     },
   };
 

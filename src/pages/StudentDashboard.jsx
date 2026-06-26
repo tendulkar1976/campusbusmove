@@ -41,8 +41,8 @@ const AttendanceBadge = memo(({ status, dark }) => {
   if (status === "present") return (
     <div style={{
       background: dark?"#0D1F12":"#ECFDF5",
-      border: `1px solid ${dark?"#1E4D2B":"#A7F3D0"}`,
-      borderRadius: 16,
+      border: `1.5px solid ${dark?"#1E4D2B":"#A7F3D0"}`,
+      borderRadius: 12,
       padding: "16px 20px",
       display: "flex",
       alignItems: "center",
@@ -60,8 +60,8 @@ const AttendanceBadge = memo(({ status, dark }) => {
   if (status === "absent") return (
     <div style={{
       background: dark?"#1A0808":"#FEF2F2",
-      border: `1px solid ${dark?"#3D1010":"#FEE2E2"}`,
-      borderRadius: 16,
+      border: `1.5px solid ${dark?"#3D1010":"#FEE2E2"}`,
+      borderRadius: 12,
       padding: "16px 20px",
       display: "flex",
       alignItems: "center",
@@ -293,34 +293,39 @@ export default function StudentDashboard() {
       `}</style>
 
       {/* HEADER */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", borderBottom:`1px solid ${t.border}`, position:"sticky", top:0, background:t.headerBg, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", zIndex:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ width:38, height:38, background:t.accent, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", boxShadow: `0 4px 12px ${t.accent}33` }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
-              <circle cx="8" cy="17" r="2" />
-              <circle cx="16" cy="17" r="2" />
-            </svg>
-          </div>
+      <div style={{
+        background: dark ? "#111827" : "#FFFFFF",
+        borderBottom: `1px solid ${t.border}`,
+        padding: "0 20px",
+        height: 58,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        position: "sticky",
+        top: 0,
+        zIndex: 20,
+        boxShadow: dark ? "none" : "0 1px 3px rgba(0,0,0,0.02)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 32, height: 32, background: "#FF5A1F", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🚌</div>
           <div>
-            <div style={{ fontSize:16, fontWeight:800, color:t.text, letterSpacing: "-0.3px" }}>CampusMove</div>
-            {myRoute ? <div style={{ fontSize:11, color:t.accent, fontWeight:700, marginTop: 1 }}>{myRoute.name}</div>
-                     : <div style={{ fontSize:11, color:t.textMuted, marginTop: 1 }}>Alliance Tracking</div>}
+            <div style={{ fontSize: 14, fontWeight: 700, color: t.text, letterSpacing: "-0.3px" }}>CampusMove</div>
+            <div style={{ fontSize: 9, color: "#FF5A1F", fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", lineHeight: 1 }}>Alliance University</div>
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={toggle} style={{ width:38, height:38, borderRadius:12, border:`1px solid ${t.border}`, background:t.bgCard, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", transition: "all 0.2s", boxShadow: dark ? "0 4px 10px rgba(0,0,0,0.3)" : "0 4px 10px rgba(0,0,0,0.03)" }}>
-            {dark?"☀️":"🌙"}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={toggle} style={{ width: 34, height: 34, borderRadius: 10, border: `1.5px solid ${t.border}`, background: t.bgCard, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+            {dark ? "☀️" : "🌙"}
           </button>
-          <button onClick={logout} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", border:`1px solid ${t.border}`, borderRadius:12, background:t.bgCard, color:t.textSub, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'Inter',sans-serif", transition: "all 0.2s", boxShadow: dark ? "0 4px 10px rgba(0,0,0,0.3)" : "0 4px 10px rgba(0,0,0,0.03)" }}>
+          <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", border: `1.5px solid ${t.border}`, borderRadius: 10, background: t.bgCard, color: t.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
             <span>↩</span> Sign Out
           </button>
         </div>
       </div>
 
       {/* TABS CONTAINER */}
-      <div style={{ display:"flex", padding:"12px 20px", background:t.bg, borderBottom:`1px solid ${t.border}` }}>
-        <div style={{ display:"flex", background:dark ? "#1F2937" : "#E2E8F0", borderRadius:14, padding:4, gap:4 }}>
+      <div style={{ display:"flex", padding:"12px 20px", background:t.bg, borderBottom:`1.5px solid ${t.border}` }}>
+        <div style={{ display:"flex", background:dark ? "#1F2937" : "#E2E8F0", borderRadius:12, padding:4, gap:4 }}>
           {TAB_ITEMS.map((item) => {
             const isActive = tab === item.id;
             const currentColor = isActive ? t.text : t.textMuted;
@@ -354,7 +359,7 @@ export default function StudentDashboard() {
         {tab==="track" && (
           <>
             {!routes.length ? (
-              <div style={{ textAlign:"center", padding:"80px 0", color:t.textMuted, background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 20, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)" }}>
+              <div style={{ textAlign:"center", padding:"80px 0", color:t.textMuted, background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
                 <span style={{ fontSize: 44 }}>🚌</span>
                 <div style={{ fontSize:15, fontWeight: 700, marginTop: 16, color: t.text }}>No Routes Available</div>
                 <div style={{ fontSize:13, color:t.textMuted, marginTop: 6 }}>Please contact transport administration.</div>
@@ -413,14 +418,14 @@ export default function StudentDashboard() {
                 {isActive && (
                   <div style={{
                     background:t.bgCard,
-                    border:`1px solid ${t.border}`,
-                    borderRadius:14,
+                    border:`1.5px solid ${t.border}`,
+                    borderRadius:12,
                     padding:"16px",
                     display:"flex",
                     justifyContent:"space-between",
                     alignItems:"center",
-                    marginBottom:18,
-                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)"
+                    marginBottom:16,
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)"
                   }}>
                     {[[eta!==null?`${eta} min`:"—","ETA to Stop"],[distance!==null?(distance>1000?`${(distance/1000).toFixed(1)} km`:`${distance} m`):"—","Distance"],[`${activeBus?.speed||0} km/h`,"Speed"]].map(([val,label],i) => (
                       <StatBox key={i} val={val} label={label} color={t.accent} dark={dark} showBorder={i < 2} t={t} />
@@ -429,7 +434,7 @@ export default function StudentDashboard() {
                 )}
 
                 {/* Map View Frame */}
-                <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:20, overflow:"hidden", marginBottom:18, boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)" }}>
+                <div style={{ background:t.bgCard, border:`1.5px solid ${t.border}`, borderRadius:12, overflow:"hidden", marginBottom:16, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
                   <MapView busLocation={busMapLoc} busMoving={isActive&&activeBus.speed>0} routePath={selected?.path?.map(p=>[p.lat,p.lng])} center={busMapLoc ? null : (selected?.center ? [selected.center.lat,selected.center.lng] : null)} myLocation={myLocation} dark={dark}/>
                 </div>
 
@@ -437,11 +442,11 @@ export default function StudentDashboard() {
                 {selected?.stops?.length > 0 && (
                   <div style={{
                     background: t.bgCard,
-                    border: `1px solid ${t.border}`,
-                    borderRadius: 14,
-                    padding: "18px 20px",
-                    marginBottom: 18,
-                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)"
+                    border: `1.5px solid ${t.border}`,
+                    borderRadius: 12,
+                    padding: "20px",
+                    marginBottom: 16,
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)"
                   }}>
                     <p style={{ fontSize:10, color:t.textMuted, fontWeight:800, textTransform:"uppercase", letterSpacing:"1.5px", marginBottom:16 }}>Stops & Real-time ETA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 20, position: "relative", paddingLeft: 18 }}>
@@ -493,10 +498,10 @@ export default function StudentDashboard() {
                   <div style={{
                     background: dark ? t.accentSub : "#EFF6FF",
                     border: `1.5px solid ${t.accentBorder}`,
-                    borderRadius: 14,
+                    borderRadius: 12,
                     padding: "18px",
-                    marginBottom: 18,
-                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)"
+                    marginBottom: 16,
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)"
                   }}>
                     <div style={{ fontSize:15, fontWeight:800, color: t.accent, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -522,9 +527,9 @@ export default function StudentDashboard() {
         {/* ATTENDANCE CALENDAR TAB */}
         {tab==="attendance" && (
           <>
-            <div style={{ display:"flex", gap:10, marginBottom:18 }}>
+            <div style={{ display:"flex", gap:10, marginBottom:16 }}>
               {[[presentCount,"#10B981","Present"],[totalCount-presentCount,"#EF4444","Absent"],[`${pct}%`,pct>=75?"#10B981":"#EF4444","Rate"]].map(([val,color,label],i) => (
-                <div key={i} style={{ flex:1, background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, padding:"16px 12px", textAlign:"center", boxShadow: dark ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.02)" }}>
+                <div key={i} style={{ flex:1, background:t.bgCard, border:`1.5px solid ${t.border}`, borderRadius:12, padding:"16px 12px", textAlign:"center", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
                   <div style={{ fontSize:26, fontWeight:800, color, letterSpacing:"-0.5px", fontFamily: "'Inter', sans-serif" }}>{val}</div>
                   <div style={{ fontSize:10, color:t.textMuted, marginTop:4, textTransform:"uppercase", letterSpacing:"0.5px", fontWeight: 700 }}>{label}</div>
                 </div>
@@ -553,7 +558,7 @@ const CalendarView = memo(function CalendarView({ calYear, calMonth, attendanceL
   const today = getTodayStr();
 
   return (
-    <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, overflow:"hidden", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)" }}>
+    <div style={{ background:t.bgCard, border:`1.5px solid ${t.border}`, borderRadius:12, overflow:"hidden", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
       <div style={{ padding:"16px 20px", borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <button onClick={onPrev} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:34, height:34, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}>‹</button>
         <span style={{ fontSize:15, fontWeight:800, color:t.text, fontFamily:"'Inter',sans-serif" }}>{monthName} {calYear}</span>
@@ -719,15 +724,17 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
 
   const inputStyle = {
     width: "100%",
-    background: dark ? "#111" : "#F8F9FA",
+    background: dark ? t.inputBg : t.bgCard2,
     border: `1.5px solid ${t.border}`,
     borderRadius: 10,
-    padding: "10px 14px",
+    padding: "13px 16px",
     color: t.text,
-    fontSize: 13,
+    fontSize: 14,
     outline: "none",
-    fontFamily: "inherit",
-    marginTop: 4
+    fontFamily: "'Inter',sans-serif",
+    marginTop: 6,
+    boxSizing: "border-box",
+    transition: "border-color 0.15s"
   };
 
   return (
@@ -738,9 +745,9 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
           width: "100%",
           background: dark ? `linear-gradient(135deg, ${t.bgCard} 0%, #172554 100%)` : `linear-gradient(135deg, ${t.bgCard} 0%, #EFF6FF 100%)`,
           border: `1.5px solid ${isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : t.border}`,
-          borderRadius: 14,
+          borderRadius: 12,
           padding: "18px 20px",
-          boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)",
+          boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)",
           position: "relative",
           overflow: "hidden"
         }}>
@@ -752,7 +759,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
           </svg>
 
           {/* Card Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${t.border}`, paddingBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1.5px solid ${t.border}`, paddingBottom: 12 }}>
             <div>
               <div style={{ fontSize: 9, color: t.textMuted, textTransform: "uppercase", fontWeight: 800, letterSpacing: 1.5 }}>Alliance University</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginTop: 2 }}>STUDENT BUS PASS</div>
@@ -783,7 +790,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
           </div>
 
           {/* Card Meta details */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 10, background: dark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)", padding: 12, borderRadius: 12, border: `1px solid ${t.border}` }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 10, background: dark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)", padding: 12, borderRadius: 10, border: `1.5px solid ${t.border}` }}>
             <div>
               <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Pick Up Stop</div>
               <div style={{ fontSize: 11, fontWeight: 800, color: t.text, marginTop: 2 }}>{form.pickupPoint || "Not configured"}</div>
@@ -811,10 +818,13 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
 
       {/* EDIT PROFILE FORM */}
       <form onSubmit={handleSave} style={{
-        background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: 20, padding: 20,
-        boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)"
+        background: t.bgCard,
+        border: `1.5px solid ${t.border}`,
+        borderRadius: 12,
+        padding: 24,
+        boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)"
       }}>
-        <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px", color: t.text, margin: "0 0 16px" }}>
+        <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px", color: t.text, margin: "0 0 16px", fontFamily: "'Inter',sans-serif" }}>
           Edit Profile Details
         </h3>
 
@@ -845,7 +855,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Validity Month</label>
-                  <select name="validityMonth" value={form.validityMonth} onChange={handleChange} style={{ ...inputStyle, height: 40, padding: "0 10px" }}>
+                  <select name="validityMonth" value={form.validityMonth} onChange={handleChange} style={{ ...inputStyle, height: 46, padding: "0 16px" }}>
                     {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
@@ -859,7 +869,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Assigned Bus Route</label>
-                <select name="routeId" value={form.routeId} onChange={handleChange} style={{ ...inputStyle, height: 40, padding: "0 10px" }}>
+                <select name="routeId" value={form.routeId} onChange={handleChange} style={{ ...inputStyle, height: 46, padding: "0 16px" }}>
                   <option value="">Select Route</option>
                   {routes.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
@@ -870,7 +880,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
           )}
 
           {isTeacher && (
-            <div style={{ background: dark ? "#111" : "#F8F9FA", padding: 12, borderRadius: 10, border: `1.5px solid ${t.border}`, fontSize: 12, color: t.textMuted, lineHeight: 1.6 }}>
+            <div style={{ background: dark ? "#1E2937" : "#F8F9FA", padding: 14, borderRadius: 10, border: `1.5px solid ${t.border}`, fontSize: 12, color: t.textMuted, lineHeight: 1.6 }}>
               ℹ️ <strong>Faculty Account</strong>: Faculty accounts utilize a credentials-only login profile. Bus pass configurations, validity tracking, and stops assignments are restricted to students.
             </div>
           )}
@@ -880,9 +890,9 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
 
           <button type="submit" disabled={saving} style={{
             width: "100%", background: saving ? t.border : t.accent, color: "#fff",
-            border: "none", borderRadius: 10, padding: "12px 0", fontSize: 13, fontWeight: 700,
-            cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit", marginTop: 6,
-            boxShadow: `0 4px 12px ${t.accent}33`, transition: "all 0.2s"
+            border: "none", borderRadius: 10, padding: "14px 0", fontSize: 14, fontWeight: 700,
+            cursor: saving ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif", marginTop: 10,
+            boxShadow: saving ? "none" : `0 4px 14px ${t.accent}33`, transition: "all 0.2s"
           }}>
             {saving ? "Saving Changes..." : "Save Changes"}
           </button>
