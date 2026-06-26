@@ -190,8 +190,10 @@ export default function Login() {
   async function handleStudentRegister() {
     setError(""); setLoading(true); setBusPhase("driving");
     if (!scanData.name.trim()) { setError("Full name is required."); setLoading(false); setBusPhase("idle"); return; }
-    const username = form.username.trim().toLowerCase();
-    if (!username || username.length < 3) { setError("Username must be at least 3 characters."); setLoading(false); setBusPhase("idle"); return; }
+    
+    // Auto-generate username from Full Name (e.g., "Karan Tendulkar" -> "karan.tendulkar")
+    const username = scanData.name.trim().toLowerCase().replace(/\s+/g, ".");
+    if (username.length < 3) { setError("Full name must be at least 3 characters to generate a valid username."); setLoading(false); setBusPhase("idle"); return; }
     if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); setBusPhase("idle"); return; }
 
     const virtualEmail = toVirtualEmail(username);
@@ -211,7 +213,7 @@ export default function Login() {
       setTimeout(() => navigate("/student"), 600);
     } catch (err) {
       const c = err.code;
-      if (c === "auth/email-already-in-use") setError("Username already taken. Try another.");
+      if (c === "auth/email-already-in-use") setError("Username generated from your name is already taken. Please customize your name slightly or check with admin.");
       else if (c === "auth/weak-password") setError("Password must be at least 6 characters.");
       else setError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
       setBusPhase("idle");
@@ -510,10 +512,6 @@ export default function Login() {
                             </div>
                           </div>
 
-                          <div>
-                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Account Username</label>
-                            <input name="username" value={form.username} onChange={handleChange} style={inp} placeholder="Choose username" />
-                          </div>
 
                           <div>
                             <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Password</label>
