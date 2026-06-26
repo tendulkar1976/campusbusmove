@@ -205,8 +205,12 @@ export default function AdminDashboard() {
       const c = err.code;
       if (c === "auth/invalid-email") {
         setUserCreateError("Invalid identifier format. Please check the username or email.");
+      } else if (c === "auth/email-already-in-use") {
+        setUserCreateError("This username, phone number, or email is already registered.");
+      } else if (c === "auth/weak-password") {
+        setUserCreateError("Password must be at least 6 characters.");
       } else {
-        setUserCreateError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
+        setUserCreateError(err.message.replace("Firebase:", "").trim());
       }
     } finally {
       setUserCreating(false);

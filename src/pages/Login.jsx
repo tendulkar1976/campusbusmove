@@ -133,7 +133,7 @@ export default function Login() {
       else if (c==="auth/user-not-found") setError("No account found. Register first.");
       else if (c==="auth/email-already-in-use") setError("Phone already registered. Sign in instead.");
       else if (c==="auth/weak-password") setError("Password must be at least 6 characters.");
-      else setError(err.message.replace("Firebase:","").replace(/\(auth.*\)/,"").trim());
+      else setError(err.message.replace("Firebase:", "").trim());
       setBusPhase("idle");
     } finally { setLoading(false); }
   }
@@ -192,7 +192,7 @@ export default function Login() {
       else if (c==="auth/email-already-in-use") setError("Username already taken. Try another.");
       else if (c==="auth/weak-password") setError("Password must be at least 6 characters.");
       else if (c==="auth/invalid-email") setError("Invalid username format. Use only letters, numbers, and single dots (no spaces or consecutive/leading/trailing dots).");
-      else setError(err.message.replace("Firebase:","").replace(/\(auth.*\)/,"").trim());
+      else setError(err.message.replace("Firebase:", "").trim());
       setBusPhase("idle");
     } finally { setLoading(false); }
   }
@@ -230,7 +230,7 @@ export default function Login() {
       } else if (c === "auth/invalid-email") {
         setError("Invalid characters in your name. Use only letters, numbers, and spaces.");
       } else {
-        setError(err.message.replace("Firebase:", "").replace(/\(auth.*\)/, "").trim());
+        setError(err.message.replace("Firebase:", "").trim());
       }
       setBusPhase("idle");
     } finally { setLoading(false); }
