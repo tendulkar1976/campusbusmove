@@ -2,7 +2,7 @@ import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PermissionsGate from "./components/PermissionsGate";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ThemeProvider } from "./context/ThemeContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Lazy load every dashboard — login renders instantly, dashboards load in parallel
@@ -12,13 +12,15 @@ const DriverDashboard  = lazy(() => import("./pages/DriverDashboard"));
 const AdminDashboard   = lazy(() => import("./pages/AdminDashboard"));
 
 function Spinner() {
+  const { t } = useTheme();
   return (
-    <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, fontFamily: "'DM Sans', sans-serif" }}>
-      <div style={{ fontSize: 32 }}>🚌</div>
-      <div style={{ width: 120, height: 3, background: "#1A1A1A", borderRadius: 2, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: "40%", background: "#FF5A1F", borderRadius: 2, animation: "slide 1s ease-in-out infinite alternate" }} />
-      </div>
-      <style>{`@keyframes slide{from{transform:translateX(0)}to{transform:translateX(200%)}}`}</style>
+    <div style={{ minHeight: "100vh", background: t.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transition: "background 0.25s" }}>
+      <div style={{ width: 36, height: 36, border: `3.5px solid ${t.border}`, borderTopColor: "#FF5A1F", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
