@@ -1,8 +1,11 @@
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useRef, memo, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Built once per moving state — never recreated mid-render
+// ── Shared Helper ──
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// ── Leaflet Icons Cache ──
 const ICON_CACHE = {};
 function getBusIcon(moving) {
   const key = moving ? "moving" : "stopped";
@@ -31,16 +34,62 @@ const MY_ICON = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-// Tile URLs — swap on theme change
 const TILES = {
   dark:  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
   light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
 };
 
-// Linear interpolation for smooth marker movement
-function lerp(a, b, t) { return a + (b - a) * t; }
+// ── Google Maps Themes ──
+const GOOGLE_MAPS_STYLES = {
+  dark: [
+    { elementType: "geometry", stylers: [{ color: "#0B0F19" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#0B0F19" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#4B5563" }] },
+    { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#9CA3AF" }] },
+    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#6B7280" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#111827" }] },
+    { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#4B5563" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#1F2937" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#374151" }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9CA3AF" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#374151" }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1F2937" }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#D1D5DB" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#1A2E40" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3B82F6" }] },
+  ],
+  light: [
+    { elementType: "geometry", stylers: [{ color: "#F1F5F9" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#F1F5F9" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#6B7280" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#FFFFFF" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#E2E8F0" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#F8FAFC" }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#E2E8F0" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#BFDBFE" }] },
+  ],
+};
 
-const MapView = memo(function MapView({ busLocation, busMoving, routePath, center, myLocation, dark = true }) {
+// ── Dynamic Google Maps script loader ──
+let googleScriptPromise = null;
+function loadGoogleMaps(apiKey) {
+  if (window.google?.maps) return Promise.resolve();
+  if (googleScriptPromise) return googleScriptPromise;
+  
+  googleScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return googleScriptPromise;
+}
+
+// ── Leaflet Map Component ──
+const LeafletMapView = memo(function LeafletMapView({ busLocation, busMoving, routePath, center, myLocation, dark }) {
   const mapRef        = useRef(null);
   const mapInstance   = useRef(null);
   const busMarker     = useRef(null);
@@ -55,7 +104,6 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
 
   const defaultCenter = center || [12.9716, 77.5946];
 
-  // ── Init map once ──
   useEffect(() => {
     if (mapInstance.current) return;
     mapInstance.current = L.map(mapRef.current, {
@@ -63,14 +111,12 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
       zoom: 16,
       zoomControl: false,
       attributionControl: false,
-      // Performance: prefer canvas renderer
       renderer: L.canvas({ padding: 0.5 }),
     });
 
     tileLayer.current = L.tileLayer(dark ? TILES.dark : TILES.light, {
       subdomains: "abcd",
       maxZoom: 19,
-      // Aggressive tile caching
       keepBuffer: 4,
       updateWhenIdle: false,
       updateWhenZooming: false,
@@ -88,25 +134,21 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
     };
   }, []);
 
-  // ── Swap tile layer on theme change (no map reinit) ──
   useEffect(() => {
     if (!mapInstance.current || !tileLayer.current) return;
     tileLayer.current.setUrl(dark ? TILES.dark : TILES.light);
   }, [dark]);
 
-  // ── Route polyline ──
   useEffect(() => {
     if (!mapInstance.current || !routePath?.length) return;
     routeLayer.current?.remove();
     routeLayer.current = L.polyline(routePath, {
-      color: "#FF5A1F", weight: 4, opacity: 0.5, dashArray: "8 5",
+      color: "#FF5A1F", weight: 4, opacity: 0.7, dashArray: "8 5",
     }).addTo(mapInstance.current);
   }, [routePath]);
 
-  // ── Bus marker with smooth rAF interpolation ──
   useEffect(() => {
     if (!mapInstance.current) return;
-
     if (!busLocation) {
       if (busMarker.current) busMarker.current.setIcon(getBusIcon(false));
       cancelAnimationFrame(animFrameRef.current);
@@ -114,8 +156,6 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
     }
 
     const { lat, lng } = busLocation;
-
-    // Detect movement via position delta
     let actuallyMoving = busMoving;
     if (prevBusPos.current) {
       const dlat = Math.abs(lat - prevBusPos.current.lat);
@@ -126,7 +166,6 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
     targetPosRef.current = { lat, lng };
     if (!currentPosRef.current) currentPosRef.current = { lat, lng };
 
-    // Only rebuild icon when moving state changes
     const iconChanged = prevMoving.current !== actuallyMoving;
     prevMoving.current = actuallyMoving;
     const icon = getBusIcon(actuallyMoving);
@@ -138,10 +177,7 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
       busMarker.current.setIcon(icon);
     }
 
-    // Cancel any running animation
     cancelAnimationFrame(animFrameRef.current);
-
-    // Smooth interpolation over ~600ms using rAF
     const duration = 600;
     const startTime = performance.now();
     const startPos = { ...currentPosRef.current };
@@ -149,7 +185,6 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
     function animate(now) {
       const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - t, 3);
       const iLat = lerp(startPos.lat, targetPosRef.current.lat, eased);
       const iLng = lerp(startPos.lng, targetPosRef.current.lng, eased);
@@ -159,11 +194,9 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
     }
     animFrameRef.current = requestAnimationFrame(animate);
 
-    // Pan map smoothly
     mapInstance.current.panTo([lat, lng], { animate: true, duration: 0.7, easeLinearity: 0.5 });
   }, [busLocation, busMoving]);
 
-  // ── My location marker (no animation needed — just update) ──
   useEffect(() => {
     if (!mapInstance.current || !myLocation) return;
     const { lat, lng } = myLocation;
@@ -174,11 +207,230 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
     }
   }, [myLocation]);
 
+  return <div ref={mapRef} style={{ width: "100%", height: "100%", borderRadius: 14 }} />;
+});
+
+// ── Google Map Component ──
+const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, routePath, center, myLocation, dark }) {
+  const mapRef        = useRef(null);
+  const mapInstance   = useRef(null);
+  const busMarker     = useRef(null);
+  const myMarker      = useRef(null);
+  const routePolyline = useRef(null);
+  const prevBusPos    = useRef(null);
+  const prevMoving    = useRef(null);
+  const animFrameRef  = useRef(null);
+  const targetPosRef  = useRef(null);
+  const currentPosRef = useRef(null);
+
+  const defaultCenter = center || [12.9716, 77.5946];
+
+  useEffect(() => {
+    if (mapInstance.current || !mapRef.current) return;
+    mapInstance.current = new window.google.maps.Map(mapRef.current, {
+      center: { lat: defaultCenter[0], lng: defaultCenter[1] },
+      zoom: 16,
+      disableDefaultUI: true,
+      zoomControl: true,
+      zoomControlOptions: {
+        position: window.google.maps.ControlPosition.RIGHT_BOTTOM,
+      },
+      styles: dark ? GOOGLE_MAPS_STYLES.dark : GOOGLE_MAPS_STYLES.light,
+    });
+
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      busMarker.current?.setMap(null);
+      myMarker.current?.setMap(null);
+      routePolyline.current?.setMap(null);
+      mapInstance.current = null;
+    };
+  }, []);
+
+  // Update styles on theme change
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    mapInstance.current.setOptions({
+      styles: dark ? GOOGLE_MAPS_STYLES.dark : GOOGLE_MAPS_STYLES.light,
+    });
+  }, [dark]);
+
+  // Route Polyline
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    if (routePolyline.current) {
+      routePolyline.current.setMap(null);
+      routePolyline.current = null;
+    }
+    if (!routePath?.length) return;
+
+    const pathCoords = routePath.map(coord => ({ lat: coord[0], lng: coord[1] }));
+    
+    // Dashed line in Google Maps
+    routePolyline.current = new window.google.maps.Polyline({
+      path: pathCoords,
+      geodesic: true,
+      strokeColor: "#FF5A1F",
+      strokeOpacity: 0,
+      strokeWeight: 4,
+      icons: [{
+        icon: {
+          path: "M 0,-1 0,1",
+          strokeOpacity: 0.8,
+          strokeWeight: 4,
+          scale: 3
+        },
+        offset: "0",
+        repeat: "15px"
+      }],
+    });
+    routePolyline.current.setMap(mapInstance.current);
+  }, [routePath]);
+
+  // Bus Marker and smooth tracking
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    if (!busLocation) {
+      cancelAnimationFrame(animFrameRef.current);
+      return;
+    }
+
+    const { lat, lng } = busLocation;
+    let actuallyMoving = busMoving;
+    if (prevBusPos.current) {
+      const dlat = Math.abs(lat - prevBusPos.current.lat);
+      const dlng = Math.abs(lng - prevBusPos.current.lng);
+      actuallyMoving = dlat > 0.00003 || dlng > 0.00003;
+    }
+    prevBusPos.current = { lat, lng };
+    targetPosRef.current = { lat, lng };
+    if (!currentPosRef.current) currentPosRef.current = { lat, lng };
+
+    prevMoving.current = actuallyMoving;
+    const color = actuallyMoving ? "#4ADE80" : "#F87171";
+
+    const busIcon = {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      fillColor: color,
+      fillOpacity: 1.0,
+      strokeColor: "#FFFFFF",
+      strokeWeight: 3.5,
+      scale: 9,
+    };
+
+    if (!busMarker.current) {
+      busMarker.current = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: mapInstance.current,
+        icon: busIcon,
+        zIndex: 100,
+      });
+      currentPosRef.current = { lat, lng };
+    } else {
+      busMarker.current.setIcon(busIcon);
+    }
+
+    cancelAnimationFrame(animFrameRef.current);
+    const duration = 600;
+    const startTime = performance.now();
+    const startPos = { ...currentPosRef.current };
+
+    function animate(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const iLat = lerp(startPos.lat, targetPosRef.current.lat, eased);
+      const iLng = lerp(startPos.lng, targetPosRef.current.lng, eased);
+      currentPosRef.current = { lat: iLat, lng: iLng };
+      busMarker.current?.setPosition({ lat: iLat, lng: iLng });
+      if (t < 1) animFrameRef.current = requestAnimationFrame(animate);
+    }
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    mapInstance.current.panTo({ lat, lng });
+  }, [busLocation, busMoving]);
+
+  // My location marker
+  useEffect(() => {
+    if (!mapInstance.current || !myLocation) return;
+    const { lat, lng } = myLocation;
+
+    const myIcon = {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      fillColor: "#60A5FA",
+      fillOpacity: 1.0,
+      strokeColor: "#FFFFFF",
+      strokeWeight: 2.5,
+      scale: 7,
+    };
+
+    if (!myMarker.current) {
+      myMarker.current = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: mapInstance.current,
+        icon: myIcon,
+        zIndex: 50,
+      });
+    } else {
+      myMarker.current.setPosition({ lat, lng });
+    }
+  }, [myLocation]);
+
+  return <div ref={mapRef} style={{ width: "100%", height: "100%", borderRadius: 14 }} />;
+});
+
+// ── Main MapView Wrapper ──
+const MapView = memo(function MapView({ busLocation, busMoving, routePath, center, myLocation, dark = true }) {
+  const [useGoogleMaps, setUseGoogleMaps] = useState(false);
+  const [sdkLoading, setSdkLoading] = useState(false);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+  useEffect(() => {
+    if (apiKey) {
+      setSdkLoading(true);
+      loadGoogleMaps(apiKey)
+        .then(() => {
+          setUseGoogleMaps(true);
+        })
+        .catch(err => {
+          console.error("Google Maps SDK failed to load, falling back to Leaflet:", err);
+          setUseGoogleMaps(false);
+        })
+        .finally(() => {
+          setSdkLoading(false);
+        });
+    } else {
+      setUseGoogleMaps(false);
+    }
+  }, [apiKey]);
+
   return (
-    <div
-      ref={mapRef}
-      style={{ width: "100%", height: 300, zIndex: 0, borderRadius: 14, contain: "strict" }}
-    />
+    <div style={{ width: "100%", height: 300, zIndex: 0, borderRadius: 14, contain: "strict", background: dark ? "#0B0F19" : "#F1F5F9" }}>
+      {sdkLoading ? (
+        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: dark ? "#4B5563" : "#9CA3AF" }}>
+          <div style={{ width: 24, height: 24, border: `2.5px solid ${dark ? "#1F2937" : "#E5E7EB"}`, borderTopColor: "#FF5A1F", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      ) : useGoogleMaps ? (
+        <GoogleMapView
+          busLocation={busLocation}
+          busMoving={busMoving}
+          routePath={routePath}
+          center={center}
+          myLocation={myLocation}
+          dark={dark}
+        />
+      ) : (
+        <LeafletMapView
+          busLocation={busLocation}
+          busMoving={busMoving}
+          routePath={routePath}
+          center={center}
+          myLocation={myLocation}
+          dark={dark}
+        />
+      )}
+    </div>
   );
 });
 
