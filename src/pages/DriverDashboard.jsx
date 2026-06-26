@@ -116,15 +116,19 @@ export default function DriverDashboard() {
   function writeToRTDB(lat, lng, spd, hdg, active) {
     const rid = selectedRouteIdRef.current;
     if (!rid) return;
-    set(ref(rtdb, `routes/${rid}/live`), {
+    const data = {
       routeId: rid,
       driverUid: user.uid,
       active,
-      lat, lng,
       speed: spd,
       heading: hdg,
       updatedAt: Date.now(),
-    }).catch(err => console.error("RTDB write failed:", err));
+    };
+    if (lat !== null && lng !== null) {
+      data.lat = lat;
+      data.lng = lng;
+    }
+    set(ref(rtdb, `routes/${rid}/live`), data).catch(err => console.error("RTDB write failed:", err));
   }
 
   // startWatchingGPS
@@ -163,8 +167,8 @@ export default function DriverDashboard() {
       err => {
         const msgs = {
           1: "Location permission denied. Enable in device settings.",
-          2: "GPS signal weak. Retrying...",
-          3: "GPS timeout — retrying...",
+          2: "GPS signal weak. Searching...",
+          3: "GPS timeout — searching...",
         };
         setError(msgs[err.code] || "GPS error: " + err.message);
 
@@ -173,11 +177,12 @@ export default function DriverDashboard() {
           if (useHighAccuracyRef.current) {
             console.log("High accuracy watch position failed. Falling back to low accuracy.");
             useHighAccuracyRef.current = false;
+            clearTimeout(gpsRetryRef.current);
+            gpsRetryRef.current = setTimeout(() => {
+              if (trackingRef.current) startWatchingGPS();
+            }, 1000);
           }
-          clearTimeout(gpsRetryRef.current);
-          gpsRetryRef.current = setTimeout(() => {
-            if (trackingRef.current) startWatchingGPS();
-          }, 3000);
+          // If we are already using low accuracy, let the native watch run continuously
         } else {
           setGpsStatus("error");
         }
@@ -214,7 +219,7 @@ export default function DriverDashboard() {
     });
     tripDocRef.current = tripDoc.id;
 
-    writeToRTDB(12.9716, 77.5946, 0, 0, true);
+    writeToRTDB(null, null, 0, 0, true); // Do not write fake coordinates, only write active state
     lastFirebaseUpdate.current = Date.now();
     lastLocationUpdateTimestamp.current = Date.now();
     useHighAccuracyRef.current = true; // reset to try high accuracy first
@@ -223,11 +228,11 @@ export default function DriverDashboard() {
     requestWakeLock(); // Keep screen awake
     startWatchingGPS();
 
-    // Start watchdog timer
+    // Start watchdog timer (check every 20s, restart if silent for 45s to avoid interfering with GPS cold starts)
     clearInterval(watchdogRef.current);
     watchdogRef.current = setInterval(() => {
       const elapsedSinceLastUpdate = Date.now() - lastLocationUpdateTimestamp.current;
-      if (elapsedSinceLastUpdate > 15000) {
+      if (elapsedSinceLastUpdate > 45000) {
         console.warn(`GPS watchdog: No updates for ${elapsedSinceLastUpdate}ms. Restarting watch...`);
         setError("GPS signal stalled — re-establishing connection...");
         if (useHighAccuracyRef.current) {
@@ -236,7 +241,7 @@ export default function DriverDashboard() {
         }
         startWatchingGPS();
       }
-    }, 10000);
+    }, 20000);
   }
 
   async function stopTracking() {
@@ -252,8 +257,8 @@ export default function DriverDashboard() {
     setGpsStatus("idle");
 
     writeToRTDB(
-      myLocation?.lat || 12.9716,
-      myLocation?.lng || 77.5946,
+      myLocation?.lat || null,
+      myLocation?.lng || null,
       0, 0, false
     );
 
