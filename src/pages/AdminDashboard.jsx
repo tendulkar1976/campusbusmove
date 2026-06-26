@@ -349,9 +349,9 @@ export default function AdminDashboard() {
 
   const S = {
     screen: { minHeight: "100vh", background: t.bg, fontFamily: "'Inter', sans-serif", color: t.text, display: "flex", flexDirection: "column", transition: "background 0.25s, color 0.25s" },
-    sidebar: { background: t.bgCard, borderRight: `1.5px solid ${t.border}`, display: "flex", flexDirection: "column", padding: "28px 24px", width: "260px", flexShrink: 0 },
-    topbar: { background: t.bgCard, borderBottom: `1.5px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", height: "64px" },
-    content: { flex: 1, padding: "24px 20px 60px", maxWidth: "960px", margin: "0 auto", width: "100%" },
+    sidebar: { background: t.bgCard, borderRight: `1.5px solid ${t.border}`, flexDirection: "column", padding: "28px 24px", width: "260px", flexShrink: 0 },
+    topbar: { background: t.bgCard, borderBottom: `1.5px solid ${t.border}`, alignItems: "center", justifyContent: "space-between", padding: "16px 20px", height: "64px" },
+    content: { flex: 1, padding: "24px 20px 60px", maxWidth: "960px", margin: "0 auto", width: "100%", boxSizing: "border-box" },
     tabBtn: (active) => ({ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", border: "none", borderRadius: 12, background: active ? (dark ? "#1F2937" : "#EFF6FF") : "transparent", cursor: "pointer", color: active ? t.accent : t.textMuted, fontSize: 14, fontWeight: active ? 700 : 500, textAlign: "left", transition: "all 0.2s ease-in-out", borderLeft: active ? `3px solid ${t.accent}` : "3px solid transparent", fontFamily: "'Inter', sans-serif" }),
     badge: { background: dark ? "#251206" : "#FFF7ED", border: `1px solid ${dark ? "#4D260B" : "#FDBA74"}`, borderRadius: 8, padding: "4px 8px", color: "#FF5A1F", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" },
     card: { background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 18, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" },
@@ -437,6 +437,9 @@ export default function AdminDashboard() {
         .admin-desktop-container {
           display: flex;
           flex: 1;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
           background: ${t.bg};
         }
         .sidebar-panel {
@@ -445,6 +448,23 @@ export default function AdminDashboard() {
         .topbar-panel {
           display: none;
         }
+        
+        /* Responsive Grids */
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin-bottom: 18px;
+          width: 100%;
+        }
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-bottom: 16px;
+          width: 100%;
+        }
+        
         @media (max-width: 768px) {
           .admin-desktop-container {
             flex-direction: column;
@@ -454,6 +474,9 @@ export default function AdminDashboard() {
           }
           .topbar-panel {
             display: flex !important;
+          }
+          .metrics-grid, .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
           }
         }
       `}</style>
@@ -575,7 +598,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* ── MOBILE TABS (HIDDEN ON DESKTOP) ── */}
-        <div className="topbar-panel" style={{ display: "flex", background: t.bgCard, borderBottom: `1.5px solid ${t.border}`, padding: "8px 12px" }}>
+        <div className="topbar-panel" style={{ background: t.bgCard, borderBottom: `1.5px solid ${t.border}`, padding: "8px 12px" }}>
           <div style={{ display: "flex", gap: 4, width: "100%" }}>
             {navItems.map(item => {
               const active = tab === item.id;
@@ -607,7 +630,7 @@ export default function AdminDashboard() {
           {tab === "overview" && (
             <>
               {/* Metric widgets grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 18 }}>
+              <div className="metrics-grid">
                 {[
                   ["Active Buses", activeBuses, "#4ADE80", "🚌"],
                   ["Total Routes", totalRoutes, "#A1A1AA", "🗺️"],
@@ -806,9 +829,9 @@ export default function AdminDashboard() {
           {tab === "users" && (
             <>
               {/* User stats widget */}
-              <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <div className="stats-grid">
                 {[["Total Users", users.length, t.text], ["Students", studentCount, "#60A5FA"], ["Drivers", driverCount, "#A78BFA"], ["Blocked", blockedCount, "#EF4444"]].map(([l, v, c]) => (
-                  <div key={l} style={{ flex: 1, background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, padding: "14px 10px", textAlign: "center", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
+                  <div key={l} style={{ background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, padding: "14px 10px", textAlign: "center", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
                     <div style={{ fontSize: 22, fontWeight: 800, color: c, letterSpacing: "-0.5px", fontFamily: "'Inter', sans-serif" }}>{v}</div>
                     <div style={{ fontSize: 9, color: t.textMuted, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>{l}</div>
                   </div>
