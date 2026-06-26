@@ -43,51 +43,24 @@ export default function Login() {
   const [scanData, setScanData] = useState({ name: "", program: "", pickupPoint: "", validityMonth: "December", validityYear: "2026" });
   const [isScanning, setIsScanning] = useState(false);
   const [scanLog, setScanLog] = useState([]);
-  const [selectedPass, setSelectedPass] = useState(null);
+  const [uploadedImgUrl, setUploadedImgUrl] = useState(null);
 
-  const SAMPLE_PASSES = [
-    {
-      name: "Aditya Sharma",
-      program: "B.Tech Computer Science",
-      pickupPoint: "Silk Board Junction",
-      validityMonth: "December",
-      validityYear: "2026",
-      label: "Active Pass (Aditya)"
-    },
-    {
-      name: "Meera Nair",
-      program: "MBA Business Analytics",
-      pickupPoint: "Electronic City Phase 1",
-      validityMonth: "August",
-      validityYear: "2026",
-      label: "Near Expiry (Meera)"
-    },
-    {
-      name: "Karan Patel",
-      program: "B.Com Honors",
-      pickupPoint: "Bannerghatta Road",
-      validityMonth: "May",
-      validityYear: "2026",
-      label: "Expired Pass (Karan)"
-    }
-  ];
-
-  function runScanningSimulation(passIndex) {
-    const pass = SAMPLE_PASSES[passIndex];
-    setSelectedPass(passIndex);
+  function runScanningSimulation(file) {
     setIsScanning(true);
     setScanLog([]);
     setError("");
+
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setUploadedImgUrl(url);
+    }
 
     const logs = [
       "📷 Camera initialized. Aligning bus pass...",
       "🔍 Card detected: 'ALLIANCE UNIVERSITY BUS PASS'",
       "⚡ Running OCR text recognition...",
-      `✅ Name read: "${pass.name}"`,
-      `✅ Program read: "${pass.program}"`,
-      `✅ Stop read: "${pass.pickupPoint}"`,
-      `✅ Expiration read: "${pass.validityMonth} ${pass.validityYear}"`,
-      "🎉 Scanning complete. Preparing profile details..."
+      "✅ Bus Pass detected successfully!",
+      "🎉 Scanning complete. Loading registration form..."
     ];
 
     logs.forEach((txt, idx) => {
@@ -99,24 +72,25 @@ export default function Login() {
     setTimeout(() => {
       setIsScanning(false);
       setScanStep("confirm");
+      // Reset fields so student enters their actual details (self-registering)
       setScanData({
-        name: pass.name,
-        program: pass.program,
-        pickupPoint: pass.pickupPoint,
-        validityMonth: pass.validityMonth,
-        validityYear: pass.validityYear
+        name: "",
+        program: "",
+        pickupPoint: "",
+        validityMonth: "December",
+        validityYear: new Date().getFullYear().toString()
       });
-      // Set the name and default username in form
       setForm(prev => ({
         ...prev,
-        username: pass.name.toLowerCase().replace(/ /g, ".")
+        username: "",
+        password: ""
       }));
     }, logs.length * 320);
   }
 
   function handleFileUpload(e) {
     if (e.target.files && e.target.files.length > 0) {
-      runScanningSimulation(0);
+      runScanningSimulation(e.target.files[0]);
     }
   }
 
@@ -416,40 +390,18 @@ export default function Login() {
                             )}
 
                             {/* Pass Card Preview or Scanning State */}
-                            {selectedPass !== null ? (
+                            {uploadedImgUrl ? (
                               <div style={{
-                                width:"85%", height:130, background:"#1E293B", borderRadius:8,
-                                border:"1.5px solid #FF5A1F", padding:12, color:"#fff",
-                                position:"relative", display:"flex", flexDirection:"column", justifyContent:"space-between",
+                                width:"100%", height:"100%", position:"relative",
                                 opacity: isScanning ? 0.6 : 1, transition:"opacity 0.3s"
                               }}>
-                                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                                  <div>
-                                    <div style={{ fontSize:8, textTransform:"uppercase", letterSpacing:1, color:"#FF5A1F", fontWeight:700 }}>Alliance University</div>
-                                    <div style={{ fontSize:10, fontWeight:700, color:"#fff", marginTop:1 }}>BUS TRACKING PASS</div>
-                                  </div>
-                                  <div style={{ fontSize:12 }}>🚌</div>
-                                </div>
-                                <div style={{ margin:"6px 0" }}>
-                                  <div style={{ fontSize:12, fontWeight:700 }}>{SAMPLE_PASSES[selectedPass].name}</div>
-                                  <div style={{ fontSize:8, color:"#94A3B8", marginTop:1 }}>{SAMPLE_PASSES[selectedPass].program}</div>
-                                </div>
-                                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
-                                  <div>
-                                    <div style={{ fontSize:6, color:"#94A3B8", textTransform:"uppercase" }}>Pick Up Stop</div>
-                                    <div style={{ fontSize:8, fontWeight:700, color:"#F8FAFC" }}>{SAMPLE_PASSES[selectedPass].pickupPoint}</div>
-                                  </div>
-                                  <div style={{ textAlign:"right" }}>
-                                    <div style={{ fontSize:6, color:"#94A3B8", textTransform:"uppercase" }}>Validity</div>
-                                    <div style={{ fontSize:8, fontWeight:700, color:"#10B981" }}>{SAMPLE_PASSES[selectedPass].validityMonth} {SAMPLE_PASSES[selectedPass].validityYear}</div>
-                                  </div>
-                                </div>
+                                <img src={uploadedImgUrl} style={{ width:"100%", height:"100%", objectFit:"contain", background:"#0F172A" }} alt="Uploaded pass preview" />
                               </div>
                             ) : (
                               <div style={{ textAlign:"center", color:"#94A3B8", padding:"0 20px" }}>
                                 <div style={{ fontSize:32, marginBottom:8 }}>📷</div>
-                                <div style={{ fontSize:12, fontWeight:600 }}>Align Bus Pass in Viewport</div>
-                                <div style={{ fontSize:10, color:"#64748B", marginTop:4 }}>Select a template below to simulate scan</div>
+                                <div style={{ fontSize:12, fontWeight:600 }}>No Bus Pass Loaded</div>
+                                <div style={{ fontSize:10, color:"#64748B", marginTop:4 }}>Upload or capture your bus pass to begin registration</div>
                               </div>
                             )}
                           </div>
@@ -465,32 +417,14 @@ export default function Login() {
                             </div>
                           )}
 
-                          {/* Sample pass templates selection */}
-                          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                            <div style={{ fontSize:11, fontWeight:600, color:"#475569", textTransform:"uppercase", letterSpacing:0.5 }}>Simulate Scan with Samples:</div>
-                            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6 }}>
-                              {SAMPLE_PASSES.map((pass, index) => (
-                                <button key={index} type="button" disabled={isScanning} onClick={() => runScanningSimulation(index)}
-                                  style={{
-                                    padding:"8px 4px", fontSize:10, fontWeight:700, borderRadius:8,
-                                    background: selectedPass === index ? "#3B82F6" : "#F1F5F9",
-                                    color: selectedPass === index ? "#fff" : "#475569",
-                                    border: `1.5px solid ${selectedPass === index ? "#2563EB" : "#E2E8F0"}`,
-                                    cursor: isScanning ? "not-allowed" : "pointer", transition:"all 0.15s"
-                                  }}>
-                                  {pass.label.split(" (")[0]}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* File input fallback */}
-                          <div style={{ borderTop:"1px solid #E2E8F0", paddingTop:14, display:"flex", flexDirection:"column", gap:8 }}>
-                            <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center" }}>Or capture using your device camera</div>
+                          {/* File input / camera capture */}
+                          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                             <label style={{
                               display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-                              background:"#F1F5F9", border:"1.5px dashed #CBD5E1", borderRadius:10,
-                              padding:"12px", color:"#475569", fontSize:13, fontWeight:600, cursor:"pointer"
+                              background: isScanning ? "#93C5FD" : "#1D4ED8",
+                              borderRadius:10, padding:"14px", color:"#fff", fontSize:14, fontWeight:700,
+                              cursor: isScanning ? "not-allowed" : "pointer", fontFamily:"'Inter',sans-serif",
+                              boxShadow: "0 4px 12px rgba(29,78,216,0.2)", textAlign:"center", transition:"background 0.2s"
                             }}>
                               📸 Capture / Upload Pass Image
                               <input type="file" accept="image/*" disabled={isScanning} onChange={handleFileUpload} style={{ display:"none" }} />
@@ -507,9 +441,25 @@ export default function Login() {
 
                       {scanStep === "confirm" && (
                         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                          {/* Reference card header */}
+                          {uploadedImgUrl && (
+                            <div style={{
+                              width: "100%", height: 130, borderRadius: 10, overflow: "hidden",
+                              border: "1px solid #E5E7EB", position: "relative"
+                            }}>
+                              <img src={uploadedImgUrl} style={{ width: "100%", height: "100%", objectFit: "contain", background: "#0F172A" }} alt="Uploaded reference" />
+                              <div style={{
+                                position: "absolute", bottom: 6, right: 6, background: "rgba(15,23,42,0.8)",
+                                color: "#fff", padding: "3px 8px", borderRadius: 4, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5
+                              }}>
+                                Pass Reference Image
+                              </div>
+                            </div>
+                          )}
+
                           <div style={{ background:"#ECFDF5", border:"1px solid #A7F3D0", borderRadius:10, padding:"12px 14px" }}>
-                            <div style={{ fontSize:12, fontWeight:700, color:"#065F46" }}>✅ Pass Scanned Successfully!</div>
-                            <div style={{ fontSize:11, color:"#047857", marginTop:2 }}>Verify extracted details. Edit any field that requires correction.</div>
+                            <div style={{ fontSize:12, fontWeight:700, color:"#065F46" }}>✅ Pass Loaded Successfully!</div>
+                            <div style={{ fontSize:11, color:"#047857", marginTop:2 }}>Fill in your bus pass details below to complete self-registration.</div>
                           </div>
 
                           {/* Calculated countdown badge */}
