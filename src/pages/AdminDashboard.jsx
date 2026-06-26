@@ -3,6 +3,7 @@ import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc 
 import { ref, onValue } from "firebase/database";
 import { db, rtdb, secondaryAuth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 const PRESET_ROUTES = [
@@ -72,6 +73,7 @@ const DEFAULT_SUB = {
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
+  const { dark, toggle, t } = useTheme();
   const [tab, setTab] = useState("overview");
   const [liveStatus, setLiveStatus] = useState({});
   const [routes, setRoutes] = useState([]);
@@ -346,44 +348,96 @@ export default function AdminDashboard() {
   }, [routes, routeSearch]);
 
   const S = {
-    screen: { minHeight: "100vh", background: "#0A0A0A", fontFamily: "'DM Sans', sans-serif", color: "#fff", display: "flex", flexDirection: "column" },
-    sidebar: { background: "#0F0F0F", borderRight: "1px solid #1A1A1A", display: "flex", flexDirection: "column", padding: "28px 24px", width: "260px", flexShrink: 0 },
-    topbar: { background: "#0F0F0F", borderBottom: "1px solid #1A1A1A", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", height: "64px" },
+    screen: { minHeight: "100vh", background: t.bg, fontFamily: "'Inter', sans-serif", color: t.text, display: "flex", flexDirection: "column", transition: "background 0.25s, color 0.25s" },
+    sidebar: { background: t.bgCard, borderRight: `1.5px solid ${t.border}`, display: "flex", flexDirection: "column", padding: "28px 24px", width: "260px", flexShrink: 0 },
+    topbar: { background: t.bgCard, borderBottom: `1.5px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", height: "64px" },
     content: { flex: 1, padding: "24px 20px 60px", maxWidth: "960px", margin: "0 auto", width: "100%" },
-    tabBtn: (active) => ({ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", border: "none", borderRadius: 12, background: active ? "#1D1D1D" : "transparent", cursor: "pointer", color: active ? "#FFFFFF" : "#888888", fontSize: 14, fontWeight: active ? 700 : 500, textAlign: "left", transition: "all 0.2s ease-in-out", borderLeft: active ? "3px solid #FF5A1F" : "3px solid transparent" }),
-    badge: { background: "#251206", border: "1px solid #4D260B", borderRadius: 8, padding: "4px 8px", color: "#FF5A1F", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" },
-    card: { background: "#0E0E0E", border: "1px solid #1E1E1E", borderRadius: 20, overflow: "hidden", marginBottom: 18, boxShadow: "0 4px 24px rgba(0,0,0,0.4)" },
-    cardHead: { padding: "16px 20px", borderBottom: "1px solid #1E1E1E", display: "flex", alignItems: "center", justifyContent: "space-between" },
-    cardLabel: { fontSize: 10, color: "#888", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" },
-    row: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #141414", transition: "background 0.2s" },
-    input: { width: "100%", background: "#0A0A0A", border: "1px solid #222", borderRadius: 12, padding: "12px 16px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif", marginBottom: 10, transition: "border-color 0.2s" },
-    addBtn: { width: "100%", background: "#FF5A1F", border: "none", borderRadius: 12, padding: "14px 0", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "filter 0.15s, transform 0.1s" },
-    delBtn: { background: "none", border: "1px solid #2D1414", borderRadius: 8, padding: "6px 12px", color: "#F87171", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" },
-    liveDot: (active) => ({ width: 8, height: 8, borderRadius: "50%", background: active ? "#4ADE80" : "#222", display: "inline-block", marginRight: 8, boxShadow: active ? "0 0 8px #4ADE80" : "none" }),
-    routePill: (active) => ({ fontSize: 11, padding: "4px 10px", borderRadius: 20, background: active ? "#0D2012" : "#141414", color: active ? "#4ADE80" : "#555", border: `1px solid ${active ? "#1E4D2B" : "#222"}` }),
-    rolePill: (role) => ({ fontSize: 11, padding: "4px 10px", borderRadius: 8, background: role === "admin" ? "#21153D" : role === "driver" ? "#0D182E" : "#141414", color: role === "admin" ? "#C084FC" : role === "driver" ? "#60A5FA" : "#888", border: `1px solid ${role === "admin" ? "#3B2773" : role === "driver" ? "#1E3A8A" : "#222"}` }),
-    blockBtn: (blocked) => ({ background: "none", border: `1px solid ${blocked ? "#1E3E26" : "#3E3012"}`, borderRadius: 8, padding: "6px 12px", color: blocked ? "#4ADE80" : "#FBBF24", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }),
+    tabBtn: (active) => ({ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", border: "none", borderRadius: 12, background: active ? (dark ? "#1F2937" : "#EFF6FF") : "transparent", cursor: "pointer", color: active ? t.accent : t.textMuted, fontSize: 14, fontWeight: active ? 700 : 500, textAlign: "left", transition: "all 0.2s ease-in-out", borderLeft: active ? `3px solid ${t.accent}` : "3px solid transparent", fontFamily: "'Inter', sans-serif" }),
+    badge: { background: dark ? "#251206" : "#FFF7ED", border: `1px solid ${dark ? "#4D260B" : "#FDBA74"}`, borderRadius: 8, padding: "4px 8px", color: "#FF5A1F", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" },
+    card: { background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 18, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" },
+    cardHead: { padding: "16px 20px", borderBottom: `1.5px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" },
+    cardLabel: { fontSize: 10, color: t.textMuted, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" },
+    row: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1.5px solid ${t.border}`, transition: "background 0.2s", color: t.text },
+    input: { width: "100%", background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "13px 16px", color: t.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'Inter', sans-serif", marginBottom: 10, transition: "border-color 0.15s" },
+    addBtn: { width: "100%", background: t.accent, border: "none", borderRadius: 10, padding: "14px 0", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.2s", boxShadow: `0 4px 12px ${t.accent}33` },
+    delBtn: { background: "none", border: `1px solid ${dark ? "#5D1010" : "#FCA5A5"}`, borderRadius: 8, padding: "6px 12px", color: "#EF4444", fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s" },
+    liveDot: (active) => ({ width: 8, height: 8, borderRadius: "50%", background: active ? "#10B981" : (dark ? "#374151" : "#D1D5DB"), display: "inline-block", marginRight: 8, boxShadow: active ? "0 0 8px #10B981" : "none" }),
+    routePill: (active) => ({ fontSize: 11, padding: "4px 10px", borderRadius: 20, background: active ? (dark ? "#0D2012" : "#ECFDF5") : (dark ? "#1F2937" : "#F3F4F6"), color: active ? "#10B981" : t.textMuted, border: `1.5px solid ${active ? (dark ? "#1E4D2B" : "#A7F3D0") : t.border}` }),
+    rolePill: (role) => {
+      const isAdm = role === "admin";
+      const isDrv = role === "driver";
+      return {
+        fontSize: 11,
+        padding: "4px 10px",
+        borderRadius: 8,
+        background: isAdm ? (dark ? "#1e1b4b" : "#e0e7ff") : isDrv ? (dark ? "#022c22" : "#d1fae5") : (dark ? "#1f2937" : "#f3f4f6"),
+        color: isAdm ? (dark ? "#818cf8" : "#4338ca") : isDrv ? (dark ? "#34d399" : "#065f46") : t.textSub,
+        border: `1px solid ${isAdm ? (dark ? "#312e81" : "#c7d2fe") : isDrv ? (dark ? "#064e3b" : "#a7f3d0") : t.border}`
+      };
+    },
+    blockBtn: (blocked) => ({ background: "none", border: `1px solid ${blocked ? (dark ? "#1E4D2B" : "#A7F3D0") : (dark ? "#5D3E10" : "#FDBA74")}`, borderRadius: 8, padding: "6px 12px", color: blocked ? "#10B981" : "#F59E0B", fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s" }),
   };
 
   const navItems = [
-    { id: "overview", label: "Overview Panel", icon: "📊" },
-    { id: "routes", label: "Manage Routes", icon: "🗺️" },
-    { id: "users", label: "Manage Users", icon: "👥" },
-    { id: "billing", label: "SaaS Billing", icon: "💳" }
+    {
+      id: "overview",
+      label: "Overview Panel",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <rect x="3" y="3" width="7" height="9" rx="1"></rect>
+          <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+          <rect x="14" y="12" width="7" height="9" rx="1"></rect>
+          <rect x="3" y="16" width="7" height="5" rx="1"></rect>
+        </svg>
+      )
+    },
+    {
+      id: "routes",
+      label: "Manage Routes",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+      )
+    },
+    {
+      id: "users",
+      label: "Manage Users",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      )
+    },
+    {
+      id: "billing",
+      label: "SaaS Billing",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+          <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+      )
+    }
   ];
 
   return (
     <div style={S.screen}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap');
-        input:focus, select:focus { border-color:#FF5A1F !important; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        input:focus, select:focus { border-color:${t.accent} !important; box-shadow:0 0 0 3px ${t.accent}15 !important; }
         .add-btn:active { transform: scale(0.98); }
-        .custom-row:hover { background: #111111; }
+        .custom-row:hover { background: ${dark ? "#1F293744" : "#F8F9FA"}; }
         
         /* Sidebar Responsive Layout */
         .admin-desktop-container {
           display: flex;
           flex: 1;
+          background: ${t.bg};
         }
         .sidebar-panel {
           display: flex;
@@ -406,54 +460,54 @@ export default function AdminDashboard() {
 
       {/* ── ALERTS / WARNING BANNERS ── */}
       {isExpired && (
-        <div style={{ background: "#2D0A0A", borderBottom: "1px solid #5D1515", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 30 }}>
+        <div style={{ background: dark ? "#2A0808" : "#FEF2F2", borderBottom: `1.5px solid ${dark ? "#5D1010" : "#FCA5A5"}`, padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18 }}>🔒</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#F87171" }}>Institutional Subscription Expired</div>
-              <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>Renew plan to restore standard GPS operations.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#EF4444" }}>Institutional Subscription Expired</div>
+              <div style={{ fontSize: 11, color: t.textSub, marginTop: 2 }}>Renew plan to restore standard GPS operations.</div>
             </div>
           </div>
-          <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ background: "#F87171", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", boxShadow: "0 2px 10px rgba(248,113,113,0.3)" }}>
+          <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ background: "#EF4444", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", boxShadow: "0 2px 10px rgba(239,68,68,0.3)" }}>
             Renew Portal
           </button>
         </div>
       )}
 
       {!isExpired && isWarning && (
-        <div style={{ background: "#2A1F0C", borderBottom: "1px solid #5C3D12", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 30 }}>
+        <div style={{ background: dark ? "#2A1F0C" : "#FFF7ED", borderBottom: `1.5px solid ${dark ? "#5D3E10" : "#FDBA74"}`, padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18 }}>⚠️</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#FBBF24" }}>{daysLeft} days remaining on subscription</div>
-              <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>Upgrade or renew now to prevent service interruption.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#F59E0B" }}>{daysLeft} days remaining on subscription</div>
+              <div style={{ fontSize: 11, color: t.textSub, marginTop: 2 }}>Upgrade or renew now to prevent service interruption.</div>
             </div>
           </div>
-          <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ background: "#FBBF24", border: "none", borderRadius: 8, padding: "8px 16px", color: "#000", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", boxShadow: "0 2px 10px rgba(251,191,36,0.3)" }}>
+          <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ background: "#F59E0B", border: "none", borderRadius: 8, padding: "8px 16px", color: "#000", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", boxShadow: "0 2px 10px rgba(245,158,11,0.3)" }}>
             Renew Now
           </button>
         </div>
       )}
 
       {subscription?.status === "trial" && (
-        <div style={{ background: "#0D1B2D", borderBottom: "1px solid #1E3A8A", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 30 }}>
+        <div style={{ background: dark ? "#0F172A" : "#EFF6FF", borderBottom: `1.5px solid ${dark ? "#1E3A8A" : "#BFDBFE"}`, padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 30 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18 }}>🎯</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#60A5FA" }}>14-day Institutional Trial Active — {daysLeft} days left</div>
-              <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>Unlock unlimited routes, attendance automation, and analytics.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.accent }}>14-day Institutional Trial Active — {daysLeft} days left</div>
+              <div style={{ fontSize: 11, color: t.textSub, marginTop: 2 }}>Unlock unlimited routes, attendance automation, and analytics.</div>
             </div>
           </div>
-          <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ background: "#3B82F6", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", boxShadow: "0 2px 10px rgba(59,130,246,0.3)" }}>
+          <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ background: t.accent, border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", boxShadow: `0 2px 10px ${t.accent}44` }}>
             Upgrade Now
           </button>
         </div>
       )}
 
       {showBillingSuccess && (
-        <div style={{ background: "#0D2012", borderBottom: "1px solid #1E4D2B", padding: "14px 20px", display: "flex", alignItems: "center", gap: 10, zIndex: 30 }}>
+        <div style={{ background: dark ? "#0D2012" : "#ECFDF5", borderBottom: `1.5px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`, padding: "14px 20px", display: "flex", alignItems: "center", gap: 10, zIndex: 30 }}>
           <span>✅</span>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#4ADE80" }}>Subscription updated to CampusMove {currentPlan.name}!</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#10B981" }}>Subscription updated to CampusMove {currentPlan.name}!</div>
         </div>
       )}
 
@@ -463,27 +517,41 @@ export default function AdminDashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
             <div style={{ width: 34, height: 34, background: "#FF5A1F", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚌</div>
             <div>
-              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.5px" }}>CampusMove</span>
-              <div style={{ fontSize: 9, color: "#888", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", marginTop: 2 }}>Alliance University</div>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.5px", color: t.text }}>CampusMove</span>
+              <div style={{ fontSize: 9, color: t.textMuted, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", marginTop: 2 }}>Alliance University</div>
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-            {navItems.map(item => (
-              <button key={item.id} style={S.tabBtn(tab === item.id)} onClick={() => { setTab(item.id); setShowPlans(false); }}>
-                <span>{item.icon}</span> {item.label}
-              </button>
-            ))}
+            {navItems.map(item => {
+              const active = tab === item.id;
+              const currentColor = active ? t.accent : t.textMuted;
+              return (
+                <button key={item.id} style={S.tabBtn(active)} onClick={() => { setTab(item.id); setShowPlans(false); }}>
+                  {item.icon(currentColor)}
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{ borderTop: "1px solid #1E1E1E", paddingTop: 20, marginTop: 20 }}>
+          <div style={{ borderTop: `1.5px solid ${t.border}`, paddingTop: 20, marginTop: 20 }}>
             {subscription && (
-              <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", background: "#141414", padding: "10px 14px", borderRadius: 12, border: "1px solid #222", marginBottom: 14 }}>
-                <span style={{ fontSize: 11, color: "#aaa", fontWeight: 600 }}>{currentPlan.emoji} {currentPlan.name}</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: dark ? t.inputBg : t.bgCard2, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${t.border}`, marginBottom: 14 }}>
+                <span style={{ fontSize: 11, color: t.textSub, fontWeight: 600 }}>{currentPlan.emoji} {currentPlan.name}</span>
                 <span style={S.badge}>{subscription.status === "trial" ? "Trial" : "Paid"}</span>
               </div>
             )}
-            <button onClick={logout} style={{ ...S.addBtn, background: "transparent", border: "1px solid #222", padding: "10px 0", fontSize: 12, color: "#888" }}>
+            
+            {/* Desktop Theme Switcher */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "0 4px" }}>
+              <span style={{ fontSize: 12, color: t.textSub, fontWeight: 600 }}>Theme Mode</span>
+              <button onClick={toggle} style={{ width: 34, height: 34, borderRadius: 10, border: `1.5px solid ${t.border}`, background: t.bgCard, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+                {dark ? "☀️" : "🌙"}
+              </button>
+            </div>
+
+            <button onClick={logout} style={{ ...S.addBtn, background: "transparent", border: `1.5px solid ${t.border}`, padding: "10px 0", fontSize: 12, color: t.textSub, boxShadow: "none" }}>
               ↩ Sign Out
             </button>
           </div>
@@ -493,32 +561,42 @@ export default function AdminDashboard() {
         <div className="topbar-panel" style={S.topbar}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 28, height: 28, background: "#FF5A1F", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🚌</div>
-            <span style={{ fontSize: 14, fontWeight: 800 }}>CampusMove</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>CampusMove</span>
             <span style={{ ...S.badge, padding: "2px 6px", fontSize: 9 }}>Admin</span>
           </div>
-          <button onClick={logout} style={{ background: "none", border: "1px solid #222", borderRadius: 8, padding: "4px 10px", color: "#aaa", fontSize: 11 }}>
-            Sign Out
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={toggle} style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${t.border}`, background: t.bgCard, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+              {dark ? "☀️" : "🌙"}
+            </button>
+            <button onClick={logout} style={{ background: "none", border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "4px 10px", color: t.textSub, fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+              Sign Out
+            </button>
+          </div>
         </div>
 
         {/* ── MOBILE TABS (HIDDEN ON DESKTOP) ── */}
-        <div className="topbar-panel" style={{ display: "flex", background: "#0F0F0F", borderBottom: "1px solid #1A1A1A", padding: "8px 12px" }}>
+        <div className="topbar-panel" style={{ display: "flex", background: t.bgCard, borderBottom: `1.5px solid ${t.border}`, padding: "8px 12px" }}>
           <div style={{ display: "flex", gap: 4, width: "100%" }}>
-            {navItems.map(item => (
-              <button key={item.id} style={{
-                flex: 1,
-                padding: "8px 0",
-                border: "none",
-                borderRadius: 8,
-                background: tab === item.id ? "#1D1D1D" : "transparent",
-                color: tab === item.id ? "#fff" : "#666",
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: "pointer"
-              }} onClick={() => { setTab(item.id); setShowPlans(false); }}>
-                {item.label.split(" ")[0]}
-              </button>
-            ))}
+            {navItems.map(item => {
+              const active = tab === item.id;
+              return (
+                <button key={item.id} style={{
+                  flex: 1,
+                  padding: "8px 0",
+                  border: "none",
+                  borderRadius: 8,
+                  background: active ? (dark ? "#1F2937" : "#EFF6FF") : "transparent",
+                  color: active ? t.accent : t.textMuted,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'Inter', sans-serif",
+                  transition: "all 0.2s"
+                }} onClick={() => { setTab(item.id); setShowPlans(false); }}>
+                  {item.label.split(" ")[0]}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -548,47 +626,47 @@ export default function AdminDashboard() {
 
               {/* Usage & Plan overview card */}
               {subscription && (
-                <div style={{ ...S.card, border: `1px solid ${currentPlan.color}22` }}>
+                <div style={{ ...S.card, border: `1.5px solid ${currentPlan.color}33` }}>
                   <div style={{ padding: "18px 20px" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ fontSize: 24 }}>{currentPlan.emoji}</span>
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
-                          <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
                             {subscription.status === "trial" ? "Trial License" : `₹${subscription.amount?.toLocaleString("en-IN")}/${subscription.billing === "yearly" ? "year" : "month"}`}
                           </div>
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 10, color: "#555", fontWeight: 700, textTransform: "uppercase" }}>Expires</div>
-                        <div style={{ fontSize: 13, color: daysLeft <= 7 ? "#FBBF24" : "#ccc", fontWeight: 700, marginTop: 4 }}>{formatDate(subscription.expiryDate)}</div>
+                        <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>Expires</div>
+                        <div style={{ fontSize: 13, color: daysLeft <= 7 ? "#F59E0B" : t.textSub, fontWeight: 700, marginTop: 4 }}>{formatDate(subscription.expiryDate)}</div>
                       </div>
                     </div>
 
                     {/* Progress tracking bars */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid #1E1E1E", paddingTop: 16 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: `1.5px solid ${t.border}`, paddingTop: 16 }}>
                       <div>
                         <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, color: "#888", fontWeight: 500 }}>Routes quota</span>
-                          <span style={{ fontSize: 12, color: "#ccc", fontWeight: 700 }}>{totalRoutes} / {currentPlan.limits.routes === Infinity ? "Unlimited" : currentPlan.limits.routes}</span>
+                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Routes quota</span>
+                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{totalRoutes} / {currentPlan.limits.routes === Infinity ? "Unlimited" : currentPlan.limits.routes}</span>
                         </div>
-                        <div style={{ height: 4, background: "#141414", borderRadius: 2 }}>
+                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
                           <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.routes === Infinity ? "40%" : `${Math.min(100, (totalRoutes / currentPlan.limits.routes) * 100)}%`, transition: "width 0.4s" }}/>
                         </div>
                       </div>
                       <div>
                         <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, color: "#888", fontWeight: 500 }}>Students capacity</span>
-                          <span style={{ fontSize: 12, color: "#ccc", fontWeight: 700 }}>{studentCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
+                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Students capacity</span>
+                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{studentCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
                         </div>
-                        <div style={{ height: 4, background: "#141414", borderRadius: 2 }}>
+                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
                           <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.students === Infinity ? "20%" : `${Math.min(100, (studentCount / currentPlan.limits.students) * 100)}%`, transition: "width 0.4s" }}/>
                         </div>
                       </div>
                     </div>
 
-                    <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ marginTop: 18, width: "100%", background: "transparent", border: `1px solid ${currentPlan.color}44`, borderRadius: 12, padding: "12px 0", color: currentPlan.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", transition: "all 0.2s" }}>
+                    <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ marginTop: 18, width: "100%", background: "transparent", border: `1.5px solid ${currentPlan.color}44`, borderRadius: 10, padding: "12px 0", color: currentPlan.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
                       {subscription.plan === "basic" ? "⚡ Upgrade to Premium Features" : "Manage billing licenses"}
                     </button>
                   </div>
@@ -610,9 +688,9 @@ export default function AdminDashboard() {
                   return (
                     <div key={pr.id} className="custom-row" style={S.row}>
                       <div>
-                        <div style={{ fontSize: 14, color: "#fff", fontWeight: 700 }}>{displayRoute.name}</div>
-                        <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{displayRoute.label}</div>
-                        {active && driverName && <div style={{ fontSize: 11, color: "#FF5A1F", fontWeight: 600, marginTop: 6 }}>🚌 {driverName} · {speed} km/h</div>}
+                        <div style={{ fontSize: 14, color: t.text, fontWeight: 700 }}>{displayRoute.name}</div>
+                        <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>{displayRoute.label}</div>
+                        {active && driverName && <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 6 }}>🚌 {driverName} · {speed} km/h</div>}
                       </div>
                       <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
                     </div>
@@ -653,19 +731,19 @@ export default function AdminDashboard() {
                             <input value={editingRoute.label} onChange={e => setEditingRoute({...editingRoute, label: e.target.value})} style={S.input} placeholder="Label" />
                             <input value={editingRoute.description || ""} onChange={e => setEditingRoute({...editingRoute, description: e.target.value})} style={{...S.input, marginBottom: 12}} placeholder="Description" />
                             <div style={{ display: "flex", gap: 8 }}>
-                              <button onClick={saveEditRoute} disabled={editSaving} className="add-btn" style={{ flex: 1, background: "#FF5A1F", border: "none", borderRadius: 10, padding: "10px 0", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{editSaving ? "Saving..." : "Save Changes"}</button>
-                              <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: "1px solid #222", borderRadius: 10, padding: "10px 0", color: "#888", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                              <button onClick={saveEditRoute} disabled={editSaving} className="add-btn" style={{ flex: 1, background: t.accent, border: "none", borderRadius: 10, padding: "10px 0", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>{editSaving ? "Saving..." : "Save Changes"}</button>
+                              <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "10px 0", color: t.textSub, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Cancel</button>
                             </div>
                           </div>
                         ) : (
                           <div style={{ display: "flex", width: "100%", alignItems: "center", justifyBetween: "center", justifyContent: "space-between" }}>
                             <div>
-                              <div style={{ fontSize: 14, color: "#fff", fontWeight: 700 }}>{displayRoute.name}</div>
-                              <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{displayRoute.label}</div>
+                              <div style={{ fontSize: 14, color: t.text, fontWeight: 700 }}>{displayRoute.name}</div>
+                              <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>{displayRoute.label}</div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
-                              <button onClick={() => setEditingRoute({ id: pr.id, name: displayRoute.name, label: displayRoute.label, description: displayRoute.description || "", isPreset: true })} style={{ background: "none", border: "1px solid #222", borderRadius: 8, padding: "6px 12px", color: "#aaa", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
+                              <button onClick={() => setEditingRoute({ id: pr.id, name: displayRoute.name, label: displayRoute.label, description: displayRoute.description || "", isPreset: true })} style={{ background: "none", border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "6px 12px", color: t.textSub, fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Edit</button>
                               <button onClick={() => deleteRoute(pr.id, true)} style={S.delBtn}>Hide</button>
                             </div>
                           </div>
@@ -680,7 +758,7 @@ export default function AdminDashboard() {
               <div style={S.card}>
                 <div style={S.cardHead}><span style={S.cardLabel}>Custom routes ({filteredCustomRoutes.length})</span></div>
                 {filteredCustomRoutes.length === 0 ? (
-                  <div style={{ padding: 16, color: "#555", fontSize: 12, textAlign: "center" }}>No matching custom routes</div>
+                  <div style={{ padding: 16, color: t.textMuted, fontSize: 12, textAlign: "center" }}>No matching custom routes</div>
                 ) : (
                   filteredCustomRoutes.map(route => (
                     <div key={route.id} className="custom-row" style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
@@ -690,18 +768,18 @@ export default function AdminDashboard() {
                           <input value={editingRoute.label} onChange={e => setEditingRoute({...editingRoute, label: e.target.value})} style={S.input} placeholder="Label" />
                           <input value={editingRoute.description || ""} onChange={e => setEditingRoute({...editingRoute, description: e.target.value})} style={{...S.input, marginBottom: 12}} placeholder="Description" />
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={saveEditRoute} disabled={editSaving} className="add-btn" style={{ flex: 1, background: "#FF5A1F", border: "none", borderRadius: 10, padding: "10px 0", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{editSaving ? "Saving..." : "Save Changes"}</button>
-                            <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: "1px solid #222", borderRadius: 10, padding: "10px 0", color: "#888", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                            <button onClick={saveEditRoute} disabled={editSaving} className="add-btn" style={{ flex: 1, background: t.accent, border: "none", borderRadius: 10, padding: "10px 0", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>{editSaving ? "Saving..." : "Save Changes"}</button>
+                            <button onClick={() => setEditingRoute(null)} style={{ flex: 1, background: "none", border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "10px 0", color: t.textSub, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Cancel</button>
                           </div>
                         </div>
                       ) : (
                         <div style={{ display: "flex", width: "100%", alignItems: "center", justifyBetween: "center", justifyContent: "space-between" }}>
                           <div>
-                            <div style={{ fontSize: 14, color: "#fff", fontWeight: 700 }}>{route.name}</div>
-                            <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{route.label}</div>
+                            <div style={{ fontSize: 14, color: t.text, fontWeight: 700 }}>{route.name}</div>
+                            <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>{route.label}</div>
                           </div>
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => setEditingRoute({ id: route.id, name: route.name, label: route.label, description: route.description || "" })} style={{ background: "none", border: "1px solid #222", borderRadius: 8, padding: "6px 12px", color: "#aaa", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Edit</button>
+                            <button onClick={() => setEditingRoute({ id: route.id, name: route.name, label: route.label, description: route.description || "" })} style={{ background: "none", border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "6px 12px", color: t.textSub, fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Edit</button>
                             <button onClick={() => deleteRoute(route.id, false)} style={S.delBtn}>Delete</button>
                           </div>
                         </div>
@@ -729,10 +807,10 @@ export default function AdminDashboard() {
             <>
               {/* User stats widget */}
               <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-                {[["Total Users", users.length, "#fff"], ["Students", studentCount, "#60A5FA"], ["Drivers", driverCount, "#A78BFA"], ["Blocked", blockedCount, "#F87171"]].map(([l, v, c]) => (
-                  <div key={l} style={{ flex: 1, background: "#0E0E0E", border: "1px solid #1E1E1E", borderRadius: 14, padding: "14px 10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: c, letterSpacing: "-0.5px" }}>{v}</div>
-                    <div style={{ fontSize: 9, color: "#666", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>{l}</div>
+                {[["Total Users", users.length, t.text], ["Students", studentCount, "#60A5FA"], ["Drivers", driverCount, "#A78BFA"], ["Blocked", blockedCount, "#EF4444"]].map(([l, v, c]) => (
+                  <div key={l} style={{ flex: 1, background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, padding: "14px 10px", textAlign: "center", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: c, letterSpacing: "-0.5px", fontFamily: "'Inter', sans-serif" }}>{v}</div>
+                    <div style={{ fontSize: 9, color: t.textMuted, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>{l}</div>
                   </div>
                 ))}
               </div>
@@ -751,16 +829,16 @@ export default function AdminDashboard() {
               <div style={S.card}>
                 <div style={S.cardHead}><span style={S.cardLabel}>Registered Accounts ({filteredUsers.length})</span></div>
                 {filteredUsers.length === 0
-                  ? <div style={{ padding: 24, color: "#555", fontSize: 13, textAlign: "center" }}>No matching accounts found</div>
+                  ? <div style={{ padding: 24, color: t.textMuted, fontSize: 13, textAlign: "center" }}>No matching accounts found</div>
                   : filteredUsers.map(u => (
-                    <div key={u.id} className="custom-row" style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 12, background: u.blocked ? "#1A080822" : "transparent" }}>
+                    <div key={u.id} className="custom-row" style={{ ...S.row, flexDirection: "column", alignItems: "flex-start", gap: 12, background: u.blocked ? (dark ? "#2A080811" : "#FEF2F233") : "transparent" }}>
                       <div style={{ display: "flex", width: "100%", alignItems: "center", justifyBetween: "center", justifyContent: "space-between" }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ fontSize: 14, color: u.blocked ? "#555" : "#fff", fontWeight: 700, textDecoration: u.blocked ? "line-through" : "none" }}>{u.name || "—"}</div>
-                            {u.blocked && <span style={{ fontSize: 9, color: "#F87171", background: "#250A0A", border: "1px solid #5D1515", borderRadius: 6, padding: "2px 6px", fontWeight: 700, textTransform: "uppercase" }}>Blocked</span>}
+                            <div style={{ fontSize: 14, color: u.blocked ? t.textMuted : t.text, fontWeight: 700, textDecoration: u.blocked ? "line-through" : "none" }}>{u.name || "—"}</div>
+                            {u.blocked && <span style={{ fontSize: 9, color: "#EF4444", background: dark ? "#2A0808" : "#FEF2F2", border: `1px solid ${dark ? "#5D1010" : "#FCA5A5"}`, borderRadius: 6, padding: "2px 6px", fontWeight: 700, textTransform: "uppercase" }}>Blocked</span>}
                           </div>
-                          <div style={{ fontSize: 12, color: "#555", marginTop: 4, fontFamily: "monospace" }}>
+                          <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4, fontFamily: "monospace" }}>
                             {u.username ? `username: ${u.username}` : u.phone ? `phone: ${u.phone}` : u.email}
                           </div>
                         </div>
@@ -768,12 +846,12 @@ export default function AdminDashboard() {
                       </div>
 
                       {u.id !== user?.uid && (
-                        <div style={{ display: "flex", gap: 8, width: "100%", borderTop: "1px solid #1E1E1E", paddingTop: 10 }}>
+                        <div style={{ display: "flex", gap: 8, width: "100%", borderTop: `1.5px solid ${t.border}`, paddingTop: 10 }}>
                           <button onClick={() => u.blocked ? unblockUser(u.id) : setConfirmId({ id: u.id, action: "block" })} style={S.blockBtn(u.blocked)}>
                             {u.blocked ? "✓ Unblock" : "⊘ Block User"}
                           </button>
                           <select value={u.role} onChange={e => changeRole(u.id, e.target.value)}
-                            style={{ flex: 1, background: "#0A0A0A", border: "1px solid #222", borderRadius: 8, padding: "4px 10px", color: "#aaa", fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: "pointer" }}>
+                            style={{ flex: 1, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "4px 10px", color: t.textSub, fontSize: 11, fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
                             <option value="student">Student / Faculty</option>
                             <option value="driver">Driver</option>
                             <option value="admin">Admin</option>
@@ -783,17 +861,17 @@ export default function AdminDashboard() {
                       )}
 
                       {confirmId?.id === u.id && (
-                        <div style={{ width: "100%", background: "#1A0808", border: "1px solid #5D1010", borderRadius: 12, padding: "14px", marginTop: 4 }}>
-                          <p style={{ fontSize: 13, color: "#F87171", margin: "0 0 12px", fontWeight: 600 }}>
+                        <div style={{ width: "100%", background: dark ? "#2A0808" : "#FEF2F2", border: `1.5px solid ${dark ? "#5D1010" : "#FCA5A5"}`, borderRadius: 12, padding: "14px", marginTop: 4 }}>
+                          <p style={{ fontSize: 13, color: "#EF4444", margin: "0 0 12px", fontWeight: 600 }}>
                             {confirmId.action === "delete" ? `⚠ Delete ${u.name || u.email}? This action is irreversible.` : `⊘ Block ${u.name || u.email}? Access will be immediately revoked.`}
                           </p>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button onClick={() => confirmId.action === "delete" ? deleteUser(u.id) : blockUser(u.id)}
-                              style={{ flex: 1, background: "#F87171", border: "none", borderRadius: 10, padding: "10px 0", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                              style={{ flex: 1, background: "#EF4444", border: "none", borderRadius: 10, padding: "10px 0", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
                               {confirmId.action === "delete" ? "Yes, Delete" : "Yes, Block"}
                             </button>
                             <button onClick={() => setConfirmId(null)}
-                              style={{ flex: 1, background: "none", border: "1px solid #333", borderRadius: 10, padding: "10px 0", color: "#aaa", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                              style={{ flex: 1, background: "none", border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "10px 0", color: t.textSub, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
                               Cancel
                             </button>
                           </div>
@@ -807,21 +885,21 @@ export default function AdminDashboard() {
               {/* Create User Form */}
               <div style={S.card}>
                 <div style={S.cardHead}><span style={S.cardLabel}>Create Student or Driver Account</span></div>
-                <form onSubmit={handleCreateUser} style={{ padding: 16 }}>
-                  <div style={{ marginBottom: 12 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#888", letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Role Type</label>
+                <form onSubmit={handleCreateUser} style={{ padding: 24 }}>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Role Type</label>
                     <select
                       value={newUser.role}
                       onChange={e => setNewUser({ ...newUser, role: e.target.value, identifier: "" })}
-                      style={{ ...S.input, marginBottom: 0, cursor: "pointer" }}
+                      style={{ ...S.input, height: 46, padding: "0 16px", marginBottom: 0, cursor: "pointer" }}
                     >
                       <option value="student">Student / Faculty</option>
                       <option value="driver">Driver</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#888", letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Full Name</label>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Full Name</label>
                     <input
                       value={newUser.name}
                       onChange={e => setNewUser({ ...newUser, name: e.target.value })}
@@ -829,8 +907,8 @@ export default function AdminDashboard() {
                       style={{ ...S.input, marginBottom: 0 }}
                     />
                   </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#888", letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>
                       {newUser.role === "student" ? "Username" : newUser.role === "driver" ? "Phone Number (10 digits)" : "Email Address"}
                     </label>
                     <input
@@ -841,8 +919,8 @@ export default function AdminDashboard() {
                       style={{ ...S.input, marginBottom: 0 }}
                     />
                   </div>
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#888", letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Password</label>
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Password</label>
                     <input
                       type="password"
                       value={newUser.password}
@@ -853,14 +931,14 @@ export default function AdminDashboard() {
                   </div>
 
                   {userCreateError && (
-                    <div style={{ background: "#250A0A", border: "1px solid #5D1515", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-                      <p style={{ color: "#F87171", fontSize: 12, margin: 0, fontWeight: 600 }}>⚠️ {userCreateError}</p>
+                    <div style={{ background: dark ? "#250A0A" : "#FEF2F2", border: `1.5px solid ${dark ? "#5D1515" : "#FCA5A5"}`, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                      <p style={{ color: "#EF4444", fontSize: 12, margin: 0, fontWeight: 600 }}>⚠️ {userCreateError}</p>
                     </div>
                   )}
 
                   {userCreateSuccess && (
-                    <div style={{ background: "#0D2012", border: "1px solid #1E4D2B", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-                      <p style={{ color: "#4ADE80", fontSize: 12, margin: 0, fontWeight: 600 }}>✅ {userCreateSuccess}</p>
+                    <div style={{ background: dark ? "#0D2012" : "#ECFDF5", border: `1.5px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                      <p style={{ color: "#10B981", fontSize: 12, margin: 0, fontWeight: 600 }}>✅ {userCreateSuccess}</p>
                     </div>
                   )}
 
@@ -907,24 +985,24 @@ export default function AdminDashboard() {
                         ["Days remaining", isExpired ? "Expired" : `${daysLeft} days`],
                         ["Billing cycle", subscription.billing === "yearly" ? "Yearly (10% off)" : "Monthly"],
                       ].map(([l, v]) => (
-                        <div key={l} style={{ background: "#111", borderRadius: 12, padding: "12px 14px", border: "1px solid #1E1E1E" }}>
-                          <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6, fontWeight: 700 }}>{l}</div>
-                          <div style={{ fontSize: 13, color: "#ccc", fontWeight: 700 }}>{v}</div>
+                        <div key={l} style={{ background: dark ? t.inputBg : t.bgCard2, borderRadius: 10, padding: "12px 14px", border: `1.5px solid ${t.border}` }}>
+                          <div style={{ fontSize: 9, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6, fontWeight: 700 }}>{l}</div>
+                          <div style={{ fontSize: 13, color: t.textSub, fontWeight: 700 }}>{v}</div>
                         </div>
                       ))}
                     </div>
 
                     <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 10, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>Included plan privileges</div>
+                      <div style={{ fontSize: 10, color: t.textMuted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>Included plan privileges</div>
                       {currentPlan.features.map((f, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                           <span style={{ color: currentPlan.color, fontSize: 14 }}>✓</span>
-                          <span style={{ fontSize: 13, color: "#888" }}>{f}</span>
+                          <span style={{ fontSize: 13, color: t.textSub }}>{f}</span>
                         </div>
                       ))}
                     </div>
 
-                    <button onClick={() => setShowPlans(true)} className="add-btn" style={{ width: "100%", background: currentPlan.id === "basic" ? "#FF5A1F" : "transparent", border: `1px solid ${currentPlan.id === "basic" ? "#FF5A1F" : "#222"}`, borderRadius: 12, padding: "14px 0", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", transition: "all 0.2s" }}>
+                    <button onClick={() => setShowPlans(true)} className="add-btn" style={{ width: "100%", background: currentPlan.id === "basic" ? t.accent : "transparent", border: `1.5px solid ${currentPlan.id === "basic" ? t.accent : t.border}`, borderRadius: 10, padding: "14px 0", color: currentPlan.id === "basic" ? "#fff" : t.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
                       {currentPlan.id === "basic" ? "⚡ Upgrade to Enterprise Premium" : "Change subscription plan"}
                     </button>
                   </div>
@@ -935,14 +1013,14 @@ export default function AdminDashboard() {
               {showPlans && (
                 <>
                   <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "-0.5px" }}>Choose Institutional Plan</div>
-                    <button onClick={() => setShowPlans(false)} style={{ background: "none", border: "1px solid #222", borderRadius: 10, padding: "6px 14px", color: "#888", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>← Back</button>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: t.text, letterSpacing: "-0.5px" }}>Choose Institutional Plan</div>
+                    <button onClick={() => setShowPlans(false)} style={{ background: "none", border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "6px 14px", color: t.textSub, fontSize: 12, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>← Back</button>
                   </div>
 
                   {/* Toggle Billing billing cycle */}
-                  <div style={{ display: "flex", background: "#111", borderRadius: 14, padding: 4, marginBottom: 20, border: "1px solid #1E1E1E" }}>
+                  <div style={{ display: "flex", background: dark ? t.inputBg : t.bgCard2, borderRadius: 12, padding: 4, marginBottom: 20, border: `1.5px solid ${t.border}` }}>
                     {[["monthly", "Monthly cycle"], ["yearly", "Yearly billing"]].map(([v, l]) => (
-                      <button key={v} onClick={() => setBillingCycle(v)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", background: billingCycle === v ? "#FF5A1F" : "transparent", color: billingCycle === v ? "#fff" : "#666", transition: "all 0.2s" }}>
+                      <button key={v} onClick={() => setBillingCycle(v)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", background: billingCycle === v ? t.accent : "transparent", color: billingCycle === v ? "#fff" : t.textMuted, transition: "all 0.2s" }}>
                         {l} {v === "yearly" && <span style={{ fontSize: 9, background: "#fff2", borderRadius: 6, padding: "2px 6px", marginLeft: 6, fontWeight: 800 }}>10% OFF</span>}
                       </button>
                     ))}
@@ -953,7 +1031,7 @@ export default function AdminDashboard() {
                     const price = billingCycle === "yearly" ? plan.yearly : plan.monthly;
                     const isCurrent = subscription?.plan === plan.id;
                     return (
-                      <div key={plan.id} style={{ background: "#0E0E0E", border: `2px solid ${isCurrent ? plan.color : "#1E1E1E"}`, borderRadius: 20, padding: "24px", marginBottom: 16, position: "relative", boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
+                      <div key={plan.id} style={{ background: t.bgCard, border: `2px solid ${isCurrent ? plan.color : t.border}`, borderRadius: 12, padding: "24px", marginBottom: 16, position: "relative", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
                         {plan.id === "premium" && (
                           <div style={{ position: "absolute", top: -10, right: 20, background: "#FF5A1F", borderRadius: 6, padding: "3px 12px", fontSize: 10, fontWeight: 800, color: "#fff", letterSpacing: "0.5px" }}>POPULAR</div>
                         )}
@@ -961,17 +1039,17 @@ export default function AdminDashboard() {
                           <div style={{ position: "absolute", top: -10, left: 20, background: plan.color, borderRadius: 6, padding: "3px 12px", fontSize: 10, fontWeight: 800, color: "#000", letterSpacing: "0.5px" }}>CURRENT PLAN</div>
                         )}
                         
-                        <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 18, borderBottom: "1px solid #1E1E1E", paddingBottom: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 18, borderBottom: `1.5px solid ${t.border}`, paddingBottom: 16 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <span style={{ fontSize: 28 }}>{plan.emoji}</span>
                             <div>
                               <div style={{ fontSize: 16, fontWeight: 800, color: plan.color }}>{plan.name}</div>
-                              <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>{plan.id === "basic" ? "Basic Tracking" : "Institutes & Colleges"}</div>
+                              <div style={{ fontSize: 11, color: t.textMuted, marginTop: 4 }}>{plan.id === "basic" ? "Basic Tracking" : "Institutes & Colleges"}</div>
                             </div>
                           </div>
                           <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: 24, fontWeight: 800, color: "#fff", letterSpacing: "-1px" }}>₹{price.toLocaleString("en-IN")}</div>
-                            <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>/{billingCycle === "yearly" ? "year" : "month"}</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, color: t.text, letterSpacing: "-1px" }}>₹{price.toLocaleString("en-IN")}</div>
+                            <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>/{billingCycle === "yearly" ? "year" : "month"}</div>
                           </div>
                         </div>
 
@@ -979,7 +1057,7 @@ export default function AdminDashboard() {
                           {plan.features.map((f, i) => (
                             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <span style={{ color: plan.color, fontSize: 12 }}>✓</span>
-                              <span style={{ fontSize: 13, color: "#888" }}>{f}</span>
+                              <span style={{ fontSize: 13, color: t.textSub }}>{f}</span>
                             </div>
                           ))}
                         </div>
@@ -988,12 +1066,12 @@ export default function AdminDashboard() {
                           onClick={() => selectPlan(plan.id)}
                           disabled={planSaving || isCurrent}
                           className="add-btn"
-                          style={{ width: "100%", background: isCurrent ? "#141414" : plan.color, border: "none", borderRadius: 12, padding: "14px 0", color: isCurrent ? "#555" : "#fff", fontSize: 13, fontWeight: 700, cursor: isCurrent ? "not-allowed" : "pointer", fontFamily: "'DM Sans',sans-serif" }}>
+                          style={{ width: "100%", background: isCurrent ? (dark ? t.inputBg : t.bgCard2) : plan.color, border: "none", borderRadius: 10, padding: "14px 0", color: isCurrent ? t.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: isCurrent ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif" }}>
                           {planSaving ? "Activating License..." : isCurrent ? "Active Plan" : `Select ${plan.name}`}
                         </button>
 
                         {!isCurrent && (
-                          <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: "#444" }}>
+                          <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: t.textMuted }}>
                             ⚡ Instant activation (Razorpay payment integration pending)
                           </div>
                         )}
