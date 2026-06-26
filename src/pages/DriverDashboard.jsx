@@ -43,6 +43,7 @@ export default function DriverDashboard() {
   const wakeLockRef        = useRef(null);
   const lastLocationUpdateTimestamp = useRef(0);
   const watchdogRef                 = useRef(null);
+  const useHighAccuracyRef          = useRef(true);
 
   // Wake lock helpers
   async function requestWakeLock() {
@@ -149,6 +150,11 @@ export default function DriverDashboard() {
         setAccuracy(acc ? Math.round(acc) : null);
         lastLocationUpdateTimestamp.current = now;
 
+        // If we got a highly accurate location, make sure we keep high accuracy turned on
+        if (!useHighAccuracyRef.current && acc && acc < 20) {
+          useHighAccuracyRef.current = true;
+        }
+
         if (now - lastFirebaseUpdate.current >= 2000) {
           writeToRTDB(lat, lng, kmh, hdg || 0, true);
           lastFirebaseUpdate.current = now;
@@ -157,13 +163,17 @@ export default function DriverDashboard() {
       err => {
         const msgs = {
           1: "Location permission denied. Enable in device settings.",
-          2: "GPS signal lost. Retrying...",
+          2: "GPS signal weak. Retrying...",
           3: "GPS timeout — retrying...",
         };
         setError(msgs[err.code] || "GPS error: " + err.message);
 
         if (err.code === 2 || err.code === 3) {
           setGpsStatus("waiting");
+          if (useHighAccuracyRef.current) {
+            console.log("High accuracy watch position failed. Falling back to low accuracy.");
+            useHighAccuracyRef.current = false;
+          }
           clearTimeout(gpsRetryRef.current);
           gpsRetryRef.current = setTimeout(() => {
             if (trackingRef.current) startWatchingGPS();
@@ -173,7 +183,7 @@ export default function DriverDashboard() {
         }
       },
       {
-        enableHighAccuracy: true,
+        enableHighAccuracy: useHighAccuracyRef.current,
         maximumAge: 0,
         timeout: 10000,
       }
@@ -207,6 +217,7 @@ export default function DriverDashboard() {
     writeToRTDB(12.9716, 77.5946, 0, 0, true);
     lastFirebaseUpdate.current = Date.now();
     lastLocationUpdateTimestamp.current = Date.now();
+    useHighAccuracyRef.current = true; // reset to try high accuracy first
 
     setTracking(true);
     requestWakeLock(); // Keep screen awake
@@ -219,6 +230,10 @@ export default function DriverDashboard() {
       if (elapsedSinceLastUpdate > 15000) {
         console.warn(`GPS watchdog: No updates for ${elapsedSinceLastUpdate}ms. Restarting watch...`);
         setError("GPS signal stalled — re-establishing connection...");
+        if (useHighAccuracyRef.current) {
+          console.log("Stalled with high accuracy. Trying low accuracy fallback.");
+          useHighAccuracyRef.current = false;
+        }
         startWatchingGPS();
       }
     }, 10000);
