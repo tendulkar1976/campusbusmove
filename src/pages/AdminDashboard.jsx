@@ -4,7 +4,7 @@ import { ref, onValue } from "firebase/database";
 import { db, rtdb, secondaryAuth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword } from "firebase/auth";
 
 const PRESET_ROUTES = [
   { id: "route-1", name: "Route 1", label: "North Gate Loop" },
@@ -177,7 +177,17 @@ export default function AdminDashboard() {
     setUserCreating(true);
     const email = getVirtualEmail(newUser.identifier, newUser.role);
     try {
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, newUser.password);
+      let cred;
+      try {
+        cred = await createUserWithEmailAndPassword(secondaryAuth, email, newUser.password);
+      } catch (err) {
+        if (err.code === "auth/email-already-in-use") {
+          console.log("User already exists in Auth. Attempting to heal Firestore entry by signing in...");
+          cred = await signInWithEmailAndPassword(secondaryAuth, email, newUser.password);
+        } else {
+          throw err;
+        }
+      }
       
       const profile = {
         name: newUser.name.trim(),
@@ -207,6 +217,8 @@ export default function AdminDashboard() {
         setUserCreateError("Invalid identifier format. Please check the username or email.");
       } else if (c === "auth/email-already-in-use") {
         setUserCreateError("This username, phone number, or email is already registered.");
+      } else if (c === "auth/wrong-password" || c === "auth/invalid-credential") {
+        setUserCreateError("This account is already registered with a different password.");
       } else if (c === "auth/weak-password") {
         setUserCreateError("Password must be at least 6 characters.");
       } else {

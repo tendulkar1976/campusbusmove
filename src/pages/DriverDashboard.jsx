@@ -40,6 +40,30 @@ export default function DriverDashboard() {
   const tripDocRef         = useRef(null);
   const selectedRouteIdRef = useRef(null);
   const gpsRetryRef        = useRef(null);
+  const wakeLockRef        = useRef(null);
+  const lastLocationUpdateTimestamp = useRef(0);
+  const watchdogRef                 = useRef(null);
+
+  // Wake lock helpers
+  async function requestWakeLock() {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+        console.log("Screen Wake Lock active");
+      }
+    } catch (err) {
+      console.warn("Screen Wake Lock failed:", err);
+    }
+  }
+
+  function releaseWakeLock() {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().then(() => {
+        wakeLockRef.current = null;
+        console.log("Screen Wake Lock released");
+      }).catch(err => console.error("Release wake lock error:", err));
+    }
+  }
 
   useEffect(() => { selectedRouteIdRef.current = selectedRouteId; }, [selectedRouteId]);
 
@@ -70,9 +94,19 @@ export default function DriverDashboard() {
     return () => clearInterval(timerRef.current);
   }, [tracking]);
 
-  // Reset Firebase throttle on foreground
+  // Handle app foregrounding: reset throttle, re-request wake lock, and restart GPS tracking if active
   useEffect(() => {
-    const h = () => { if (!document.hidden) lastFirebaseUpdate.current = 0; };
+    const h = async () => {
+      if (!document.hidden) {
+        lastFirebaseUpdate.current = 0;
+        if (trackingRef.current) {
+          console.log("App foregrounded, re-requesting wake lock and restarting GPS");
+          await requestWakeLock();
+          startWatchingGPS();
+          lastLocationUpdateTimestamp.current = Date.now();
+        }
+      }
+    };
     document.addEventListener("visibilitychange", h);
     return () => document.removeEventListener("visibilitychange", h);
   }, []);
@@ -113,6 +147,7 @@ export default function DriverDashboard() {
         setSpeed(kmh);
         setHeading(hdg || 0);
         setAccuracy(acc ? Math.round(acc) : null);
+        lastLocationUpdateTimestamp.current = now;
 
         if (now - lastFirebaseUpdate.current >= 2000) {
           writeToRTDB(lat, lng, kmh, hdg || 0, true);
@@ -122,25 +157,25 @@ export default function DriverDashboard() {
       err => {
         const msgs = {
           1: "Location permission denied. Enable in device settings.",
-          2: "GPS signal lost. Move to open area.",
+          2: "GPS signal lost. Retrying...",
           3: "GPS timeout — retrying...",
         };
         setError(msgs[err.code] || "GPS error: " + err.message);
 
-        if (err.code === 3) {
+        if (err.code === 2 || err.code === 3) {
           setGpsStatus("waiting");
           clearTimeout(gpsRetryRef.current);
           gpsRetryRef.current = setTimeout(() => {
-            if (tracking || trackingRef.current) startWatchingGPS();
+            if (trackingRef.current) startWatchingGPS();
           }, 3000);
         } else {
           setGpsStatus("error");
         }
       },
       {
-        enableHighAccuracy: false,
-        maximumAge: 10000,
-        timeout: 60000,
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000,
       }
     );
   }
@@ -171,18 +206,34 @@ export default function DriverDashboard() {
 
     writeToRTDB(12.9716, 77.5946, 0, 0, true);
     lastFirebaseUpdate.current = Date.now();
+    lastLocationUpdateTimestamp.current = Date.now();
 
     setTracking(true);
+    requestWakeLock(); // Keep screen awake
     startWatchingGPS();
+
+    // Start watchdog timer
+    clearInterval(watchdogRef.current);
+    watchdogRef.current = setInterval(() => {
+      const elapsedSinceLastUpdate = Date.now() - lastLocationUpdateTimestamp.current;
+      if (elapsedSinceLastUpdate > 15000) {
+        console.warn(`GPS watchdog: No updates for ${elapsedSinceLastUpdate}ms. Restarting watch...`);
+        setError("GPS signal stalled — re-establishing connection...");
+        startWatchingGPS();
+      }
+    }, 10000);
   }
 
   async function stopTracking() {
     clearTimeout(gpsRetryRef.current);
+    clearInterval(watchdogRef.current);
+    watchdogRef.current = null;
     if (watchIdRef.current) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
     setTracking(false);
+    releaseWakeLock(); // Let screen sleep
     setGpsStatus("idle");
 
     writeToRTDB(
@@ -203,8 +254,10 @@ export default function DriverDashboard() {
 
   useEffect(() => () => {
     clearTimeout(gpsRetryRef.current);
+    clearInterval(watchdogRef.current);
     if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     clearInterval(timerRef.current);
+    releaseWakeLock(); // Cleanup on unmount
   }, []);
 
   const selectedRoute = useMemo(() => routes.find(r => r.id === selectedRouteId), [routes, selectedRouteId]);
@@ -373,6 +426,29 @@ export default function DriverDashboard() {
                     <span style={{ fontSize:12, color:gpsIndicator.color, fontWeight:600 }}>
                       {gpsStatus==="active" ? "GPS active · Streaming coordinates every 2s" : gpsStatus==="waiting" ? "GPS waiting for lock · Student display live" : "GPS broadcast error"}
                     </span>
+                  </div>
+                )}
+
+                {/* Keeping Screen Active Instruction Banner */}
+                {tracking && (
+                  <div style={{
+                    background: dark ? "#1E1B4B" : "#EEF2FF",
+                    border: `1px solid ${dark ? "#4338CA" : "#C7D2FE"}`,
+                    borderRadius: 14,
+                    padding: "12px 16px",
+                    marginBottom: 18,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    boxShadow: dark ? "0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.01)"
+                  }}>
+                    <span style={{ fontSize: 16, marginTop: -2 }}>📱</span>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: dark ? "#E0E7FF" : "#3730A3", textAlign: "left" }}>Keep screen on & app open</p>
+                      <p style={{ margin: "4px 0 0", fontSize: 11, lineHeight: 1.4, color: dark ? "#C7D2FE" : "#4F46E5", textAlign: "left" }}>
+                        Screen Wake Lock is active to prevent sleep. Do not manually lock your phone screen or close the browser tab to keep location streaming continuously for students.
+                      </p>
+                    </div>
                   </div>
                 )}
 
