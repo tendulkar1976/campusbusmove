@@ -1071,6 +1071,11 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <div style={{ textAlign: "right" }}>
+                            {billingCycle === "yearly" && (
+                              <div style={{ fontSize: 13, textDecoration: "line-through", color: t.textMuted, marginBottom: 2 }}>
+                                ₹{(plan.monthly * 12).toLocaleString("en-IN")}
+                              </div>
+                            )}
                             <div style={{ fontSize: 24, fontWeight: 800, color: t.text, letterSpacing: "-1px" }}>₹{price.toLocaleString("en-IN")}</div>
                             <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>/{billingCycle === "yearly" ? "year" : "month"}</div>
                           </div>
