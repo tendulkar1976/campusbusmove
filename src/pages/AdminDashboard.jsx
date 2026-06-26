@@ -657,7 +657,7 @@ export default function AdminDashboard() {
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
                           <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
-                            {subscription.status === "trial" ? "Trial License" : `₹${subscription.amount?.toLocaleString("en-IN")}/${subscription.billing === "yearly" ? "year" : "month"}`}
+                            {subscription.status === "trial" ? "Trial License" : `₹${(subscription.billing === "yearly" ? currentPlan.yearly : currentPlan.monthly).toLocaleString("en-IN")}/${subscription.billing === "yearly" ? "year" : "month"}`}
                           </div>
                         </div>
                       </div>
@@ -990,7 +990,7 @@ export default function AdminDashboard() {
                       <div>
                         <div style={{ fontSize: 16, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
                         <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                          {subscription.status === "trial" ? "Trial License" : `₹${subscription.amount?.toLocaleString("en-IN")} / ${subscription.billing === "yearly" ? "year" : "month"}`}
+                          {subscription.status === "trial" ? "Trial License" : `₹${(subscription.billing === "yearly" ? currentPlan.yearly : currentPlan.monthly).toLocaleString("en-IN")} / ${subscription.billing === "yearly" ? "year" : "month"}`}
                         </div>
                       </div>
                       <div style={{ marginLeft: "auto", textAlign: "right" }}>
@@ -1052,7 +1052,7 @@ export default function AdminDashboard() {
                   {/* Pricing grid */}
                   {Object.values(PLANS).map(plan => {
                     const price = billingCycle === "yearly" ? plan.yearly : plan.monthly;
-                    const isCurrent = subscription?.plan === plan.id;
+                    const isCurrent = subscription?.plan === plan.id && subscription?.billing === billingCycle;
                     return (
                       <div key={plan.id} style={{ background: t.bgCard, border: `2px solid ${isCurrent ? plan.color : t.border}`, borderRadius: 12, padding: "24px", marginBottom: 16, position: "relative", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
                         {plan.id === "premium" && (
