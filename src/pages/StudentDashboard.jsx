@@ -18,15 +18,22 @@ function getETA(bLat, bLng, sLat, sLng, spd) {
 }
 function getDaysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
 function getTodayStr() { return new Date().toISOString().split("T")[0]; }
+function getInitials(name) {
+  if (!name) return "";
+  const parts = name.trim().replace(/[^a-zA-Z\s]/g, "").split(/\s+/);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 // ── Route cache — avoids Firestore re-fetch on every mount ──
 let routeCache = null;
 
 // ── Memoized sub-components ──
-const StatBox = memo(({ val, label, color, dark }) => (
-  <div style={{ flex: 1, textAlign: "center", padding: "8px 0" }}>
-    <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-1px", color, fontFamily: "'DM Sans', sans-serif" }}>{val}</div>
-    <div style={{ fontSize: 9, color: "#666", marginTop: 4, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>{label}</div>
+const StatBox = memo(({ val, label, color, dark, showBorder, t }) => (
+  <div style={{ flex: 1, textAlign: "center", padding: "4px 0", borderRight: showBorder ? `1px solid ${t.border}` : "none" }}>
+    <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px", color: t.text, fontFamily: "'Inter', sans-serif" }}>{val}</div>
+    <div style={{ fontSize: 10, color: t.textMuted, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700 }}>{label}</div>
   </div>
 ));
 
@@ -71,6 +78,41 @@ const AttendanceBadge = memo(({ status, dark }) => {
   );
   return null;
 });
+
+const TAB_ITEMS = [
+  {
+    id: "track",
+    label: "Tracking",
+    icon: (color) => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+        <circle cx="12" cy="10" r="3"></circle>
+      </svg>
+    )
+  },
+  {
+    id: "attendance",
+    label: "Attendance",
+    icon: (color) => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    )
+  },
+  {
+    id: "profile",
+    label: "Profile",
+    icon: (color) => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+    )
+  }
+];
 
 export default function StudentDashboard() {
   const { user, campusId, logout } = useAuth();
@@ -228,7 +270,7 @@ export default function StudentDashboard() {
   const handleRouteSelect = useCallback(r => setSelected(r), []);
 
   if (loading) return (
-    <div style={{ minHeight:"100vh", background:t.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, fontFamily:"'DM Sans',sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:t.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, fontFamily:"'Inter',sans-serif" }}>
       <div style={{ fontSize:36 }}>🚌</div>
       <div style={{ width: 140, height: 3, background: t.border, borderRadius: 2, overflow: "hidden", position: "relative" }}>
         <div style={{ height: "100%", width: "40%", background: t.accent, borderRadius: 2, position: "absolute", animation: "loadingSwipe 1.2s ease-in-out infinite alternate" }} />
@@ -241,9 +283,9 @@ export default function StudentDashboard() {
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:t.bg, fontFamily:"'DM Sans',sans-serif", color:t.text, willChange:"background", transition:"background 0.25s,color 0.25s" }}>
+    <div style={{ minHeight:"100vh", background:t.bg, fontFamily:"'Inter',sans-serif", color:t.text, willChange:"background", transition:"background 0.25s,color 0.25s" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         .custom-scroll::-webkit-scrollbar { height: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -253,7 +295,13 @@ export default function StudentDashboard() {
       {/* HEADER */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 20px", borderBottom:`1px solid ${t.border}`, position:"sticky", top:0, background:t.headerBg, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", zIndex:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ width:38, height:38, background:t.accent, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, boxShadow: `0 4px 12px ${t.accent}33` }}>🎓</div>
+          <div style={{ width:38, height:38, background:t.accent, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", boxShadow: `0 4px 12px ${t.accent}33` }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
+              <circle cx="8" cy="17" r="2" />
+              <circle cx="16" cy="17" r="2" />
+            </svg>
+          </div>
           <div>
             <div style={{ fontSize:16, fontWeight:800, color:t.text, letterSpacing: "-0.3px" }}>CampusMove</div>
             {myRoute ? <div style={{ fontSize:11, color:t.accent, fontWeight:700, marginTop: 1 }}>{myRoute.name}</div>
@@ -264,7 +312,7 @@ export default function StudentDashboard() {
           <button onClick={toggle} style={{ width:38, height:38, borderRadius:12, border:`1px solid ${t.border}`, background:t.bgCard, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", transition: "all 0.2s", boxShadow: dark ? "0 4px 10px rgba(0,0,0,0.3)" : "0 4px 10px rgba(0,0,0,0.03)" }}>
             {dark?"☀️":"🌙"}
           </button>
-          <button onClick={logout} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", border:`1px solid ${t.border}`, borderRadius:12, background:t.bgCard, color:t.textSub, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", transition: "all 0.2s", boxShadow: dark ? "0 4px 10px rgba(0,0,0,0.3)" : "0 4px 10px rgba(0,0,0,0.03)" }}>
+          <button onClick={logout} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", border:`1px solid ${t.border}`, borderRadius:12, background:t.bgCard, color:t.textSub, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'Inter',sans-serif", transition: "all 0.2s", boxShadow: dark ? "0 4px 10px rgba(0,0,0,0.3)" : "0 4px 10px rgba(0,0,0,0.03)" }}>
             <span>↩</span> Sign Out
           </button>
         </div>
@@ -272,24 +320,32 @@ export default function StudentDashboard() {
 
       {/* TABS CONTAINER */}
       <div style={{ display:"flex", padding:"12px 20px", background:t.bg, borderBottom:`1px solid ${t.border}` }}>
-        <div style={{ display:"flex", background:dark ? "#121212" : "#E5E5DF", borderRadius:14, padding:4, gap:4 }}>
-          {[["track","🗺️  Live Tracking"],["attendance","📅  My Attendance"],["profile","👤  My Profile"]].map(([v,l]) => (
-            <button key={v} onClick={() => handleTabChange(v)} style={{
-              padding:"8px 18px",
-              border:"none",
-              borderRadius:10,
-              background:tab===v ? (dark ? "#222" : "#FFFFFF") : "transparent",
-              cursor:"pointer",
-              fontSize:13,
-              fontWeight:700,
-              color:tab===v?t.text:t.textMuted,
-              boxShadow:tab===v ? (dark ? "0 2px 10px rgba(0,0,0,0.5)" : "0 2px 10px rgba(0,0,0,0.05)") : "none",
-              fontFamily:"'DM Sans',sans-serif",
-              transition:"all 0.2s ease-in-out"
-            }}>
-              {l}
-            </button>
-          ))}
+        <div style={{ display:"flex", background:dark ? "#1F2937" : "#E2E8F0", borderRadius:14, padding:4, gap:4 }}>
+          {TAB_ITEMS.map((item) => {
+            const isActive = tab === item.id;
+            const currentColor = isActive ? t.text : t.textMuted;
+            return (
+              <button key={item.id} onClick={() => handleTabChange(item.id)} style={{
+                padding:"8px 16px",
+                border:"none",
+                borderRadius:10,
+                background:isActive ? (dark ? "#111827" : "#FFFFFF") : "transparent",
+                cursor:"pointer",
+                fontSize:13,
+                fontWeight:700,
+                color:currentColor,
+                display:"flex",
+                alignItems:"center",
+                gap:8,
+                boxShadow:isActive ? (dark ? "0 2px 8px rgba(0,0,0,0.3)" : "0 2px 8px rgba(0,0,0,0.05)") : "none",
+                fontFamily:"'Inter',sans-serif",
+                transition:"all 0.2s ease-in-out"
+              }}>
+                {item.icon(currentColor)}
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -312,19 +368,25 @@ export default function StudentDashboard() {
                     {routes.map(r => (
                       <button key={r.id} onClick={() => handleRouteSelect(r)} style={{
                         flex:"0 0 auto",
-                        padding:"10px 18px",
-                        border:`1px solid ${selected?.id===r.id ? t.accent : t.border}`,
-                        borderRadius:12,
+                        padding:"8px 14px",
+                        border:`1.5px solid ${selected?.id===r.id ? t.accent : t.border}`,
+                        borderRadius:10,
                         background:selected?.id===r.id ? t.accentSub : t.bgCard,
                         color:selected?.id===r.id ? t.accent : t.textSub,
                         fontSize:12,
                         fontWeight:700,
                         cursor:"pointer",
-                        fontFamily:"'DM Sans',sans-serif",
+                        fontFamily:"'Inter',sans-serif",
                         whiteSpace:"nowrap",
-                        transition:"all 0.2s",
-                        boxShadow: selected?.id===r.id ? `0 4px 14px ${t.accent}15` : "none"
+                        transition:"all 0.25s",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        boxShadow: selected?.id===r.id ? `0 4px 12px ${t.accent}15` : "none"
                       }}>
+                        {selected?.id===r.id && (
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: t.accent }} />
+                        )}
                         {r.name}
                       </button>
                     ))}
@@ -334,17 +396,17 @@ export default function StudentDashboard() {
                 {/* Status Pill Banner */}
                 <div style={{ marginBottom:18 }}>
                   {isActive ? (
-                    <div style={{ display:"inline-flex", alignItems:"center", gap:10, padding:"10px 18px", borderRadius:24, background:t.pill.activeBg, border:`1px solid ${t.pill.activeBorder}`, fontSize:13, color:t.pill.activeText, fontWeight:700, boxShadow: `0 4px 12px ${t.pill.activeBorder}22` }}>
-                      <span style={{ width:10, height:10, borderRadius:"50%", background:"#4ADE80", display:"inline-block", boxShadow:"0 0 10px #4ADE80", animation: "pulse 1.4s infinite alternate" }}/>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, background:t.pill.activeBg, border:`1.5px solid ${t.pill.activeBorder}`, fontSize:12, color:t.pill.activeText, fontWeight:700, boxShadow: `0 4px 12px ${t.pill.activeBorder}15` }}>
+                      <span style={{ width:8, height:8, borderRadius:"50%", background:"#10B981", display:"inline-block", boxShadow:"0 0 8px #10B981", animation: "pulse 1.4s infinite alternate" }}/>
                       {selected?.name} is Live · {activeBus.speed||0} km/h
                     </div>
                   ) : (
-                    <div style={{ display:"inline-flex", alignItems:"center", gap:10, padding:"10px 18px", borderRadius:24, background:t.pill.inactiveBg, border:`1px solid ${t.pill.inactiveBorder}`, fontSize:13, color:t.pill.inactiveText, fontWeight:700 }}>
-                      <span style={{ width:10, height:10, borderRadius:"50%", background:t.textHint, display:"inline-block" }}/>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, background:t.pill.inactiveBg, border:`1.5px solid ${t.pill.inactiveBorder}`, fontSize:12, color:t.pill.inactiveText, fontWeight:700 }}>
+                      <span style={{ width:8, height:8, borderRadius:"50%", background:t.textHint, display:"inline-block" }}/>
                       Bus Offline
                     </div>
                   )}
-                  <style>{`@keyframes pulse{from{transform:scale(1);opacity:0.8}to{transform:scale(1.25);opacity:1}}`}</style>
+                  <style>{`@keyframes pulse{from{transform:scale(1);opacity:0.8}to{transform:scale(1.2);opacity:1}}`}</style>
                 </div>
 
                 {/* Stats Widget */}
@@ -352,16 +414,16 @@ export default function StudentDashboard() {
                   <div style={{
                     background:t.bgCard,
                     border:`1px solid ${t.border}`,
-                    borderRadius:18,
+                    borderRadius:14,
                     padding:"16px",
                     display:"flex",
                     justifyContent:"space-between",
                     alignItems:"center",
                     marginBottom:18,
-                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.03)"
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)"
                   }}>
-                    {[[eta!==null?`${eta} mins`:"—","ETA to Stop"],[distance!==null?(distance>1000?`${(distance/1000).toFixed(1)} km`:`${distance} m`):"—","Distance"],[activeBus?.speed||0,"Speed"]].map(([val,label],i) => (
-                      <StatBox key={i} val={val} label={label} color={t.accent} dark={dark}/>
+                    {[[eta!==null?`${eta} min`:"—","ETA to Stop"],[distance!==null?(distance>1000?`${(distance/1000).toFixed(1)} km`:`${distance} m`):"—","Distance"],[`${activeBus?.speed||0} km/h`,"Speed"]].map(([val,label],i) => (
+                      <StatBox key={i} val={val} label={label} color={t.accent} dark={dark} showBorder={i < 2} t={t} />
                     ))}
                   </div>
                 )}
@@ -376,15 +438,15 @@ export default function StudentDashboard() {
                   <div style={{
                     background: t.bgCard,
                     border: `1px solid ${t.border}`,
-                    borderRadius: 20,
+                    borderRadius: 14,
                     padding: "18px 20px",
                     marginBottom: 18,
-                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.03)"
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)"
                   }}>
                     <p style={{ fontSize:10, color:t.textMuted, fontWeight:800, textTransform:"uppercase", letterSpacing:"1.5px", marginBottom:16 }}>Stops & Real-time ETA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 20, position: "relative", paddingLeft: 18 }}>
                       {/* Central Line */}
-                      <div style={{ position: "absolute", left: 4, top: 8, bottom: 8, width: 2, background: dark ? "#222" : "#E5E5DF" }} />
+                      <div style={{ position: "absolute", left: 4, top: 8, bottom: 8, width: 2, background: dark ? t.border : t.borderStrong }} />
                       {selected.stops.map((stop, index) => {
                         const stopDist = activeBus && isActive ? getDistanceMeters(activeBus.lat, activeBus.lng, stop.lat, stop.lng) : null;
                         const isNear = stopDist !== null && stopDist <= 300;
@@ -400,16 +462,16 @@ export default function StudentDashboard() {
                               width: 10,
                               height: 10,
                               borderRadius: "50%",
-                              background: isNear ? "#4ADE80" : (dark ? "#333" : "#C5C5BF"),
-                              border: `2px solid ${isNear ? (dark ? "#0D1F12" : "#fff") : t.bgCard}`,
-                              boxShadow: isNear ? "0 0 10px #4ADE80" : "none",
+                              background: isNear ? "#10B981" : (dark ? "#374151" : "#CBD5E1"),
+                              border: `2px solid ${isNear ? (dark ? "#111827" : "#fff") : t.bgCard}`,
+                              boxShadow: isNear ? "0 0 8px rgba(16,185,129,0.6)" : "none",
                               zIndex: 1,
                               transition: "all 0.25s"
                             }} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: isNear ? "#4ADE80" : t.text, transition: "color 0.25s" }}>{stop.name}</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: isNear ? "#10B981" : t.text, transition: "color 0.25s" }}>{stop.name}</div>
                               {stopDist !== null && (
-                                <div style={{ fontSize: 11, color: isNear ? "#4ADE80" : t.textMuted, marginTop: 4 }}>
+                                <div style={{ fontSize: 11, color: isNear ? "#10B981" : t.textMuted, marginTop: 4 }}>
                                   {isNear ? "Active stop now" : `${stopDist > 1000 ? `${(stopDist/1000).toFixed(1)} km` : `${Math.round(stopDist)} m`} away`}
                                 </div>
                               )}
@@ -429,18 +491,23 @@ export default function StudentDashboard() {
                 {/* Attendance Prompt Geofence */}
                 {inGeofence && attendanceStatus==="pending" && markedDateRef.current!==getTodayStr() && (
                   <div style={{
-                    background:dark?"#0D1D30":"#EFF6FF",
-                    border:`1px solid ${dark?"#1E3A8A":"#BFDBFE"}`,
-                    borderRadius:18,
-                    padding:"18px",
-                    marginBottom:18,
-                    boxShadow: dark ? "0 8px 24px rgba(30,58,138,0.25)" : "0 8px 24px rgba(191,219,254,0.25)"
+                    background: dark ? t.accentSub : "#EFF6FF",
+                    border: `1.5px solid ${t.accentBorder}`,
+                    borderRadius: 14,
+                    padding: "18px",
+                    marginBottom: 18,
+                    boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)"
                   }}>
-                    <div style={{ fontSize:15, fontWeight:800, color:"#3B82F6", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>
-                      <span>🚌</span> Bus Nearby!
+                    <div style={{ fontSize:15, fontWeight:800, color: t.accent, marginBottom:6, display:"flex", alignItems:"center", gap:8 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
+                        <circle cx="8" cy="17" r="2" />
+                        <circle cx="16" cy="17" r="2" />
+                      </svg>
+                      Bus Nearby!
                     </div>
                     <div style={{ fontSize:13, color:t.textSub, marginBottom:16 }}>Mark present now. Auto-absent will trigger in 15 minutes.</div>
-                    <button onClick={() => markAttendance("present")} style={{ width:"100%", padding:"14px", border:"none", borderRadius:12, background:"#3B82F6", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.3)", transition: "all 0.2s" }}>
+                    <button onClick={() => markAttendance("present")} style={{ width:"100%", padding:"12px", border:"none", borderRadius:10, background:t.accent, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'Inter',sans-serif", boxShadow: `0 4px 12px ${t.accent}33`, transition: "all 0.2s" }}>
                       ✓ Mark Present
                     </button>
                   </div>
@@ -456,10 +523,10 @@ export default function StudentDashboard() {
         {tab==="attendance" && (
           <>
             <div style={{ display:"flex", gap:10, marginBottom:18 }}>
-              {[[presentCount,"#4ADE80","Present"],[totalCount-presentCount,"#F87171","Absent"],[`${pct}%`,pct>=75?"#4ADE80":"#F87171","Rate"]].map(([val,color,label],i) => (
-                <div key={i} style={{ flex:1, background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:16, padding:"16px 12px", textAlign:"center", boxShadow: dark ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.02)" }}>
-                  <div style={{ fontSize:26, fontWeight:800, color, letterSpacing:"-1px", fontFamily: "'DM Sans', sans-serif" }}>{val}</div>
-                  <div style={{ fontSize:10, color:t.textMuted, marginTop:4, textTransform:"uppercase", letterSpacing:"1px", fontWeight: 700 }}>{label}</div>
+              {[[presentCount,"#10B981","Present"],[totalCount-presentCount,"#EF4444","Absent"],[`${pct}%`,pct>=75?"#10B981":"#EF4444","Rate"]].map(([val,color,label],i) => (
+                <div key={i} style={{ flex:1, background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, padding:"16px 12px", textAlign:"center", boxShadow: dark ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize:26, fontWeight:800, color, letterSpacing:"-0.5px", fontFamily: "'Inter', sans-serif" }}>{val}</div>
+                  <div style={{ fontSize:10, color:t.textMuted, marginTop:4, textTransform:"uppercase", letterSpacing:"0.5px", fontWeight: 700 }}>{label}</div>
                 </div>
               ))}
             </div>
@@ -486,15 +553,15 @@ const CalendarView = memo(function CalendarView({ calYear, calMonth, attendanceL
   const today = getTodayStr();
 
   return (
-    <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:20, overflow:"hidden", boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)" }}>
-      <div style={{ padding:"16px 20px", borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyBetween: "center", justifyContent:"space-between" }}>
-        <button onClick={onPrev} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:34, height:34, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
-        <span style={{ fontSize:15, fontWeight:800, color:t.text }}>{monthName} {calYear}</span>
-        <button onClick={onNext} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:34, height:34, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center" }}>›</button>
+    <div style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, overflow:"hidden", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)" }}>
+      <div style={{ padding:"16px 20px", borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <button onClick={onPrev} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:34, height:34, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}>‹</button>
+        <span style={{ fontSize:15, fontWeight:800, color:t.text, fontFamily:"'Inter',sans-serif" }}>{monthName} {calYear}</span>
+        <button onClick={onNext} style={{ background:"none", border:`1px solid ${t.border}`, color:t.textSub, cursor:"pointer", fontSize:18, width:34, height:34, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}>›</button>
       </div>
       <div style={{ padding:"16px" }}>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6, marginBottom:10 }}>
-          {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d,i)=><div key={i} style={{ textAlign:"center", fontSize:11, color:t.textMuted, fontWeight:700, textTransform: "uppercase", letterSpacing: "0.5px" }}>{d}</div>)}
+          {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d,i)=><div key={i} style={{ textAlign:"center", fontSize:11, color:t.textMuted, fontWeight:700, textTransform: "uppercase", letterSpacing: "0.5px", fontFamily:"'Inter',sans-serif" }}>{d}</div>)}
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6 }}>
           {cells.map((d,i) => {
@@ -508,12 +575,12 @@ const CalendarView = memo(function CalendarView({ calYear, calMonth, attendanceL
             
             if (st === "present") {
               cellBg = dark ? "#0D1F12" : "#ECFDF5";
-              cellColor = dark ? "#4ADE80" : "#047857";
+              cellColor = "#10B981";
               cellBorder = `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`;
             } else if (st === "absent") {
               cellBg = dark ? "#1A0808" : "#FEF2F2";
-              cellColor = dark ? "#F87171" : "#B91C1C";
-              cellBorder = `1px solid ${dark ? "#3D1010" : "#FEE2E2"}`;
+              cellColor = "#EF4444";
+              cellBorder = `1px solid ${dark ? "#5D1010" : "#FCA5A5"}`;
             } else if (isToday) {
               cellBg = t.accentSub;
               cellColor = t.accent;
@@ -523,7 +590,7 @@ const CalendarView = memo(function CalendarView({ calYear, calMonth, attendanceL
             return (
               <div key={i} style={{
                 aspectRatio:"1",
-                borderRadius:10,
+                borderRadius:8,
                 display:"flex",
                 alignItems:"center",
                 justifyContent:"center",
@@ -532,15 +599,16 @@ const CalendarView = memo(function CalendarView({ calYear, calMonth, attendanceL
                 background: cellBg,
                 color: cellColor,
                 border: cellBorder,
+                fontFamily:"'Inter',sans-serif",
                 transition: "all 0.2s"
               }}>{d}</div>
             );
           })}
         </div>
       </div>
-      <div style={{ padding:"14px 20px", borderTop:`1px solid ${t.border}`, display:"flex", gap:20, background: dark ? "#0A0A0A" : "#FBFBFA" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:12, height:12, borderRadius:4, background:dark?"#0D1F12":"#ECFDF5", border:`1px solid ${dark?"#1E4D2B":"#6EE7B7"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600 }}>Present</span></div>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:12, height:12, borderRadius:4, background:dark?"#1A0808":"#FEF2F2", border:`1px solid ${dark?"#3D1010":"#FCA5A5"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600 }}>Absent</span></div>
+      <div style={{ padding:"14px 20px", borderTop:`1px solid ${t.border}`, display:"flex", gap:20, background: dark ? "#111827" : "#F8FAFC" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:"#10B981", border:`1px solid ${dark?"#1E4D2B":"#A7F3D0"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600, fontFamily:"'Inter',sans-serif" }}>Present</span></div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:"#EF4444", border:`1px solid ${dark?"#5D1010":"#FCA5A5"}` }}/><span style={{ fontSize:12, color:t.textSub, fontWeight: 600, fontFamily:"'Inter',sans-serif" }}>Absent</span></div>
       </div>
     </div>
   );
@@ -668,40 +736,49 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
       {!isTeacher && profile && (
         <div style={{
           width: "100%",
-          background: dark ? "linear-gradient(135deg, #1E293B, #0F172A)" : "linear-gradient(135deg, #FFFFFF, #F1F5F9)",
-          border: `1.5px solid ${isExpired ? "#DC2626" : isNearExpiry ? "#F59E0B" : t.border}`,
-          borderRadius: 20,
+          background: dark ? `linear-gradient(135deg, ${t.bgCard} 0%, #172554 100%)` : `linear-gradient(135deg, ${t.bgCard} 0%, #EFF6FF 100%)`,
+          border: `1.5px solid ${isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : t.border}`,
+          borderRadius: 14,
           padding: "18px 20px",
-          boxShadow: dark ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 30px rgba(0,0,0,0.04)",
+          boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,0,0,0.02)",
           position: "relative",
           overflow: "hidden"
         }}>
           {/* Card background watermarks/decorations */}
-          <div style={{
-            position: "absolute", right: "-30px", bottom: "-30px", fontSize: 150,
-            opacity: 0.05, pointerEvents: "none", transform: "rotate(-15deg)"
-          }}>🎓</div>
+          <svg style={{ position: "absolute", right: "-20px", bottom: "-20px", opacity: dark ? 0.03 : 0.05, pointerEvents: "none", transform: "rotate(-15deg)" }} width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
+            <circle cx="8" cy="17" r="2" />
+            <circle cx="16" cy="17" r="2" />
+          </svg>
 
           {/* Card Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: `1px solid ${t.border}`, paddingBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${t.border}`, paddingBottom: 12 }}>
             <div>
-              <div style={{ fontSize: 10, color: t.accent, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase" }}>Alliance University</div>
+              <div style={{ fontSize: 9, color: t.textMuted, textTransform: "uppercase", fontWeight: 800, letterSpacing: 1.5 }}>Alliance University</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginTop: 2 }}>STUDENT BUS PASS</div>
             </div>
-            <div style={{ fontSize: 24 }}>🚌</div>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
+              <circle cx="8" cy="17" r="2" />
+              <circle cx="16" cy="17" r="2" />
+            </svg>
           </div>
 
           {/* Card Body */}
           <div style={{ margin: "18px 0", display: "flex", gap: 14, alignItems: "center" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: t.accentSub, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, border: `1.5px solid ${t.accent}` }}>
-              🎓
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              background: t.accentSub, display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16, fontWeight: 700, color: t.accent, border: `1.5px solid ${t.accent}`
+            }}>
+              {getInitials(profile.name)}
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{profile.name}</div>
               {profile.username && (
-                <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 1 }}>@{profile.username}</div>
+                <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 2 }}>@{profile.username}</div>
               )}
-              <div style={{ fontSize: 12, color: t.textSub, marginTop: 2 }}>{form.program || "Course details not set"}</div>
+              <div style={{ fontSize: 12, color: t.textSub, marginTop: 3 }}>{form.program || "Course details not set"}</div>
             </div>
           </div>
 
@@ -713,7 +790,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
             </div>
             <div>
               <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Expiry Date</div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: isExpired ? "#DC2626" : t.text, marginTop: 2 }}>{form.validityMonth} {form.validityYear}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: isExpired ? "#EF4444" : t.text, marginTop: 2 }}>{form.validityMonth} {form.validityYear}</div>
             </div>
           </div>
 
@@ -721,12 +798,12 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 10, color: t.textMuted }}>Pass Status:</div>
             <div style={{
-              fontSize: 11, fontWeight: 800, borderRadius: 8, padding: "4px 10px",
-              background: isExpired ? "#FEF2F2" : isNearExpiry ? "#FFF7ED" : "#ECFDF5",
-              color: isExpired ? "#DC2626" : isNearExpiry ? "#C2410C" : "#047857",
-              border: `1px solid ${isExpired ? "#FCA5A5" : isNearExpiry ? "#FDBA74" : "#A7F3D0"}`
+              fontSize: 11, fontWeight: 800, borderRadius: 6, padding: "4px 8px",
+              background: isExpired ? (dark ? "#2A0808" : "#FEF2F2") : isNearExpiry ? (dark ? "#2A1F0C" : "#FFF7ED") : (dark ? "#0D1F12" : "#ECFDF5"),
+              color: isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : "#10B981",
+              border: `1px solid ${isExpired ? (dark ? "#5D1010" : "#FCA5A5") : isNearExpiry ? (dark ? "#5D3E10" : "#FDBA74") : (dark ? "#1E4D2B" : "#A7F3D0")}`
             }}>
-              {isExpired ? "🔴 Pass Expired" : isNearExpiry ? `⚠️ Expires in ${daysLeft} days` : `🟢 Active (${daysLeft} days left)`}
+              {isExpired ? "Expired" : isNearExpiry ? `${daysLeft} days remaining` : "Active"}
             </div>
           </div>
         </div>

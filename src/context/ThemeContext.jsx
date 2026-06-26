@@ -18,58 +18,58 @@ export function ThemeProvider({ children }) {
 
   // All colors in one place — swap here to change everywhere
   const t = dark ? {
-    bg:          "#0A0A0A",
-    bgCard:      "#111111",
-    bgCard2:     "#161616",
-    border:      "#1E1E1E",
-    borderStrong:"#2A2A2A",
-    text:        "#FFFFFF",
-    textSub:     "#AAAAAA",
-    textMuted:   "#666666",
-    textHint:    "#444444",
-    accent:      "#FF5A1F",
-    accentSub:   "#150D09",
-    accentBorder:"#3D1F0A",
-    tabActive:   "#FF5A1F",
-    tabInactive: "#555555",
-    btnText:     "#CCCCCC",
-    headerBg:    "rgba(10,10,10,0.95)",
-    inputBg:     "#0A0A0A",
-    inputBorder: "#1E1E1E",
+    bg:          "#0B0F19", // Deep Navy Charcoal
+    bgCard:      "#111827", // Modern Dark Card
+    bgCard2:     "#1F2937", // Secondary Dark Card
+    border:      "#1F2937", // Clean slate border
+    borderStrong:"#374151", // Stronger divider
+    text:        "#F9FAFB", // High contrast white
+    textSub:     "#E5E7EB", // Medium gray text
+    textMuted:   "#9CA3AF", // Soft gray details
+    textHint:    "#6B7280", // Hint text
+    accent:      "#3B82F6", // Electric Corporate Blue
+    accentSub:   "#1E3A8A", // Deep navy highlight
+    accentBorder:"#2563EB", // Blue accent border
+    tabActive:   "#3B82F6",
+    tabInactive: "#9CA3AF",
+    btnText:     "#F3F4F6",
+    headerBg:    "rgba(11,15,25,0.92)",
+    inputBg:     "#111827",
+    inputBorder: "#1F2937",
     pill: {
-      activeBg:    "#0A1A0D",
-      activeBorder:"#1A3D22",
-      activeText:  "#4ADE80",
-      inactiveBg:  "#111",
-      inactiveBorder:"#1E1E1E",
-      inactiveText:"#666",
+      activeBg:    "#1E3A8A",
+      activeBorder:"#2563EB",
+      activeText:  "#93C5FD",
+      inactiveBg:  "#1F2937",
+      inactiveBorder:"#374151",
+      inactiveText:"#9CA3AF",
     },
   } : {
-    bg:          "#F5F5F0",
-    bgCard:      "#FFFFFF",
-    bgCard2:     "#F0F0EB",
-    border:      "#E0E0D8",
-    borderStrong:"#C8C8C0",
-    text:        "#111111",
-    textSub:     "#444444",
-    textMuted:   "#666666",
-    textHint:    "#999999",
-    accent:      "#E04800",
-    accentSub:   "#FFF0EB",
-    accentBorder:"#FFD0B8",
-    tabActive:   "#E04800",
-    tabInactive: "#777777",
-    btnText:     "#333333",
-    headerBg:    "rgba(245,245,240,0.95)",
+    bg:          "#F8FAFC", // Clean Slate Gray 50
+    bgCard:      "#FFFFFF", // Pure Crisp White
+    bgCard2:     "#F1F5F9", // Slate Gray 100
+    border:      "#E2E8F0", // Slate Gray 200
+    borderStrong:"#CBD5E1", // Slate Gray 300
+    text:        "#0F172A", // Slate Gray 900
+    textSub:     "#475569", // Slate Gray 600
+    textMuted:   "#64748B", // Slate Gray 500
+    textHint:    "#94A3B8", // Slate Gray 400
+    accent:      "#2563EB", // Trust Blue 600
+    accentSub:   "#EFF6FF", // Light Blue Highlight 50
+    accentBorder:"#BFDBFE", // Blue border highlight 200
+    tabActive:   "#2563EB",
+    tabInactive: "#64748B",
+    btnText:     "#475569",
+    headerBg:    "rgba(255,255,255,0.92)",
     inputBg:     "#FFFFFF",
-    inputBorder: "#D8D8D0",
+    inputBorder: "#E2E8F0",
     pill: {
-      activeBg:    "#ECFDF5",
-      activeBorder:"#6EE7B7",
-      activeText:  "#065F46",
-      inactiveBg:  "#F5F5F0",
-      inactiveBorder:"#D8D8D0",
-      inactiveText:"#777",
+      activeBg:    "#EFF6FF",
+      activeBorder:"#BFDBFE",
+      activeText:  "#1E40AF",
+      inactiveBg:  "#F1F5F9",
+      inactiveBorder:"#E2E8F0",
+      inactiveText:"#475569",
     },
   };
 
