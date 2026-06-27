@@ -176,13 +176,17 @@ export default function Login() {
       } else {
         if (!form.name.trim()) { setError("Enter your full name."); setLoading(false); setBusPhase("idle"); return; }
         const cred = await createUserWithEmailAndPassword(auth, virtualEmail, form.password);
-        await setDoc(doc(db, "users", cred.user.uid), {
+        const profile = {
           name: form.name.trim(),
           username: username,
           role: role,
           campusId: "alliance-bangalore",
           createdAt: Date.now(),
-        });
+        };
+        if (role === "teacher") {
+          profile.pickupPoint = (form.pickupPoint || "").trim();
+        }
+        await setDoc(doc(db, "users", cred.user.uid), profile);
         setTimeout(() => navigate("/student"), 600);
       }
     } catch (err) {
@@ -580,9 +584,21 @@ export default function Login() {
                     </>
                   )}
 
-                  {/* TEACHER SIGN IN FLOW */}
+                  {/* TEACHER FORM */}
                   {role === "teacher" && (
                     <>
+                      {mode === "register" && (
+                        <>
+                          <div>
+                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Full Name</label>
+                            <input name="name" value={form.name||""} onChange={handleChange} placeholder="e.g. Prof. Nair" style={inp} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Pick Up Stop</label>
+                            <input name="pickupPoint" value={form.pickupPoint||""} onChange={handleChange} placeholder="e.g. Silk Board Junction" style={inp} />
+                          </div>
+                        </>
+                      )}
                       <div>
                         <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Username</label>
                         <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. prof.nair or AU-FAC-992" style={inp} autoCapitalize="none" autoCorrect="off" />
@@ -598,8 +614,13 @@ export default function Login() {
                       {error && <div className="err-shake" style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:8, padding:"10px 14px" }}><p style={{ color:"#DC2626", fontSize:12, margin:0, fontWeight:500 }}>⚠ {error}</p></div>}
                       <button onClick={handleUserLogin} disabled={loading}
                         style={{ width:"100%", background:loading?"#93C5FD":"#1D4ED8", border:"none", borderRadius:10, padding:"14px 0", color:"#fff", fontSize:14, fontWeight:700, cursor:loading?"not-allowed":"pointer", fontFamily:"'Inter',sans-serif" }}>
-                        {loading ? "Please wait..." : "Sign In →"}
+                        {loading ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
                       </button>
+                      <div style={{ textAlign:"center", marginTop:10 }}>
+                        <button type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }} style={{ background:"none", border:"none", color:"#1D4ED8", fontSize:13, fontWeight:600, cursor:"pointer", padding:0, fontFamily:"'Inter',sans-serif" }}>
+                          {mode === "login" ? "Don't have an account? Register" : "Already have an account? Sign In"}
+                        </button>
+                      </div>
                     </>
                   )}
 

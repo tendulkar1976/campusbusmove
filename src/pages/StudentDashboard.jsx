@@ -865,17 +865,16 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
             <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Full Name</label>
             <input name="name" value={form.name} onChange={handleChange} style={inputStyle} placeholder="Your name" />
           </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Pick Up Stop</label>
+            <input name="pickupPoint" value={form.pickupPoint || ""} onChange={handleChange} style={inputStyle} placeholder="e.g. Silk Board Junction" />
+          </div>
 
           {!isTeacher && (
             <>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Program / Course</label>
                 <input name="program" value={form.program} onChange={handleChange} style={inputStyle} placeholder="e.g. B.Tech Computer Science" />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Pick Up Stop</label>
-                <input name="pickupPoint" value={form.pickupPoint} onChange={handleChange} style={inputStyle} placeholder="e.g. Silk Board Junction" />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
