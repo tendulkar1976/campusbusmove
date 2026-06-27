@@ -52,8 +52,8 @@ const AttendanceBadge = memo(({ status, dark }) => {
     }}>
       <span style={{ fontSize: 24 }}>✅</span>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: dark?"#4ADE80":"#047857" }}>Attendance Marked</div>
-        <div style={{ fontSize: 12, color: dark?"#888":"#6B7280", marginTop: 2 }}>Marked present for today</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: dark?"#4ADE80":"#047857" }}>Auto-Attendance Verified</div>
+        <div style={{ fontSize: 12, color: dark?"#888":"#6B7280", marginTop: 2 }}>System automatically marked you present</div>
       </div>
     </div>
   );
@@ -230,16 +230,15 @@ export default function StudentDashboard() {
     }
 
     const bd = getDistanceMeters(myLocation.lat, myLocation.lng, activeBus.lat, activeBus.lng);
-    const inside = bd <= 300;
-    setInGeofence(inside);
+    const inside = bd <= 150; // Auto-mark present when within 150m
+    const approaching = bd <= 400; // Show approaching info within 400m
+    setInGeofence(approaching);
+    
     const today = getTodayStr();
     if (inside && markedDateRef.current!==today) {
-      if (attendanceStatus!=="pending") setAttendanceStatus("pending");
-      if (!geofenceTimerRef.current) geofenceTimerRef.current=setTimeout(()=>markAttendance("absent"),15*60*1000);
-    } else if (!inside && attendanceStatus==="pending") {
-      clearTimeout(geofenceTimerRef.current); geofenceTimerRef.current=null; setAttendanceStatus(null);
+      markAttendance("present");
     }
-  }, [activeBus, myLocation, selected, attendanceStatus]);
+  }, [activeBus, myLocation, selected, attendanceStatus, markAttendance]);
 
   const markAttendance = useCallback(async status => {
     const today = getTodayStr();
@@ -497,8 +496,8 @@ export default function StudentDashboard() {
                   </div>
                 )}
 
-                {/* Attendance Prompt Geofence */}
-                {inGeofence && attendanceStatus==="pending" && markedDateRef.current!==getTodayStr() && (
+                {/* Attendance Approaching Card */}
+                {inGeofence && markedDateRef.current!==getTodayStr() && (
                   <div style={{
                     background: dark ? t.accentSub : "#EFF6FF",
                     border: `1.5px solid ${t.accentBorder}`,
@@ -513,12 +512,11 @@ export default function StudentDashboard() {
                         <circle cx="8" cy="17" r="2" />
                         <circle cx="16" cy="17" r="2" />
                       </svg>
-                      Bus Nearby!
+                      Bus is Approaching!
                     </div>
-                    <div style={{ fontSize:13, color:t.textSub, marginBottom:16 }}>Mark present now. Auto-absent will trigger in 15 minutes.</div>
-                    <button onClick={() => markAttendance("present")} style={{ width:"100%", padding:"12px", border:"none", borderRadius:10, background:t.accent, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"'Inter',sans-serif", boxShadow: `0 4px 12px ${t.accent}33`, transition: "all 0.2s" }}>
-                      ✓ Mark Present
-                    </button>
+                    <div style={{ fontSize:13, color:t.textSub, margin:0, textAlign: "left", lineHeight: 1.5 }}>
+                      The bus is currently {distance!==null ? `${distance} meters` : "nearby"} away. <strong>Auto-attendance</strong> will verify and mark you present when the bus arrives.
+                    </div>
                   </div>
                 )}
 
