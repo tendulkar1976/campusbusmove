@@ -745,28 +745,31 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
       {!isTeacher && profile && (
         <div style={{
           width: "100%",
-          background: dark ? `linear-gradient(135deg, ${t.bgCard} 0%, #172554 100%)` : `linear-gradient(135deg, ${t.bgCard} 0%, #EFF6FF 100%)`,
-          border: `1.5px solid ${isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : t.border}`,
-          borderRadius: 12,
-          padding: "18px 20px",
-          boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)",
+          background: dark 
+            ? "linear-gradient(135deg, #0F172A 0%, #0F1E36 50%, #1E1B4B 100%)" 
+            : "linear-gradient(135deg, #FFFFFF 0%, #FFFDFB 50%, #FFF5EE 100%)",
+          border: `1.5px solid ${isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : (dark ? "#1E293B" : "#FED7AA")}`,
+          borderRadius: 16,
+          padding: "20px 24px",
+          boxShadow: dark ? "0 8px 32px rgba(99, 102, 241, 0.18)" : "0 8px 32px rgba(251, 146, 60, 0.15)",
           position: "relative",
-          overflow: "hidden"
+          overflow: "hidden",
+          transition: "all 0.25s ease"
         }}>
           {/* Card background watermarks/decorations */}
-          <svg style={{ position: "absolute", right: "-20px", bottom: "-20px", opacity: dark ? 0.03 : 0.05, pointerEvents: "none", transform: "rotate(-15deg)" }} width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg style={{ position: "absolute", right: "-20px", bottom: "-20px", opacity: dark ? 0.03 : 0.06, pointerEvents: "none", transform: "rotate(-15deg)" }} width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
             <circle cx="8" cy="17" r="2" />
             <circle cx="16" cy="17" r="2" />
           </svg>
 
           {/* Card Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1.5px solid ${t.border}`, paddingBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1.5px solid ${dark ? "#1E293B" : "#FFEDD5"}`, paddingBottom: 12 }}>
             <div>
               <div style={{ fontSize: 9, color: t.textMuted, textTransform: "uppercase", fontWeight: 800, letterSpacing: 1.5 }}>Alliance University</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginTop: 2 }}>STUDENT BUS PASS</div>
             </div>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={dark ? "#3B82F6" : "#FF5A1F"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
               <circle cx="8" cy="17" r="2" />
               <circle cx="16" cy="17" r="2" />
@@ -776,23 +779,39 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
           {/* Card Body */}
           <div style={{ margin: "18px 0", display: "flex", gap: 14, alignItems: "center" }}>
             <div style={{
-              width: 56, height: 56, borderRadius: "50%",
-              background: t.accentSub, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 16, fontWeight: 700, color: t.accent, border: `1.5px solid ${t.accent}`
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: dark ? "#1E293B" : "#FFF0E6",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+              fontWeight: 700,
+              color: dark ? "#3B82F6" : "#FF5A1F",
+              border: `1.5px solid ${dark ? "#3B82F6" : "#FF5A1F"}`
             }}>
               {getInitials(profile.name)}
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{profile.name}</div>
               {profile.username && (
-                <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 2 }}>@{profile.username}</div>
+                <div style={{ fontSize: 11, color: dark ? "#3B82F6" : "#FF5A1F", fontWeight: 600, marginTop: 2 }}>@{profile.username}</div>
               )}
               <div style={{ fontSize: 12, color: t.textSub, marginTop: 3 }}>{form.program || "Course details not set"}</div>
             </div>
           </div>
 
           {/* Card Meta details */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 10, background: dark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)", padding: 12, borderRadius: 10, border: `1.5px solid ${t.border}` }}>
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "1.2fr 1fr", 
+            gap: 10, 
+            background: dark ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)", 
+            padding: 12, 
+            borderRadius: 12, 
+            border: `1.5px solid ${dark ? "#1E293B" : "#FFEDD5"}` 
+          }}>
             <div>
               <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Pick Up Stop</div>
               <div style={{ fontSize: 11, fontWeight: 800, color: t.text, marginTop: 2 }}>{form.pickupPoint || "Not configured"}</div>
