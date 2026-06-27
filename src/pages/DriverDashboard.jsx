@@ -492,6 +492,16 @@ export default function DriverDashboard() {
                 {error && (
                   <div style={{ background:dark?"#2A0808":"#FEF2F2", border:`1px solid ${dark?"#5D1010":"#FEE2E2"}`, borderRadius:14, padding:"14px", marginBottom:14 }}>
                     <p style={{ color:dark?"#F87171":"#B91C1C", fontSize:13, margin:0, fontWeight: 600 }}>⚠️ {error}</p>
+                    {(error.includes("stalled") || error.includes("timeout") || error.includes("weak")) && (
+                      <div style={{ marginTop: 10, fontSize: 11, color: dark ? "#FCA5A5" : "#7F1D1D", textAlign: "left", lineHeight: 1.5 }}>
+                        <p style={{ margin: "4px 0", fontWeight: 700 }}>Quick Troubleshooting:</p>
+                        <ul style={{ margin: 0, paddingLeft: 16 }}>
+                          <li>Ensure device location/GPS is enabled in quick settings.</li>
+                          <li>Confirm Chrome/Browser app has system-level permission to access location.</li>
+                          <li>If indoors, step outside or near a window to get a clear sky view for GPS lock.</li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
 
