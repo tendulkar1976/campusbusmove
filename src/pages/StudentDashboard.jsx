@@ -805,9 +805,9 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
 
           {/* Card Expiry countdown badge */}
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 10, color: t.textMuted, display: "flex", gap: 4, alignItems: "center" }}>
-              <span>Pass Status:</span>
-              <span style={{ color: isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : t.textSub, fontWeight: 700 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <span style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Pass Status:</span>
+              <span style={{ fontSize: 10, color: isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : t.textSub, fontWeight: 700 }}>
                 ({isExpired ? "Expired" : `${daysLeft} days remaining`})
               </span>
             </div>
