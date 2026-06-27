@@ -149,9 +149,14 @@ const LeafletMapView = memo(function LeafletMapView({ busLocation, busMoving, ro
 
   useEffect(() => {
     if (!mapInstance.current) return;
-    if (!busLocation) {
-      if (busMarker.current) busMarker.current.setIcon(getBusIcon(false));
+    if (!busLocation || typeof busLocation.lat !== "number" || isNaN(busLocation.lat) || typeof busLocation.lng !== "number" || isNaN(busLocation.lng)) {
+      if (busMarker.current) {
+        busMarker.current.remove();
+        busMarker.current = null;
+      }
       cancelAnimationFrame(animFrameRef.current);
+      prevBusPos.current = null;
+      currentPosRef.current = null;
       return;
     }
 
@@ -198,7 +203,14 @@ const LeafletMapView = memo(function LeafletMapView({ busLocation, busMoving, ro
   }, [busLocation, busMoving]);
 
   useEffect(() => {
-    if (!mapInstance.current || !myLocation) return;
+    if (!mapInstance.current) return;
+    if (!myLocation || typeof myLocation.lat !== "number" || isNaN(myLocation.lat) || typeof myLocation.lng !== "number" || isNaN(myLocation.lng)) {
+      if (myMarker.current) {
+        myMarker.current.remove();
+        myMarker.current = null;
+      }
+      return;
+    }
     const { lat, lng } = myLocation;
     if (!myMarker.current) {
       myMarker.current = L.marker([lat, lng], { icon: MY_ICON, zIndexOffset: 50 }).addTo(mapInstance.current);
@@ -290,8 +302,14 @@ const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, rout
   // Bus Marker and smooth tracking
   useEffect(() => {
     if (!mapInstance.current) return;
-    if (!busLocation) {
+    if (!busLocation || typeof busLocation.lat !== "number" || isNaN(busLocation.lat) || typeof busLocation.lng !== "number" || isNaN(busLocation.lng)) {
+      if (busMarker.current) {
+        busMarker.current.setMap(null);
+        busMarker.current = null;
+      }
       cancelAnimationFrame(animFrameRef.current);
+      prevBusPos.current = null;
+      currentPosRef.current = null;
       return;
     }
 
@@ -352,7 +370,14 @@ const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, rout
 
   // My location marker
   useEffect(() => {
-    if (!mapInstance.current || !myLocation) return;
+    if (!mapInstance.current) return;
+    if (!myLocation || typeof myLocation.lat !== "number" || isNaN(myLocation.lat) || typeof myLocation.lng !== "number" || isNaN(myLocation.lng)) {
+      if (myMarker.current) {
+        myMarker.current.setMap(null);
+        myMarker.current = null;
+      }
+      return;
+    }
     const { lat, lng } = myLocation;
 
     const myIcon = {

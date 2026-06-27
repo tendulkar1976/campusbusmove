@@ -208,7 +208,7 @@ export default function StudentDashboard() {
 
   // ── ETA + geofence ──
   useEffect(() => {
-    if (!activeBus || activeBus.active!==true || !myLocation || !selected) {
+    if (!activeBus || activeBus.active!==true || typeof activeBus.lat !== "number" || isNaN(activeBus.lat) || typeof activeBus.lng !== "number" || isNaN(activeBus.lng) || !myLocation || !selected) {
       setEta(null); setDistance(null); setInGeofence(false); return;
     }
 
@@ -261,7 +261,11 @@ export default function StudentDashboard() {
 
   // ── Derived values ──
   const isActive     = useMemo(() => activeBus?.active===true, [activeBus]);
-  const busMapLoc    = useMemo(() => isActive ? { lat: activeBus.lat, lng: activeBus.lng } : null, [isActive, activeBus]);
+  const busMapLoc    = useMemo(() => {
+    return (isActive && typeof activeBus.lat === "number" && !isNaN(activeBus.lat) && typeof activeBus.lng === "number" && !isNaN(activeBus.lng)) 
+      ? { lat: activeBus.lat, lng: activeBus.lng } 
+      : null;
+  }, [isActive, activeBus]);
   const presentCount = useMemo(() => Object.values(attendanceLog).filter(v=>v==="present").length, [attendanceLog]);
   const totalCount   = useMemo(() => Object.values(attendanceLog).length, [attendanceLog]);
   const pct          = useMemo(() => totalCount>0?Math.round(presentCount/totalCount*100):0, [presentCount, totalCount]);
@@ -453,9 +457,9 @@ export default function StudentDashboard() {
                       {/* Central Line */}
                       <div style={{ position: "absolute", left: 4, top: 8, bottom: 8, width: 2, background: dark ? t.border : t.borderStrong }} />
                       {selected.stops.map((stop, index) => {
-                        const stopDist = activeBus && isActive ? getDistanceMeters(activeBus.lat, activeBus.lng, stop.lat, stop.lng) : null;
+                        const stopDist = activeBus && isActive && typeof activeBus.lat === "number" && !isNaN(activeBus.lat) && typeof activeBus.lng === "number" && !isNaN(activeBus.lng) ? getDistanceMeters(activeBus.lat, activeBus.lng, stop.lat, stop.lng) : null;
                         const isNear = stopDist !== null && stopDist <= 300;
-                        const stopEta = activeBus && isActive ? getETA(activeBus.lat, activeBus.lng, stop.lat, stop.lng, activeBus.speed).mins : null;
+                        const stopEta = activeBus && isActive && typeof activeBus.lat === "number" && !isNaN(activeBus.lat) && typeof activeBus.lng === "number" && !isNaN(activeBus.lng) ? getETA(activeBus.lat, activeBus.lng, stop.lat, stop.lng, activeBus.speed).mins : null;
                         
                         return (
                           <div key={index} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative" }}>

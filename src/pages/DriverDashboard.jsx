@@ -156,7 +156,11 @@ export default function DriverDashboard() {
 
         // If we got a highly accurate location, make sure we keep high accuracy turned on
         if (!useHighAccuracyRef.current && acc && acc < 20) {
+          console.log("Low accuracy watch returned highly accurate position. Upgrading to high accuracy.");
           useHighAccuracyRef.current = true;
+          setTimeout(() => {
+            if (trackingRef.current) startWatchingGPS();
+          }, 0);
         }
 
         if (now - lastFirebaseUpdate.current >= 2000) {
@@ -220,7 +224,7 @@ export default function DriverDashboard() {
     tripDocRef.current = tripDoc.id;
 
     writeToRTDB(null, null, 0, 0, true); // Do not write fake coordinates, only write active state
-    lastFirebaseUpdate.current = Date.now();
+    lastFirebaseUpdate.current = 0; // Set to 0 so first position writes immediately
     lastLocationUpdateTimestamp.current = Date.now();
     useHighAccuracyRef.current = true; // reset to try high accuracy first
 
@@ -261,6 +265,8 @@ export default function DriverDashboard() {
       myLocation?.lng || null,
       0, 0, false
     );
+
+    setMyLocation(null);
 
     if (tripDocRef.current) {
       await updateDoc(doc(db, "trips", tripDocRef.current), {
