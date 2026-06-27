@@ -162,10 +162,10 @@ export default function AdminDashboard() {
     if (!newUser.name.trim()) return setUserCreateError("Please enter full name.");
     if (!newUser.identifier.trim()) return setUserCreateError("Please enter username, phone, or email.");
     
-    if (newUser.role === "student") {
+    if (newUser.role === "student" || newUser.role === "teacher") {
       const id = newUser.identifier.trim().toLowerCase();
       if (id.includes("..") || id.startsWith(".") || id.endsWith(".") || /[^a-z0-9.]/.test(id)) {
-        return setUserCreateError("Invalid username format. Student username can only contain lowercase letters, numbers, and single dots (no spaces or consecutive/leading/trailing dots).");
+        return setUserCreateError("Invalid username format. Username can only contain lowercase letters, numbers, and single dots (no spaces or consecutive/leading/trailing dots).");
       }
     }
     
@@ -196,7 +196,7 @@ export default function AdminDashboard() {
         blocked: false,
         createdAt: Date.now()
       };
-      if (newUser.role === "student") {
+      if (newUser.role === "student" || newUser.role === "teacher") {
         profile.username = newUser.identifier.trim().toLowerCase();
       } else if (newUser.role === "driver") {
         profile.phone = "+91" + newUser.identifier.trim();
@@ -953,12 +953,12 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ marginBottom: 14 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>
-                      {newUser.role === "student" ? "Username" : newUser.role === "driver" ? "Phone Number (10 digits)" : "Email Address"}
+                      {(newUser.role === "student" || newUser.role === "teacher") ? "Username" : newUser.role === "driver" ? "Phone Number (10 digits)" : "Email Address"}
                     </label>
                     <input
                       value={newUser.identifier}
                       onChange={e => setNewUser({ ...newUser, identifier: e.target.value })}
-                      placeholder={newUser.role === "student" ? "e.g. john123" : newUser.role === "driver" ? "e.g. 9876543210" : "e.g. admin@test.com"}
+                      placeholder={(newUser.role === "student" || newUser.role === "teacher") ? "e.g. john123 or prof.nair" : newUser.role === "driver" ? "e.g. 9876543210" : "e.g. admin@test.com"}
                       maxLength={newUser.role === "driver" ? 10 : undefined}
                       style={{ ...S.input, marginBottom: 0 }}
                     />
