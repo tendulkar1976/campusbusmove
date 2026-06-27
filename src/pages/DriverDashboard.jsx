@@ -33,6 +33,7 @@ export default function DriverDashboard() {
   const [elapsed, setElapsed]                 = useState(0);
   const [trips, setTrips]                     = useState([]);
   const [loading, setLoading]                 = useState(true);
+  const [gpsAlert, setGpsAlert]               = useState(null); // null | 'blocked' | 'off'
 
   const watchIdRef         = useRef(null);
   const lastFirebaseUpdate = useRef(0);
@@ -211,9 +212,9 @@ export default function DriverDashboard() {
       () => {},
       (err) => {
         if (err.code === 1) {
-          alert("⚠️ Location Access Blocked\n\nPlease allow location access for this site in your browser settings to track the trip.");
+          setGpsAlert("blocked");
         } else if (err.code === 2) {
-          alert("⚠️ GPS / Location is OFF\n\nPlease enable Location/GPS in your phone's quick settings panel so students can track your live location.");
+          setGpsAlert("off");
         }
       },
       { enableHighAccuracy: false, timeout: 1000 }
@@ -572,6 +573,84 @@ export default function DriverDashboard() {
           </>
         )}
       </div>
+
+      {/* GPS Troubleshooting Modal */}
+      {gpsAlert && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.75)",
+          backdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+          zIndex: 1000,
+          fontFamily: "'DM Sans', sans-serif"
+        }}>
+          <div style={{
+            background: t.bgCard,
+            border: `1.5px solid ${t.border}`,
+            borderRadius: 24,
+            padding: 28,
+            maxWidth: 360,
+            width: "100%",
+            textAlign: "center",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
+          }}>
+            <div style={{ fontSize: 44, marginBottom: 16 }}>📍</div>
+            <h3 style={{ color: t.text, fontSize: 18, fontWeight: 800, margin: "0 0 10px" }}>
+              {gpsAlert === "blocked" ? "Location Access Blocked" : "GPS / Location is OFF"}
+            </h3>
+            <p style={{ color: t.textSub, fontSize: 13, lineHeight: 1.6, margin: "0 0 24px", textAlign: "center" }}>
+              {gpsAlert === "blocked" ? (
+                "Location permissions are disabled in your browser. Please tap the settings/lock icon in Chrome's address bar and grant Location permissions."
+              ) : (
+                "Your phone's location services are turned off. Please swipe down your notification shade, toggle Location / GPS ON, and try starting the route again."
+              )}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={() => {
+                  setGpsAlert(null);
+                  window.location.reload();
+                }}
+                style={{
+                  width: "100%",
+                  background: t.accent,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 14,
+                  padding: "14px 0",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif"
+                }}
+              >
+                🔄 Refresh Page
+              </button>
+              <button
+                onClick={() => setGpsAlert(null)}
+                style={{
+                  width: "100%",
+                  background: "none",
+                  border: `1px solid ${t.border}`,
+                  color: t.textSub,
+                  borderRadius: 14,
+                  padding: "12px 0",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif"
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
