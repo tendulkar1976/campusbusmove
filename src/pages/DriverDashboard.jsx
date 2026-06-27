@@ -206,6 +206,19 @@ export default function DriverDashboard() {
     if (!navigator.geolocation) { setError("GPS not supported on this device."); return; }
     if (!selectedRouteId) { setError("Please select a route first."); return; }
 
+    // Run a quick check to alert if location is turned off or blocked
+    navigator.geolocation.getCurrentPosition(
+      () => {},
+      (err) => {
+        if (err.code === 1) {
+          alert("⚠️ Location Access Blocked\n\nPlease allow location access for this site in your browser settings to track the trip.");
+        } else if (err.code === 2) {
+          alert("⚠️ GPS / Location is OFF\n\nPlease enable Location/GPS in your phone's quick settings panel so students can track your live location.");
+        }
+      },
+      { enableHighAccuracy: false, timeout: 1000 }
+    );
+
     setError("");
     const now = Date.now();
     setTripStart(now);
