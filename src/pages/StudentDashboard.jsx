@@ -138,6 +138,16 @@ export default function StudentDashboard() {
   const gpsWatchRef      = useRef(null);
   const rtdbUnsubRef     = useRef(null);
 
+  const markAttendance = useCallback(async status => {
+    const today = getTodayStr();
+    if (markedDateRef.current===today) return;
+    markedDateRef.current=today;
+    clearTimeout(geofenceTimerRef.current); geofenceTimerRef.current=null;
+    setAttendanceStatus(status);
+    await addDoc(collection(db,"attendance"),{studentId:user.uid,routeId:selected?.id,date:today,status,timestamp:Date.now(),campusId});
+    setAttendanceLog(p=>({...p,[today]:status}));
+  }, [user, selected, campusId]);
+
   // ── Load routes ──
   useEffect(() => {
     if (routeCache) { setRoutes(routeCache); setSelected(routeCache[0]); setLoading(false); return; }
@@ -239,16 +249,6 @@ export default function StudentDashboard() {
       markAttendance("present");
     }
   }, [activeBus, myLocation, selected, attendanceStatus, markAttendance]);
-
-  const markAttendance = useCallback(async status => {
-    const today = getTodayStr();
-    if (markedDateRef.current===today) return;
-    markedDateRef.current=today;
-    clearTimeout(geofenceTimerRef.current); geofenceTimerRef.current=null;
-    setAttendanceStatus(status);
-    await addDoc(collection(db,"attendance"),{studentId:user.uid,routeId:selected?.id,date:today,status,timestamp:Date.now(),campusId});
-    setAttendanceLog(p=>({...p,[today]:status}));
-  }, [user, selected, campusId]);
 
   // ── Load attendance log ──
   useEffect(() => {
