@@ -805,14 +805,19 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
 
           {/* Card Expiry countdown badge */}
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 10, color: t.textMuted }}>Pass Status:</div>
+            <div style={{ fontSize: 10, color: t.textMuted, display: "flex", gap: 4, alignItems: "center" }}>
+              <span>Pass Status:</span>
+              <span style={{ color: isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : t.textSub, fontWeight: 700 }}>
+                ({isExpired ? "Expired" : `${daysLeft} days remaining`})
+              </span>
+            </div>
             <div style={{
               fontSize: 11, fontWeight: 800, borderRadius: 6, padding: "4px 8px",
               background: isExpired ? (dark ? "#2A0808" : "#FEF2F2") : isNearExpiry ? (dark ? "#2A1F0C" : "#FFF7ED") : (dark ? "#0D1F12" : "#ECFDF5"),
               color: isExpired ? "#EF4444" : isNearExpiry ? "#F59E0B" : "#10B981",
               border: `1px solid ${isExpired ? (dark ? "#5D1010" : "#FCA5A5") : isNearExpiry ? (dark ? "#5D3E10" : "#FDBA74") : (dark ? "#1E4D2B" : "#A7F3D0")}`
             }}>
-              {isExpired ? "Expired" : isNearExpiry ? `${daysLeft} days remaining` : "Active"}
+              {isExpired ? "Expired" : isNearExpiry ? "Near Expiry" : "Active"}
             </div>
           </div>
         </div>
