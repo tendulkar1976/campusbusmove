@@ -140,8 +140,14 @@ export default function Login() {
 
   async function handleUserLogin() {
     setError(""); setLoading(true); setBusPhase("driving");
-    const username = form.username.trim();
-    if (!username || username.length < 3) { setError("Enter a valid username (min 3 characters)."); setLoading(false); setBusPhase("idle"); return; }
+    let username = form.username.trim();
+    if (mode === "register" && role === "teacher") {
+      username = generateCleanUsername(form.name);
+    }
+    if (!username || username.length < 3) {
+      setError(mode === "register" && role === "teacher" ? "Full name must be at least 3 characters to generate a username." : "Enter a valid username (min 3 characters).");
+      setLoading(false); setBusPhase("idle"); return;
+    }
     if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); setBusPhase("idle"); return; }
 
     // Admin shortcut
@@ -592,6 +598,11 @@ export default function Login() {
                           <div>
                             <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Full Name</label>
                             <input name="name" value={form.name||""} onChange={handleChange} placeholder="e.g. Prof. Nair" style={inp} />
+                            {form.name && form.name.trim().length >= 3 && (
+                              <div style={{ fontSize:11, color:"#10B981", marginTop:5, fontWeight:600, display:"flex", alignItems:"center", gap:4 }}>
+                                🔑 Assigned Login Username: <span style={{ fontFamily:"monospace", background:"#ECFDF5", padding:"2px 6px", borderRadius:4, border:"1px solid #A7F3D0" }}>{generateCleanUsername(form.name)}</span>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Pick Up Stop</label>
@@ -599,11 +610,13 @@ export default function Login() {
                           </div>
                         </>
                       )}
-                      <div>
-                        <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Username</label>
-                        <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. prof.nair or AU-FAC-992" style={inp} autoCapitalize="none" autoCorrect="off" />
-                        <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>Enter your university-assigned faculty username</div>
-                      </div>
+                      {mode === "login" && (
+                        <div>
+                          <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Username</label>
+                          <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. prof.nair or AU-FAC-992" style={inp} autoCapitalize="none" autoCorrect="off" />
+                          <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>Enter your university-assigned faculty username</div>
+                        </div>
+                      )}
                       <div>
                         <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Password</label>
                         <div style={{ position:"relative" }}>
