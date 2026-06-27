@@ -904,11 +904,6 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
             </>
           )}
 
-          {isTeacher && (
-            <div style={{ background: dark ? "#1E2937" : "#F8F9FA", padding: 14, borderRadius: 10, border: `1.5px solid ${t.border}`, fontSize: 12, color: t.textMuted, lineHeight: 1.6 }}>
-              ℹ️ <strong>Faculty Account</strong>: Faculty accounts utilize a credentials-only login profile. Bus pass configurations, validity tracking, and stops assignments are restricted to students.
-            </div>
-          )}
 
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: 10, color: "#DC2626", fontSize: 12, fontWeight: 600 }}>⚠️ {error}</div>}
           {success && <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, padding: 10, color: "#047857", fontSize: 12, fontWeight: 600 }}>✓ Profile updated successfully!</div>}
