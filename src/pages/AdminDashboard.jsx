@@ -150,7 +150,7 @@ export default function AdminDashboard() {
 
   function getVirtualEmail(identifier, role) {
     const clean = identifier.trim().toLowerCase();
-    if (role === "student") return clean + "@campusmove.user";
+    if (role === "student" || role === "teacher") return clean + "@campusmove.user";
     if (role === "driver") return clean + "@campusmove.driver";
     return clean;
   }
@@ -327,6 +327,8 @@ export default function AdminDashboard() {
   const currentPlan = PLANS[subscription?.plan || "basic"];
   const activeBuses = Object.values(liveStatus).filter(r => r?.live?.active).length;
   const studentCount = users.filter(u => u.role === "student").length;
+  const teacherCount = users.filter(u => u.role === "teacher").length;
+  const commuterCount = studentCount + teacherCount;
   const driverCount = users.filter(u => u.role === "driver").length;
   const blockedCount = users.filter(u => u.blocked).length;
   const totalRoutes = PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + routes.length;
@@ -382,13 +384,14 @@ export default function AdminDashboard() {
     rolePill: (role) => {
       const isAdm = role === "admin";
       const isDrv = role === "driver";
+      const isTea = role === "teacher";
       return {
         fontSize: 11,
         padding: "4px 10px",
         borderRadius: 8,
-        background: isAdm ? (dark ? "#1e1b4b" : "#e0e7ff") : isDrv ? (dark ? "#022c22" : "#d1fae5") : (dark ? "#1f2937" : "#f3f4f6"),
-        color: isAdm ? (dark ? "#818cf8" : "#4338ca") : isDrv ? (dark ? "#34d399" : "#065f46") : t.textSub,
-        border: `1px solid ${isAdm ? (dark ? "#312e81" : "#c7d2fe") : isDrv ? (dark ? "#064e3b" : "#a7f3d0") : t.border}`
+        background: isAdm ? (dark ? "#1e1b4b" : "#e0e7ff") : isDrv ? (dark ? "#064e3b" : "#d1fae5") : isTea ? (dark ? "#0d2a1c" : "#e8f5e9") : (dark ? "#1a2e3b" : "#e0f2fe"),
+        color: isAdm ? (dark ? "#818cf8" : "#4338ca") : isDrv ? (dark ? "#34d399" : "#065f46") : isTea ? (dark ? "#4ade80" : "#1b5e20") : (dark ? "#38bdf8" : "#0284c7"),
+        border: `1px solid ${isAdm ? (dark ? "#312e81" : "#c7d2fe") : isDrv ? (dark ? "#064e3b" : "#a7f3d0") : isTea ? (dark ? "#1b4d2b" : "#a5d6a7") : (dark ? "#0c4a6e" : "#bae6fd")}`
       };
     },
     blockBtn: (blocked) => ({ background: "none", border: `1px solid ${blocked ? (dark ? "#1E4D2B" : "#A7F3D0") : (dark ? "#5D3E10" : "#FDBA74")}`, borderRadius: 8, padding: "6px 12px", color: blocked ? "#10B981" : "#F59E0B", fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s" }),
@@ -697,10 +700,10 @@ export default function AdminDashboard() {
                       <div>
                         <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
                           <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Students capacity</span>
-                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{studentCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
+                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{commuterCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
                         </div>
                         <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
-                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.students === Infinity ? "20%" : `${Math.min(100, (studentCount / currentPlan.limits.students) * 100)}%`, transition: "width 0.4s" }}/>
+                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.students === Infinity ? "20%" : `${Math.min(100, (commuterCount / currentPlan.limits.students) * 100)}%`, transition: "width 0.4s" }}/>
                         </div>
                       </div>
                     </div>
@@ -846,7 +849,7 @@ export default function AdminDashboard() {
             <>
               {/* User stats widget */}
               <div className="stats-grid">
-                {[["Total Users", users.length, t.text], ["Students", studentCount, "#60A5FA"], ["Drivers", driverCount, "#A78BFA"], ["Blocked", blockedCount, "#EF4444"]].map(([l, v, c]) => (
+                {[["Total Users", users.length, t.text], ["Students", studentCount, "#60A5FA"], ["Faculty", teacherCount, "#10B981"], ["Drivers", driverCount, "#A78BFA"], ["Blocked", blockedCount, "#EF4444"]].map(([l, v, c]) => (
                   <div key={l} style={{ background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, padding: "14px 10px", textAlign: "center", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
                     <div style={{ fontSize: 22, fontWeight: 800, color: c, letterSpacing: "-0.5px", fontFamily: "'Inter', sans-serif" }}>{v}</div>
                     <div style={{ fontSize: 9, color: t.textMuted, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>{l}</div>
@@ -891,7 +894,8 @@ export default function AdminDashboard() {
                           </button>
                           <select value={u.role} onChange={e => changeRole(u.id, e.target.value)}
                             style={{ flex: 1, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "4px 10px", color: t.textSub, fontSize: 11, fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
-                            <option value="student">Student / Faculty</option>
+                            <option value="student">Student</option>
+                            <option value="teacher">Faculty / Teacher</option>
                             <option value="driver">Driver</option>
                             <option value="admin">Admin</option>
                           </select>
@@ -932,7 +936,8 @@ export default function AdminDashboard() {
                       onChange={e => setNewUser({ ...newUser, role: e.target.value, identifier: "" })}
                       style={{ ...S.input, height: 46, padding: "0 16px", marginBottom: 0, cursor: "pointer" }}
                     >
-                      <option value="student">Student / Faculty</option>
+                      <option value="student">Student</option>
+                      <option value="teacher">Faculty / Teacher</option>
                       <option value="driver">Driver</option>
                       <option value="admin">Admin</option>
                     </select>
