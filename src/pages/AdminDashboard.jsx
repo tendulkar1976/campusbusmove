@@ -91,6 +91,7 @@ export default function AdminDashboard() {
   const [userCreating, setUserCreating] = useState(false);
   const [userCreateError, setUserCreateError] = useState("");
   const [userCreateSuccess, setUserCreateSuccess] = useState("");
+  const [showCreatePwd, setShowCreatePwd] = useState(false);
 
   // ── Billing state ──
   const [subscription, setSubscription] = useState(null);
@@ -965,13 +966,33 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ marginBottom: 20 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: "0.5px", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Password</label>
-                    <input
-                      type="password"
-                      value={newUser.password}
-                      onChange={e => setNewUser({ ...newUser, password: e.target.value })}
-                      placeholder="Min 6 characters"
-                      style={{ ...S.input, marginBottom: 0 }}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showCreatePwd ? "text" : "password"}
+                        value={newUser.password}
+                        onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                        placeholder="Min 6 characters"
+                        style={{ ...S.input, marginBottom: 0, paddingRight: 44 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatePwd(p => !p)}
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          color: "#9CA3AF",
+                          padding: 0
+                        }}
+                      >
+                        {showCreatePwd ? "🙈" : "👁"}
+                      </button>
+                    </div>
                   </div>
 
                   {userCreateError && (
