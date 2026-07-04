@@ -151,12 +151,25 @@ export default function Login() {
     if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); setBusPhase("idle"); return; }
 
     // Admin shortcut
-    if (username === "admin" && form.password === ADMIN_PASSWORD) {
+    if (username === "admin") {
+      if (role !== "admin") {
+        setError("Access Denied. Admins must log in through the Administrator portal.");
+        setLoading(false); setBusPhase("idle"); return;
+      }
+      if (form.password !== ADMIN_PASSWORD) {
+        setError("Invalid administrative credentials.");
+        setLoading(false); setBusPhase("idle"); return;
+      }
       try {
         await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
         setTimeout(() => navigate("/admin"), 600);
         return;
       } catch { setError("Admin login failed."); setLoading(false); setBusPhase("idle"); return; }
+    }
+
+    if (role === "admin") {
+      setError("Invalid administrative credentials.");
+      setLoading(false); setBusPhase("idle"); return;
     }
 
     const virtualEmail = toVirtualEmail(username);
@@ -252,6 +265,7 @@ export default function Login() {
     { id:"student", label:"Student",           sub:"Scan bus pass to register or sign in", icon:"🎓", color:"#3B82F6" },
     { id:"teacher", label:"Faculty / Teacher", sub:"Username & password sign in",          icon:"🧑‍🏫", color:"#10B981" },
     { id:"driver",  label:"Driver",            sub:"Phone number & password",              icon:"🚌", color:"#F59E0B" },
+    { id:"admin",   label:"Administrator",     sub:"Access administrative console",        icon:"⚙️", color:"#EF4444" },
   ];
 
   const inp = {
@@ -343,17 +357,17 @@ export default function Login() {
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
                 <div style={{
                   width:38, height:38, borderRadius:9,
-                  background: role==="driver"?"#F59E0B15":role==="teacher"?"#10B98115":"#3B82F615",
+                  background: role==="driver"?"#F59E0B15":role==="teacher"?"#10B98115":role==="admin"?"#EF444415":"#3B82F615",
                   display:"flex", alignItems:"center", justifyContent:"center", fontSize:18
                 }}>
-                  {role === "driver" ? "🚌" : role === "teacher" ? "🧑‍🏫" : "🎓"}
+                  {role === "driver" ? "🚌" : role === "teacher" ? "🧑‍🏫" : role === "admin" ? "⚙️" : "🎓"}
                 </div>
                 <div>
                   <div style={{ fontSize:18, fontWeight:800, color:"#0F172A", letterSpacing:"-0.3px" }}>
                     {mode === "login" ? "Sign in" : "Create account"}
                   </div>
                   <div style={{ fontSize:12, color:"#9CA3AF" }}>
-                    {role === "driver" ? "Driver · Phone & password" : role === "teacher" ? "Faculty · Username & password" : "Student · Scan pass or credentials"}
+                    {role === "driver" ? "Driver · Phone & password" : role === "teacher" ? "Faculty · Username & password" : role === "admin" ? "Administrator · Console Access" : "Student · Scan pass or credentials"}
                   </div>
                 </div>
               </div>
@@ -634,6 +648,28 @@ export default function Login() {
                           {mode === "login" ? "Don't have an account? Register" : "Already have an account? Sign In"}
                         </button>
                       </div>
+                    </>
+                  )}
+                  {/* ADMIN FORM */}
+                  {role === "admin" && (
+                    <>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Admin Username</label>
+                        <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. admin" style={inp} autoCapitalize="none" autoCorrect="off" />
+                        <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>Enter your administrative console username</div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Password</label>
+                        <div style={{ position:"relative" }}>
+                          <input name="password" type={showPwd?"text":"password"} value={form.password} onChange={handleChange} placeholder="••••••••" style={{ ...inp, paddingRight:44 }} />
+                          <button type="button" onClick={() => setShowPwd(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#9CA3AF", padding:0 }}>{showPwd?"🙈":"👁"}</button>
+                        </div>
+                      </div>
+                      {error && <div className="err-shake" style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:8, padding:"10px 14px" }}><p style={{ color:"#DC2626", fontSize:12, margin:0, fontWeight:500 }}>⚠ {error}</p></div>}
+                      <button onClick={handleUserLogin} disabled={loading}
+                        style={{ width:"100%", background:loading?"#FCA5A5":"#EF4444", border:"none", borderRadius:10, padding:"14px 0", color:"#fff", fontSize:14, fontWeight:700, cursor:loading?"not-allowed":"pointer", fontFamily:"'Inter',sans-serif", boxShadow: `0 4px 12px #EF444433` }}>
+                        {loading ? "Please wait..." : "Sign In to Admin Console →"}
+                      </button>
                     </>
                   )}
 
