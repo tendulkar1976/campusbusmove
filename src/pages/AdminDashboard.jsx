@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, set } from "firebase/database";
 import { db, rtdb, secondaryAuth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -103,6 +103,122 @@ export default function AdminDashboard() {
   // ── Search & Filters state ──
   const [userSearch, setUserSearch] = useState("");
   const [routeSearch, setRouteSearch] = useState("");
+
+  // Override control refs & states
+  const overrideIntervalsRef = useRef({});
+  const overrideStateRef = useRef({});
+  const [overrideModalRoute, setOverrideModalRoute] = useState(null);
+  const [overrideType, setOverrideType] = useState("simulation");
+  const [selectedStopIndex, setSelectedStopIndex] = useState(-1);
+
+  useEffect(() => {
+    return () => {
+      Object.values(overrideIntervalsRef.current).forEach(clearInterval);
+    };
+  }, []);
+
+  function openOverrideModal(prId) {
+    const routeObj = routes.find(r => r.id === prId) || PRESET_ROUTES.find(r => r.id === prId);
+    setOverrideModalRoute(routeObj);
+    setOverrideType("simulation");
+    setSelectedStopIndex(-1);
+  }
+
+  function getRoutePathFallback(routeId) {
+    const lat = 12.8258;
+    const lng = 77.7665;
+    const numPoints = 24;
+    const radius = 0.005; // ~500m
+    const points = [];
+    for (let i = 0; i < numPoints; i++) {
+      const angle = (i / numPoints) * 2 * Math.PI;
+      points.push({
+        lat: lat + radius * Math.sin(angle),
+        lng: lng + radius * Math.cos(angle)
+      });
+    }
+    return points;
+  }
+
+  function startOverride(routeId, config) {
+    if (overrideIntervalsRef.current[routeId]) {
+      clearInterval(overrideIntervalsRef.current[routeId]);
+    }
+
+    const routeObj = routes.find(r => r.id === routeId) || PRESET_ROUTES.find(r => r.id === routeId);
+    let pathPoints = [];
+    if (config.type === "simulation") {
+      if (routeObj && routeObj.path && routeObj.path.length > 0) {
+        pathPoints = routeObj.path;
+      } else if (routeObj && routeObj.stops && routeObj.stops.length > 0) {
+        pathPoints = routeObj.stops;
+      } else {
+        pathPoints = getRoutePathFallback(routeId);
+      }
+    }
+
+    overrideStateRef.current[routeId] = {
+      type: config.type,
+      path: pathPoints,
+      currentIndex: 0,
+      stop: config.stop || null
+    };
+
+    const updateLocation = () => {
+      const state = overrideStateRef.current[routeId];
+      if (!state) return;
+
+      let lat = 12.8258;
+      let lng = 77.7665;
+      let speed = 0;
+
+      if (state.type === "simulation") {
+        const point = state.path[state.currentIndex];
+        if (point) {
+          lat = Number(point.lat || point[0] || 12.8258);
+          lng = Number(point.lng || point[1] || 77.7665);
+        }
+        speed = 25;
+        state.currentIndex = (state.currentIndex + 1) % state.path.length;
+      } else {
+        if (state.stop) {
+          lat = Number(state.stop.lat || 12.8258);
+          lng = Number(state.stop.lng || 77.7665);
+        }
+        speed = 0;
+      }
+
+      set(ref(rtdb, `routes/${routeId}/live`), {
+        routeId,
+        driverUid: "admin-override",
+        active: true,
+        speed,
+        heading: 0,
+        lat,
+        lng,
+        updatedAt: Date.now()
+      }).catch(err => console.error("Admin RTDB write failed:", err));
+    };
+
+    updateLocation();
+
+    if (config.type === "simulation") {
+      overrideIntervalsRef.current[routeId] = setInterval(updateLocation, 4000);
+    }
+  }
+
+  function stopOverride(routeId) {
+    if (overrideIntervalsRef.current[routeId]) {
+      clearInterval(overrideIntervalsRef.current[routeId]);
+      delete overrideIntervalsRef.current[routeId];
+    }
+    delete overrideStateRef.current[routeId];
+
+    set(ref(rtdb, `routes/${routeId}/live`), {
+      active: false,
+      updatedAt: Date.now()
+    }).catch(err => console.error("Admin RTDB stop failed:", err));
+  }
 
   // ── Load subscription ──
   useEffect(() => {
@@ -380,8 +496,26 @@ export default function AdminDashboard() {
     input: { width: "100%", background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "13px 16px", color: t.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'Inter', sans-serif", marginBottom: 10, transition: "border-color 0.15s" },
     addBtn: { width: "100%", background: t.accent, border: "none", borderRadius: 10, padding: "14px 0", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.2s", boxShadow: `0 4px 12px ${t.accent}33` },
     delBtn: { background: "none", border: `1px solid ${dark ? "#5D1010" : "#FCA5A5"}`, borderRadius: 8, padding: "6px 12px", color: "#EF4444", fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s" },
-    liveDot: (active) => ({ width: 8, height: 8, borderRadius: "50%", background: active ? "#10B981" : (dark ? "#374151" : "#D1D5DB"), display: "inline-block", marginRight: 8, boxShadow: active ? "0 0 8px #10B981" : "none" }),
-    routePill: (active) => ({ fontSize: 11, padding: "4px 10px", borderRadius: 20, background: active ? (dark ? "#0D2012" : "#ECFDF5") : (dark ? "#1F2937" : "#F3F4F6"), color: active ? "#10B981" : t.textMuted, border: `1.5px solid ${active ? (dark ? "#1E4D2B" : "#A7F3D0") : t.border}` }),
+    liveDot: (active, type) => {
+      let bg = active ? "#10B981" : (dark ? "#374151" : "#D1D5DB");
+      let shadow = active ? "0 0 8px #10B981" : "none";
+      if (type === "override") {
+        bg = "#F59E0B";
+        shadow = "0 0 8px #F59E0B";
+      }
+      return { width: 8, height: 8, borderRadius: "50%", background: bg, display: "inline-block", marginRight: 8, boxShadow: shadow };
+    },
+    routePill: (active, type) => {
+      let bg = active ? (dark ? "#0D2012" : "#ECFDF5") : (dark ? "#1F2937" : "#F3F4F6");
+      let color = active ? "#10B981" : t.textMuted;
+      let border = `1.5px solid ${active ? (dark ? "#1E4D2B" : "#A7F3D0") : t.border}`;
+      if (type === "override") {
+        bg = dark ? "#2A1D08" : "#FEF3C7";
+        color = "#D97706";
+        border = `1.5px solid ${dark ? "#5D3E10" : "#FDE68A"}`;
+      }
+      return { fontSize: 11, padding: "4px 10px", borderRadius: 20, background: bg, color, border };
+    },
     rolePill: (role) => {
       const isAdm = role === "admin";
       const isDrv = role === "driver";
@@ -735,7 +869,47 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>{displayRoute.label}</div>
                         {active && driverName && <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 6 }}>🚌 {driverName} · {speed} km/h</div>}
                       </div>
-                      <span style={S.routePill(active)}><span style={S.liveDot(active)} />{active ? "Live" : "Offline"}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {active ? (
+                          <>
+                            {driverUid === "admin-override" ? (
+                              <span style={S.routePill(true, "override")}>
+                                <span style={S.liveDot(true, "override")} />Admin Override
+                              </span>
+                            ) : (
+                              <span style={S.routePill(true)}>
+                                <span style={S.liveDot(true)} />Live (Driver)
+                              </span>
+                            )}
+                            <button
+                              onClick={() => stopOverride(pr.id)}
+                              style={{
+                                background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8,
+                                padding: "6px 12px", color: "#B91C1C", fontSize: 11, fontWeight: 600,
+                                cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                              }}
+                            >
+                              Stop
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={S.routePill(false)}>
+                              <span style={S.liveDot(false)} />Offline
+                            </span>
+                            <button
+                              onClick={() => openOverrideModal(pr.id)}
+                              style={{
+                                background: dark ? "#3F2810" : "#FFF7ED", border: `1.5px solid ${t.border}`, borderRadius: 8,
+                                padding: "6px 12px", color: t.accent, fontSize: 11, fontWeight: 700,
+                                cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                              }}
+                            >
+                              Override
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1155,6 +1329,114 @@ export default function AdminDashboard() {
 
         </div>
       </div>
+      {/* ══════════════ OVERRIDE MODAL ══════════════ */}
+      {overrideModalRoute && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center",
+          justifyContent: "center", zIndex: 1000, padding: 20, backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            background: t.bgCard, border: `1.5px solid ${t.border}`,
+            borderRadius: 16, width: "100%", maxWidth: 440, padding: 24,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.15)", animation: "fadeUp 0.25s ease"
+          }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: t.text, margin: "0 0 8px" }}>
+              Override Location: {overrideModalRoute.name}
+            </h3>
+            <p style={{ fontSize: 12, color: t.textMuted, margin: "0 0 20px" }}>
+              Select how to publish the bus's location coordinates to students.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Select Override Type */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setOverrideType("simulation")}
+                  style={{
+                    flex: 1, padding: "10px 14px", borderRadius: 10,
+                    border: `1.5px solid ${overrideType === "simulation" ? t.accent : t.border}`,
+                    background: overrideType === "simulation" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
+                    color: overrideType === "simulation" ? t.accent : t.textSub,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                  }}
+                >
+                  🔄 Auto-Simulation
+                </button>
+                <button
+                  onClick={() => setOverrideType("stationary")}
+                  style={{
+                    flex: 1, padding: "10px 14px", borderRadius: 10,
+                    border: `1.5px solid ${overrideType === "stationary" ? t.accent : t.border}`,
+                    background: overrideType === "stationary" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
+                    color: overrideType === "stationary" ? t.accent : t.textSub,
+                    fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                  }}
+                >
+                  📍 Stationary Stop
+                </button>
+              </div>
+
+              {overrideType === "simulation" ? (
+                <div style={{ background: dark ? "#1E293B" : "#F8FAFC", padding: 12, borderRadius: 10, fontSize: 12, color: t.textMuted, lineHeight: 1.5 }}>
+                  ℹ️ <strong>Auto-Simulation Loop:</strong> The bus marker will automatically progress through the route's path and stops every 4 seconds.
+                </div>
+              ) : (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    Select Stop Location
+                  </label>
+                  <select
+                    value={selectedStopIndex}
+                    onChange={e => setSelectedStopIndex(Number(e.target.value))}
+                    style={{ ...S.input, marginBottom: 0, height: 44, padding: "0 14px" }}
+                  >
+                    <option value={-1}>Alliance Campus Main Gate (Default)</option>
+                    {overrideModalRoute.stops && overrideModalRoute.stops.map((stop, idx) => (
+                      <option key={idx} value={idx}>{stop.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button
+                  onClick={() => {
+                    let config = { type: overrideType };
+                    if (overrideType === "stationary") {
+                      if (selectedStopIndex >= 0 && overrideModalRoute.stops && overrideModalRoute.stops[selectedStopIndex]) {
+                        config.stop = overrideModalRoute.stops[selectedStopIndex];
+                      } else {
+                        config.stop = { lat: 12.8258, lng: 77.7665, name: "Alliance Campus Main Gate" };
+                      }
+                    }
+                    startOverride(overrideModalRoute.id, config);
+                    setOverrideModalRoute(null);
+                  }}
+                  style={{
+                    flex: 1, background: t.accent, color: "#fff", border: "none",
+                    borderRadius: 10, padding: "12px 0", fontSize: 13, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                  }}
+                >
+                  Activate Override
+                </button>
+                <button
+                  onClick={() => setOverrideModalRoute(null)}
+                  style={{
+                    flex: 1, background: "none", border: `1.5px solid ${t.border}`,
+                    borderRadius: 10, padding: "12px 0", color: t.textSub, fontSize: 13,
+                    cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
