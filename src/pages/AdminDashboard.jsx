@@ -110,6 +110,7 @@ export default function AdminDashboard() {
   const [overrideModalRoute, setOverrideModalRoute] = useState(null);
   const [overrideType, setOverrideType] = useState("simulation");
   const [selectedStopIndex, setSelectedStopIndex] = useState(-1);
+  const [selectedDriverUid, setSelectedDriverUid] = useState("");
 
   useEffect(() => {
     return () => {
@@ -120,8 +121,9 @@ export default function AdminDashboard() {
   function openOverrideModal(prId) {
     const routeObj = routes.find(r => r.id === prId) || PRESET_ROUTES.find(r => r.id === prId);
     setOverrideModalRoute(routeObj);
-    setOverrideType("simulation");
+    setOverrideType("driver");
     setSelectedStopIndex(-1);
+    setSelectedDriverUid("");
   }
 
   function getRoutePathFallback(routeId) {
@@ -147,7 +149,7 @@ export default function AdminDashboard() {
 
     const routeObj = routes.find(r => r.id === routeId) || PRESET_ROUTES.find(r => r.id === routeId);
     let pathPoints = [];
-    if (config.type === "simulation") {
+    if (config.type === "simulation" || config.type === "driver") {
       if (routeObj && routeObj.path && routeObj.path.length > 0) {
         pathPoints = routeObj.path;
       } else if (routeObj && routeObj.stops && routeObj.stops.length > 0) {
@@ -161,7 +163,10 @@ export default function AdminDashboard() {
       type: config.type,
       path: pathPoints,
       currentIndex: 0,
-      stop: config.stop || null
+      stop: config.stop || null,
+      driverUid: config.driverUid || "admin-override",
+      tripId: config.tripId || null,
+      adminStarted: config.adminStarted || false
     };
 
     const updateLocation = () => {
@@ -172,7 +177,7 @@ export default function AdminDashboard() {
       let lng = 77.7665;
       let speed = 0;
 
-      if (state.type === "simulation") {
+      if (state.type === "simulation" || state.type === "driver") {
         const point = state.path[state.currentIndex];
         if (point) {
           lat = Number(point.lat || point[0] || 12.8258);
@@ -190,19 +195,21 @@ export default function AdminDashboard() {
 
       set(ref(rtdb, `routes/${routeId}/live`), {
         routeId,
-        driverUid: "admin-override",
+        driverUid: state.driverUid,
         active: true,
         speed,
         heading: 0,
         lat,
         lng,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        adminStarted: state.adminStarted,
+        tripId: state.tripId
       }).catch(err => console.error("Admin RTDB write failed:", err));
     };
 
     updateLocation();
 
-    if (config.type === "simulation") {
+    if (config.type === "simulation" || config.type === "driver") {
       overrideIntervalsRef.current[routeId] = setInterval(updateLocation, 4000);
     }
   }
@@ -1350,38 +1357,76 @@ export default function AdminDashboard() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {/* Select Override Type */}
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button
-                  onClick={() => setOverrideType("simulation")}
+                  type="button"
+                  onClick={() => setOverrideType("driver")}
                   style={{
-                    flex: 1, padding: "10px 14px", borderRadius: 10,
-                    border: `1.5px solid ${overrideType === "simulation" ? t.accent : t.border}`,
-                    background: overrideType === "simulation" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
-                    color: overrideType === "simulation" ? t.accent : t.textSub,
-                    fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                    width: "100%", padding: "12px 14px", borderRadius: 10, textAlign: "left",
+                    border: `1.5px solid ${overrideType === "driver" ? t.accent : t.border}`,
+                    background: overrideType === "driver" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
+                    color: overrideType === "driver" ? t.accent : t.text,
+                    fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
                   }}
                 >
-                  🔄 Auto-Simulation
+                  🧑‍✈️ Start Trip for Active Driver (Real GPS)
                 </button>
                 <button
-                  onClick={() => setOverrideType("stationary")}
+                  type="button"
+                  onClick={() => setOverrideType("simulation")}
                   style={{
-                    flex: 1, padding: "10px 14px", borderRadius: 10,
-                    border: `1.5px solid ${overrideType === "stationary" ? t.accent : t.border}`,
-                    background: overrideType === "stationary" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
-                    color: overrideType === "stationary" ? t.accent : t.textSub,
-                    fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                    width: "100%", padding: "12px 14px", borderRadius: 10, textAlign: "left",
+                    border: `1.5px solid ${overrideType === "simulation" ? t.accent : t.border}`,
+                    background: overrideType === "simulation" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
+                    color: overrideType === "simulation" ? t.accent : t.text,
+                    fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
                   }}
                 >
-                  📍 Stationary Stop
+                  🔄 Auto-Simulation Loop (Fallback)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverrideType("stationary")}
+                  style={{
+                    width: "100%", padding: "12px 14px", borderRadius: 10, textAlign: "left",
+                    border: `1.5px solid ${overrideType === "stationary" ? t.accent : t.border}`,
+                    background: overrideType === "stationary" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
+                    color: overrideType === "stationary" ? t.accent : t.text,
+                    fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                  }}
+                >
+                  📍 Stationary Stop Location
                 </button>
               </div>
 
-              {overrideType === "simulation" ? (
+              {overrideType === "driver" && (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    Select Driver
+                  </label>
+                  <select
+                    value={selectedDriverUid}
+                    onChange={e => setSelectedDriverUid(e.target.value)}
+                    style={{ ...S.input, marginBottom: 0, height: 44, padding: "0 14px" }}
+                  >
+                    <option value="">Select a driver...</option>
+                    {users.filter(u => u.role === "driver" && !u.blocked).map(drv => (
+                      <option key={drv.id} value={drv.id}>{drv.name} ({drv.phone || "No phone"})</option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: 11, color: t.textMuted, marginTop: 6, lineHeight: 1.4 }}>
+                    ℹ️ If the driver's phone is online, their app will automatically start tracking and stream actual GPS coordinates. Otherwise, simulated coordinates will stream as a fallback.
+                  </div>
+                </div>
+              )}
+
+              {overrideType === "simulation" && (
                 <div style={{ background: dark ? "#1E293B" : "#F8FAFC", padding: 12, borderRadius: 10, fontSize: 12, color: t.textMuted, lineHeight: 1.5 }}>
                   ℹ️ <strong>Auto-Simulation Loop:</strong> The bus marker will automatically progress through the route's path and stops every 4 seconds.
                 </div>
-              ) : (
+              )}
+
+              {overrideType === "stationary" && (
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
                     Select Stop Location
@@ -1401,15 +1446,39 @@ export default function AdminDashboard() {
 
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     let config = { type: overrideType };
-                    if (overrideType === "stationary") {
+                    
+                    if (overrideType === "driver") {
+                      if (!selectedDriverUid) {
+                        alert("Please select a driver to start the trip.");
+                        return;
+                      }
+                      
+                      // 1. Create a trip document in Firestore
+                      const tripDoc = await addDoc(collection(db, "trips"), {
+                        driverUid: selectedDriverUid,
+                        routeId: overrideModalRoute.id,
+                        routeName: overrideModalRoute.name,
+                        campusId: "alliance-bangalore",
+                        startTime: Date.now(),
+                        endTime: null,
+                        status: "active",
+                        adminStarted: true
+                      });
+
+                      // 2. Start override with driver config
+                      config.driverUid = selectedDriverUid;
+                      config.tripId = tripDoc.id;
+                      config.adminStarted = true;
+                    } else if (overrideType === "stationary") {
                       if (selectedStopIndex >= 0 && overrideModalRoute.stops && overrideModalRoute.stops[selectedStopIndex]) {
                         config.stop = overrideModalRoute.stops[selectedStopIndex];
                       } else {
                         config.stop = { lat: 12.8258, lng: 77.7665, name: "Alliance Campus Main Gate" };
                       }
                     }
+                    
                     startOverride(overrideModalRoute.id, config);
                     setOverrideModalRoute(null);
                   }}
@@ -1419,7 +1488,7 @@ export default function AdminDashboard() {
                     cursor: "pointer", fontFamily: "'Inter', sans-serif"
                   }}
                 >
-                  Activate Override
+                  {overrideType === "driver" ? "Start Driver Trip" : "Activate Override"}
                 </button>
                 <button
                   onClick={() => setOverrideModalRoute(null)}

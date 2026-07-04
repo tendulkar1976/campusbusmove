@@ -45,6 +45,7 @@ export default function DriverDashboard() {
   const lastLocationUpdateTimestamp = useRef(0);
   const watchdogRef                 = useRef(null);
   const useHighAccuracyRef          = useRef(true);
+  const adminInitiatedRef           = useRef(false);
 
   // Wake lock helpers
   async function requestWakeLock() {
@@ -80,6 +81,94 @@ export default function DriverDashboard() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  // Listen to remote admin-forced start/stop signals
+  useEffect(() => {
+    if (!user || routes.length === 0) return;
+    const r = ref(rtdb, "routes");
+    const unsub = onValue(r, snap => {
+      if (snap.exists()) {
+        const data = snap.val();
+        let currentAssignedRouteId = null;
+        let remoteTripId = null;
+        let remoteActive = false;
+
+        Object.entries(data).forEach(([rid, rData]) => {
+          const live = rData.live;
+          if (live && live.active && live.driverUid === user.uid && live.adminStarted) {
+            currentAssignedRouteId = rid;
+            remoteTripId = live.tripId;
+            remoteActive = true;
+          }
+        });
+
+        if (remoteActive && currentAssignedRouteId) {
+          if (!trackingRef.current) {
+            console.log("Admin forced start trip for route:", currentAssignedRouteId);
+            autoStartFromAdmin(currentAssignedRouteId, remoteTripId);
+          }
+        } else {
+          if (trackingRef.current && adminInitiatedRef.current) {
+            console.log("Admin forced stop trip");
+            autoStopFromAdmin();
+          }
+        }
+      }
+    });
+    return () => unsub();
+  }, [user, routes]);
+
+  async function autoStartFromAdmin(routeId, tripId) {
+    if (!navigator.geolocation) { return; }
+    setSelectedRouteId(routeId);
+    selectedRouteIdRef.current = routeId;
+    adminInitiatedRef.current = true;
+    setError("");
+    const now = Date.now();
+    setTripStart(now);
+    tripDocRef.current = tripId;
+
+    writeToRTDB(null, null, 0, 0, true); 
+    lastFirebaseUpdate.current = 0;
+    lastLocationUpdateTimestamp.current = Date.now();
+    useHighAccuracyRef.current = true;
+
+    setTracking(true);
+    requestWakeLock();
+    startWatchingGPS();
+
+    clearInterval(watchdogRef.current);
+    watchdogRef.current = setInterval(() => {
+      const elapsedSinceLastUpdate = Date.now() - lastLocationUpdateTimestamp.current;
+      if (elapsedSinceLastUpdate > 45000) {
+        console.warn(`GPS watchdog: No updates for ${elapsedSinceLastUpdate}ms. Restarting watch...`);
+        setError("GPS signal stalled — re-establishing connection...");
+        if (useHighAccuracyRef.current) {
+          useHighAccuracyRef.current = false;
+        }
+        startWatchingGPS();
+      }
+    }, 20000);
+  }
+
+  async function autoStopFromAdmin() {
+    clearTimeout(gpsRetryRef.current);
+    clearInterval(watchdogRef.current);
+    watchdogRef.current = null;
+    if (watchIdRef.current) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    adminInitiatedRef.current = false;
+    setTracking(false);
+    releaseWakeLock();
+    setGpsStatus("idle");
+    tripDocRef.current = null;
+    setMyLocation(null);
+    setSpeed(0);
+    setHeading(0);
+    setAccuracy(null);
+  }
 
   // Trip history
   useEffect(() => {
@@ -125,6 +214,10 @@ export default function DriverDashboard() {
       heading: hdg,
       updatedAt: Date.now(),
     };
+    if (adminInitiatedRef.current) {
+      data.adminStarted = true;
+      if (tripDocRef.current) data.tripId = tripDocRef.current;
+    }
     if (lat !== null && lng !== null) {
       data.lat = lat;
       data.lng = lng;
@@ -290,6 +383,7 @@ export default function DriverDashboard() {
     }
 
     setSpeed(0); setHeading(0); setAccuracy(null);
+    adminInitiatedRef.current = false;
   }
 
   useEffect(() => () => {
