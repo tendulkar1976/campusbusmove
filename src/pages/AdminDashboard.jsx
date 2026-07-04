@@ -860,66 +860,79 @@ export default function AdminDashboard() {
               {/* Live telemetry list */}
               <div style={S.card}>
                 <div style={S.cardHead}><span style={S.cardLabel}>Real-time Bus telemetry</span></div>
-                {PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(pr => {
-                  const liveData = liveStatus[pr.id]?.live;
-                  const active = liveData?.active;
-                  const override = presetOverrides[pr.id] || {};
-                  const displayRoute = { ...pr, ...override };
-                  const driverUid = liveData?.driverUid;
-                  const driverUser = users.find(u => u.id === driverUid);
-                  const driverName = driverUser?.name || (driverUid ? "Driver" : null);
-                  const speed = liveData?.speed || 0;
-                  return (
-                    <div key={pr.id} className="custom-row" style={S.row}>
-                      <div>
-                        <div style={{ fontSize: 14, color: t.text, fontWeight: 700 }}>{displayRoute.name}</div>
-                        <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>{displayRoute.label}</div>
-                        {active && driverName && <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 6 }}>🚌 {driverName} · {speed} km/h</div>}
+                {(() => {
+                  const allVisibleRoutes = [
+                    ...PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(r => ({ ...r, isPreset: true })),
+                    ...routes.map(r => ({ ...r, isPreset: false }))
+                  ];
+                  if (allVisibleRoutes.length === 0) {
+                    return (
+                      <div style={{ padding: 24, textAlign: "center", color: t.textMuted, fontSize: 13 }}>
+                        No routes configured. Please add routes under the Manage Routes tab.
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        {active ? (
-                          <>
-                            {driverUid === "admin-override" ? (
-                              <span style={S.routePill(true, "override")}>
-                                <span style={S.liveDot(true, "override")} />Admin Override
+                    );
+                  }
+                  return allVisibleRoutes.map(pr => {
+                    const liveData = liveStatus[pr.id]?.live;
+                    const active = liveData?.active;
+                    const override = pr.isPreset ? (presetOverrides[pr.id] || {}) : {};
+                    const displayRoute = { ...pr, ...override };
+                    const driverUid = liveData?.driverUid;
+                    const driverUser = users.find(u => u.id === driverUid);
+                    const driverName = driverUser?.name || (driverUid ? "Driver" : null);
+                    const speed = liveData?.speed || 0;
+                    return (
+                      <div key={pr.id} className="custom-row" style={S.row}>
+                        <div>
+                          <div style={{ fontSize: 14, color: t.text, fontWeight: 700 }}>{displayRoute.name}</div>
+                          <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>{displayRoute.label}</div>
+                          {active && driverName && <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 6 }}>🚌 {driverName} · {speed} km/h</div>}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          {active ? (
+                            <>
+                              {driverUid === "admin-override" ? (
+                                <span style={S.routePill(true, "override")}>
+                                  <span style={S.liveDot(true, "override")} />Admin Override
+                                </span>
+                              ) : (
+                                <span style={S.routePill(true)}>
+                                  <span style={S.liveDot(true)} />Live (Driver)
+                                </span>
+                              )}
+                              <button
+                                onClick={() => stopOverride(pr.id)}
+                                style={{
+                                  background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8,
+                                  padding: "6px 12px", color: "#B91C1C", fontSize: 11, fontWeight: 600,
+                                  cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                                }}
+                              >
+                                Stop
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span style={S.routePill(false)}>
+                                <span style={S.liveDot(false)} />Offline
                               </span>
-                            ) : (
-                              <span style={S.routePill(true)}>
-                                <span style={S.liveDot(true)} />Live (Driver)
-                              </span>
-                            )}
-                            <button
-                              onClick={() => stopOverride(pr.id)}
-                              style={{
-                                background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8,
-                                padding: "6px 12px", color: "#B91C1C", fontSize: 11, fontWeight: 600,
-                                cursor: "pointer", fontFamily: "'Inter', sans-serif"
-                              }}
-                            >
-                              Stop
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <span style={S.routePill(false)}>
-                              <span style={S.liveDot(false)} />Offline
-                            </span>
-                            <button
-                              onClick={() => openOverrideModal(pr.id)}
-                              style={{
-                                background: dark ? "#3F2810" : "#FFF7ED", border: `1.5px solid ${t.border}`, borderRadius: 8,
-                                padding: "6px 12px", color: t.accent, fontSize: 11, fontWeight: 700,
-                                cursor: "pointer", fontFamily: "'Inter', sans-serif"
-                              }}
-                            >
-                              Override
-                            </button>
-                          </>
-                        )}
+                              <button
+                                onClick={() => openOverrideModal(pr.id)}
+                                style={{
+                                  background: dark ? "#3F2810" : "#FFF7ED", border: `1.5px solid ${t.border}`, borderRadius: 8,
+                                  padding: "6px 12px", color: t.accent, fontSize: 11, fontWeight: 700,
+                                  cursor: "pointer", fontFamily: "'Inter', sans-serif"
+                                }}
+                              >
+                                Override
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </>
           )}
