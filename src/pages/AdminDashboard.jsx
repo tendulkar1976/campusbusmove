@@ -1826,7 +1826,7 @@ export default function AdminDashboard() {
                       style={S.input}
                     >
                       <option value="">Select a driver...</option>
-                      <option value="custom_temp">temporary driver</option>
+                      <option value="custom_temp">➕ temporary driver</option>
                       {users.filter(u => u.role === "driver" && !u.blocked).map(drv => (
                         <option key={drv.id} value={drv.id}>{drv.name} ({drv.phone || drv.identifier || "No Phone"})</option>
                       ))}
@@ -1862,13 +1862,14 @@ export default function AdminDashboard() {
                           type="text"
                           value={alertCustomDriverPhone}
                           onChange={e => {
-                            const phone = e.target.value;
+                            const phone = e.target.value.replace(/[^\d+]/g, "");
                             setAlertCustomDriverPhone(phone);
                             if (alertRouteId) {
                               const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
                               setAlertMessage(`Driver Assignment Update: ${alertCustomDriverName || "New Driver"} (${phone || "No Phone"}) is the newly assigned driver for ${rObj ? rObj.name : "Route"}.`);
                             }
                           }}
+                          maxLength={alertCustomDriverPhone.startsWith("+") ? 13 : 12}
                           placeholder="e.g. 9876543210"
                           style={S.input}
                         />
