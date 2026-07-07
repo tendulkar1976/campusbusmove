@@ -102,6 +102,7 @@ export default function AdminDashboard() {
 
   // ── Search & Filters state ──
   const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
   const [routeSearch, setRouteSearch] = useState("");
 
   // Override control refs & states
@@ -630,15 +631,27 @@ export default function AdminDashboard() {
 
   // Filters logic
   const filteredUsers = useMemo(() => {
-    if (!userSearch.trim()) return users;
+    let list = users;
+    
+    // 1. Filter by role
+    if (userRoleFilter !== "all") {
+      if (userRoleFilter === "blocked") {
+        list = list.filter(u => u.blocked);
+      } else {
+        list = list.filter(u => u.role === userRoleFilter);
+      }
+    }
+    
+    // 2. Filter by search query
+    if (!userSearch.trim()) return list;
     const q = userSearch.toLowerCase();
-    return users.filter(u => 
+    return list.filter(u => 
       (u.name && u.name.toLowerCase().includes(q)) || 
       (u.username && u.username.toLowerCase().includes(q)) ||
       (u.email && u.email.toLowerCase().includes(q)) ||
       (u.phone && u.phone.includes(q))
     );
-  }, [users, userSearch]);
+  }, [users, userSearch, userRoleFilter]);
 
   const filteredPresetRoutes = useMemo(() => {
     const prs = PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id));
@@ -1258,7 +1271,31 @@ export default function AdminDashboard() {
 
               {/* Users list card */}
               <div style={S.card}>
-                <div style={S.cardHead}><span style={S.cardLabel}>Registered Accounts ({filteredUsers.length})</span></div>
+                <div style={{ ...S.cardHead, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={S.cardLabel}>Registered Accounts ({filteredUsers.length})</span>
+                  <select
+                    value={userRoleFilter}
+                    onChange={e => setUserRoleFilter(e.target.value)}
+                    style={{
+                      background: dark ? t.inputBg : t.bgCard2,
+                      border: `1.5px solid ${t.border}`,
+                      borderRadius: 8,
+                      padding: "4px 10px",
+                      color: t.textSub,
+                      fontSize: 12,
+                      fontFamily: "'Inter', sans-serif",
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    <option value="all">All Accounts</option>
+                    <option value="student">Students</option>
+                    <option value="teacher">Faculty / Teachers</option>
+                    <option value="driver">Drivers</option>
+                    <option value="admin">Admins</option>
+                    <option value="blocked">Blocked Users</option>
+                  </select>
+                </div>
                 {filteredUsers.length === 0
                   ? <div style={{ padding: 24, color: t.textMuted, fontSize: 13, textAlign: "center" }}>No matching accounts found</div>
                   : filteredUsers.map(u => (
