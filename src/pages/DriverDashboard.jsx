@@ -47,6 +47,47 @@ export default function DriverDashboard() {
   const useHighAccuracyRef          = useRef(true);
   const adminInitiatedRef           = useRef(false);
   const silentAudioRef              = useRef(null);
+  const swRegRef                    = useRef(null);
+
+  // Register service worker for persistent lock-screen notifications (like WhatsApp Live Location)
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js")
+        .then((reg) => { swRegRef.current = reg; })
+        .catch((err) => console.warn("SW registration failed:", err));
+    }
+  }, []);
+
+  async function showTripNotification(routeName) {
+    try {
+      // Request permission if not already granted
+      if (Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      if (Notification.permission !== "granted") return;
+
+      const reg = swRegRef.current || await navigator.serviceWorker.ready;
+      reg.active?.postMessage({
+        type: "SHOW_TRIP_NOTIFICATION",
+        title: "CampusMove Live Location",
+        body: `Location sharing in progress${routeName ? ` · ${routeName}` : ""}`,
+        tag: "live-location",
+      });
+    } catch (e) {
+      console.warn("showTripNotification failed:", e);
+    }
+  }
+
+  function closeTripNotification() {
+    try {
+      const reg = swRegRef.current;
+      if (reg) {
+        reg.active?.postMessage({ type: "CLOSE_TRIP_NOTIFICATION", tag: "live-location" });
+      }
+    } catch (e) {
+      console.warn("closeTripNotification failed:", e);
+    }
+  }
 
   // --- Silent audio keep-alive: prevents phone OS from pausing the tab ---
   // A ~1s silent WAV loop tricks Android/iOS into treating the browser
@@ -190,6 +231,7 @@ export default function DriverDashboard() {
     requestWakeLock();
     const adminRoute = routes.find(r => r.id === routeId);
     startSilentAudio(adminRoute?.name || routeId); // Background keep-alive for admin-started trips
+    showTripNotification(adminRoute?.name || routeId); // Lock-screen notification card
     startWatchingGPS();
 
     clearInterval(watchdogRef.current);
@@ -379,6 +421,7 @@ export default function DriverDashboard() {
     setTracking(true);
     requestWakeLock(); // Keep screen awake
     startSilentAudio(selectedRoute?.name || selectedRouteId); // Background keep-alive
+    showTripNotification(selectedRoute?.name || selectedRouteId); // Lock-screen notification card
     startWatchingGPS();
 
     // Start watchdog timer (check every 20s, restart if silent for 45s to avoid interfering with GPS cold starts)
@@ -412,6 +455,7 @@ export default function DriverDashboard() {
     setTracking(false);
     releaseWakeLock(); // Let screen sleep
     stopSilentAudio(); // Stop background keep-alive
+    closeTripNotification(); // Remove lock-screen notification card
     setGpsStatus("idle");
 
     const lastLat = myLocation?.lat || null;
@@ -440,6 +484,7 @@ export default function DriverDashboard() {
     clearInterval(timerRef.current);
     releaseWakeLock(); // Cleanup on unmount
     stopSilentAudio(); // Cleanup on unmount
+    closeTripNotification(); // Cleanup on unmount
   }, []);
 
   const selectedRoute = useMemo(() => routes.find(r => r.id === selectedRouteId), [routes, selectedRouteId]);
