@@ -1002,7 +1002,6 @@ export default function AdminDashboard() {
                 {[
                   ["Active Buses", activeBuses, "#4ADE80", "🚌"],
                   ["Total Routes", totalRoutes, "#A1A1AA", "🗺️"],
-                  ["Students Registered", studentCount, "#60A5FA", "🎓"],
                   ["Drivers Assigned", driverCount, "#A78BFA", "💼"]
                 ].map(([label, val, color, icon]) => (
                   <div key={label} style={{ ...S.card, marginBottom: 0, padding: 18 }}>
