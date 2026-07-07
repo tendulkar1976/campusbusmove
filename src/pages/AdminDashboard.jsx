@@ -1391,135 +1391,59 @@ export default function AdminDashboard() {
             boxShadow: "0 10px 30px rgba(0,0,0,0.15)", animation: "fadeUp 0.25s ease"
           }}>
             <h3 style={{ fontSize: 16, fontWeight: 800, color: t.text, margin: "0 0 8px" }}>
-              Override Location: {overrideModalRoute.name}
+              Start Trip: {overrideModalRoute.name}
             </h3>
             <p style={{ fontSize: 12, color: t.textMuted, margin: "0 0 20px" }}>
-              Select how to publish the bus's location coordinates to students.
+              Select a driver to remotely initiate this bus trip on their behalf.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Select Override Type */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setOverrideType("driver")}
-                  style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 10, textAlign: "left",
-                    border: `1.5px solid ${overrideType === "driver" ? t.accent : t.border}`,
-                    background: overrideType === "driver" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
-                    color: overrideType === "driver" ? t.accent : t.text,
-                    fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
-                  }}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                  Select Driver
+                </label>
+                <select
+                  value={selectedDriverUid}
+                  onChange={e => setSelectedDriverUid(e.target.value)}
+                  style={{ ...S.input, marginBottom: 0, height: 44, padding: "0 14px" }}
                 >
-                  🧑‍✈️ Start Trip for Active Driver (Real GPS)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOverrideType("simulation")}
-                  style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 10, textAlign: "left",
-                    border: `1.5px solid ${overrideType === "simulation" ? t.accent : t.border}`,
-                    background: overrideType === "simulation" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
-                    color: overrideType === "simulation" ? t.accent : t.text,
-                    fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
-                  }}
-                >
-                  🔄 Auto-Simulation Loop (Fallback)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOverrideType("stationary")}
-                  style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 10, textAlign: "left",
-                    border: `1.5px solid ${overrideType === "stationary" ? t.accent : t.border}`,
-                    background: overrideType === "stationary" ? (dark ? "#451a03" : "#FFF7ED") : "transparent",
-                    color: overrideType === "stationary" ? t.accent : t.text,
-                    fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif"
-                  }}
-                >
-                  📍 Stationary Stop Location
-                </button>
+                  <option value="">Select a driver...</option>
+                  {users.filter(u => u.role === "driver" && !u.blocked).map(drv => (
+                    <option key={drv.id} value={drv.id}>{drv.name} ({drv.phone || "No phone"})</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 11, color: t.textMuted, marginTop: 6, lineHeight: 1.4 }}>
+                  ℹ️ If the driver's phone is online, their app will automatically start tracking and stream actual GPS coordinates. Otherwise, simulated coordinates will stream as a fallback.
+                </div>
               </div>
-
-              {overrideType === "driver" && (
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                    Select Driver
-                  </label>
-                  <select
-                    value={selectedDriverUid}
-                    onChange={e => setSelectedDriverUid(e.target.value)}
-                    style={{ ...S.input, marginBottom: 0, height: 44, padding: "0 14px" }}
-                  >
-                    <option value="">Select a driver...</option>
-                    {users.filter(u => u.role === "driver" && !u.blocked).map(drv => (
-                      <option key={drv.id} value={drv.id}>{drv.name} ({drv.phone || "No phone"})</option>
-                    ))}
-                  </select>
-                  <div style={{ fontSize: 11, color: t.textMuted, marginTop: 6, lineHeight: 1.4 }}>
-                    ℹ️ If the driver's phone is online, their app will automatically start tracking and stream actual GPS coordinates. Otherwise, simulated coordinates will stream as a fallback.
-                  </div>
-                </div>
-              )}
-
-              {overrideType === "simulation" && (
-                <div style={{ background: dark ? "#1E293B" : "#F8FAFC", padding: 12, borderRadius: 10, fontSize: 12, color: t.textMuted, lineHeight: 1.5 }}>
-                  ℹ️ <strong>Auto-Simulation Loop:</strong> The bus marker will automatically progress through the route's path and stops every 4 seconds.
-                </div>
-              )}
-
-              {overrideType === "stationary" && (
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                    Select Stop Location
-                  </label>
-                  <select
-                    value={selectedStopIndex}
-                    onChange={e => setSelectedStopIndex(Number(e.target.value))}
-                    style={{ ...S.input, marginBottom: 0, height: 44, padding: "0 14px" }}
-                  >
-                    <option value={-1}>Alliance Campus Main Gate (Default)</option>
-                    {overrideModalRoute.stops && overrideModalRoute.stops.map((stop, idx) => (
-                      <option key={idx} value={idx}>{stop.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button
                   onClick={async () => {
-                    let config = { type: overrideType };
-                    
-                    if (overrideType === "driver") {
-                      if (!selectedDriverUid) {
-                        alert("Please select a driver to start the trip.");
-                        return;
-                      }
-                      
-                      // 1. Create a trip document in Firestore
-                      const tripDoc = await addDoc(collection(db, "trips"), {
-                        driverUid: selectedDriverUid,
-                        routeId: overrideModalRoute.id,
-                        routeName: overrideModalRoute.name,
-                        campusId: "alliance-bangalore",
-                        startTime: Date.now(),
-                        endTime: null,
-                        status: "active",
-                        adminStarted: true
-                      });
-
-                      // 2. Start override with driver config
-                      config.driverUid = selectedDriverUid;
-                      config.tripId = tripDoc.id;
-                      config.adminStarted = true;
-                    } else if (overrideType === "stationary") {
-                      if (selectedStopIndex >= 0 && overrideModalRoute.stops && overrideModalRoute.stops[selectedStopIndex]) {
-                        config.stop = overrideModalRoute.stops[selectedStopIndex];
-                      } else {
-                        config.stop = { lat: 12.8258, lng: 77.7665, name: "Alliance Campus Main Gate" };
-                      }
+                    if (!selectedDriverUid) {
+                      alert("Please select a driver to start the trip.");
+                      return;
                     }
+                    
+                    // 1. Create a trip document in Firestore
+                    const tripDoc = await addDoc(collection(db, "trips"), {
+                      driverUid: selectedDriverUid,
+                      routeId: overrideModalRoute.id,
+                      routeName: overrideModalRoute.name,
+                      campusId: "alliance-bangalore",
+                      startTime: Date.now(),
+                      endTime: null,
+                      status: "active",
+                      adminStarted: true
+                    });
+
+                    // 2. Start override with driver config
+                    const config = {
+                      type: "driver",
+                      driverUid: selectedDriverUid,
+                      tripId: tripDoc.id,
+                      adminStarted: true
+                    };
                     
                     startOverride(overrideModalRoute.id, config);
                     setOverrideModalRoute(null);
@@ -1530,7 +1454,7 @@ export default function AdminDashboard() {
                     cursor: "pointer", fontFamily: "'Inter', sans-serif"
                   }}
                 >
-                  {overrideType === "driver" ? "Start Driver Trip" : "Activate Override"}
+                  Start Driver Trip
                 </button>
                 <button
                   onClick={() => setOverrideModalRoute(null)}
