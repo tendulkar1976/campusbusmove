@@ -1111,12 +1111,10 @@ export default function AdminDashboard() {
               </div>
 
               {/* Preset list card */}
-              <div style={S.card}>
-                <div style={S.cardHead}><span style={S.cardLabel}>Preset Loops ({filteredPresetRoutes.length})</span></div>
-                {filteredPresetRoutes.length === 0 ? (
-                  <div style={{ padding: 16, color: "#555", fontSize: 12, textAlign: "center" }}>No matching preset loops</div>
-                ) : (
-                  filteredPresetRoutes.map(pr => {
+              {filteredPresetRoutes.length > 0 && (
+                <div style={S.card}>
+                  <div style={S.cardHead}><span style={S.cardLabel}>Preset Loops ({filteredPresetRoutes.length})</span></div>
+                  {filteredPresetRoutes.map(pr => {
                     const active = liveStatus[pr.id]?.live?.active;
                     const override = presetOverrides[pr.id] || {};
                     const displayRoute = { ...pr, ...override };
@@ -1147,9 +1145,9 @@ export default function AdminDashboard() {
                         )}
                       </div>
                     );
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
 
               {/* Custom list card */}
               <div style={S.card}>
