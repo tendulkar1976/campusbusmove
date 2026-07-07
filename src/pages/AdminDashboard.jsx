@@ -1436,60 +1436,119 @@ export default function AdminDashboard() {
                     ? attendanceLogs
                     : attendanceLogs.filter(log => log.routeId === selectedFilterRouteId);
 
-                  if (filteredLogs.length === 0) {
-                    return (
-                      <div style={{ textAlign: "center", color: t.textMuted, padding: "40px 0" }}>
-                        No check-ins recorded for this route.
-                      </div>
-                    );
-                  }
+                  const getDayRange = (daysAgo) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - daysAgo);
+                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                    const end = start + 24 * 60 * 60 * 1000;
+                    return { start, end };
+                  };
+
+                  const getDayLabel = (daysAgo) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - daysAgo);
+                    if (daysAgo === 0) return "Today (" + d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ")";
+                    if (daysAgo === 1) return "Yesterday (" + d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ")";
+                    if (daysAgo === 2) return "Day Before (" + d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ")";
+                    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                  };
 
                   return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "60vh", overflowY: "auto", paddingRight: 4 }}>
-                      {filteredLogs.map(log => {
-                        const userObj = users.find(u => u.id === log.studentId);
-                        const routeObj = routes.find(r => r.id === log.routeId) || PRESET_ROUTES.find(r => r.id === log.routeId);
-                        
-                        const isTeacher = userObj?.role === "teacher";
-                        const roleBadgeColor = isTeacher ? (dark ? "#1b4d2b" : "#e8f5e9") : (dark ? "#0c4a6e" : "#e0f2fe");
-                        const roleTextColor = isTeacher ? (dark ? "#a5d6a7" : "#2e7d32") : (dark ? "#38bdf8" : "#0369a1");
-                        
-                        const dateStr = new Date(log.timestamp).toLocaleDateString("en-IN", {
-                          day: "2-digit", month: "short", year: "numeric"
-                        });
-                        const timeStr = new Date(log.timestamp).toLocaleTimeString("en-IN", {
-                          hour: "2-digit", minute: "2-digit", hour12: true
-                        });
+                    <>
+                      {/* Boarding Stats Grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+                        {[0, 1, 2].map(daysAgo => {
+                          const range = getDayRange(daysAgo);
+                          const dayLogs = filteredLogs.filter(log => log.timestamp >= range.start && log.timestamp < range.end);
+                          
+                          const studentCount = dayLogs.filter(log => {
+                            const u = users.find(usr => usr.id === log.studentId);
+                            return (u?.role || "student") === "student";
+                          }).length;
 
-                        return (
-                          <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{userObj?.name || "Unknown User"}</span>
-                                {userObj?.username && <span style={{ fontSize: 11, color: t.textMuted }}>@{userObj.username}</span>}
+                          const facultyCount = dayLogs.filter(log => {
+                            const u = users.find(usr => usr.id === log.studentId);
+                            return u?.role === "teacher";
+                          }).length;
+
+                          const totalCount = studentCount + facultyCount;
+
+                          return (
+                            <div key={daysAgo} style={{
+                              background: dark ? t.inputBg : t.bgCard2,
+                              border: `1.5px solid ${t.border}`,
+                              borderRadius: 12,
+                              padding: "14px 12px",
+                              textAlign: "center"
+                            }}>
+                              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                {getDayLabel(daysAgo)}
                               </div>
-                              <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>
-                                🚌 <strong>{routeObj?.name || log.routeId}</strong> · {dateStr} at {timeStr}
+                              <div style={{ fontSize: 24, fontWeight: 800, color: totalCount > 0 ? t.accent : t.textMuted, margin: "6px 0", letterSpacing: "-1px" }}>
+                                {totalCount}
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "center", gap: 8, fontSize: 11, color: t.textSub, fontWeight: 600 }}>
+                                <span>🎓 {studentCount}</span>
+                                <span>·</span>
+                                <span>💼 {facultyCount}</span>
                               </div>
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{
-                                fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
-                                background: roleBadgeColor, color: roleTextColor, textTransform: "uppercase"
-                              }}>
-                                {isTeacher ? "Faculty" : "Student"}
-                              </span>
-                              <span style={{
-                                fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
-                                background: dark ? "#112B1B" : "#ECFDF5", color: "#10B981", border: `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`
-                              }}>
-                                Present
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+
+                      {filteredLogs.length === 0 ? (
+                        <div style={{ textAlign: "center", color: t.textMuted, padding: "40px 0" }}>
+                          No check-ins recorded for this route.
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "60vh", overflowY: "auto", paddingRight: 4 }}>
+                          {filteredLogs.map(log => {
+                            const userObj = users.find(u => u.id === log.studentId);
+                            const routeObj = routes.find(r => r.id === log.routeId) || PRESET_ROUTES.find(r => r.id === log.routeId);
+                            
+                            const isTeacher = userObj?.role === "teacher";
+                            const roleBadgeColor = isTeacher ? (dark ? "#1b4d2b" : "#e8f5e9") : (dark ? "#0c4a6e" : "#e0f2fe");
+                            const roleTextColor = isTeacher ? (dark ? "#a5d6a7" : "#2e7d32") : (dark ? "#38bdf8" : "#0369a1");
+                            
+                            const dateStr = new Date(log.timestamp).toLocaleDateString("en-IN", {
+                              day: "2-digit", month: "short", year: "numeric"
+                            });
+                            const timeStr = new Date(log.timestamp).toLocaleTimeString("en-IN", {
+                              hour: "2-digit", minute: "2-digit", hour12: true
+                            });
+
+                            return (
+                              <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
+                                <div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{userObj?.name || "Unknown User"}</span>
+                                    {userObj?.username && <span style={{ fontSize: 11, color: t.textMuted }}>@{userObj.username}</span>}
+                                  </div>
+                                  <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>
+                                    🚌 <strong>{routeObj?.name || log.routeId}</strong> · {dateStr} at {timeStr}
+                                  </div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{
+                                    fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
+                                    background: roleBadgeColor, color: roleTextColor, textTransform: "uppercase"
+                                  }}>
+                                    {isTeacher ? "Faculty" : "Student"}
+                                  </span>
+                                  <span style={{
+                                    fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
+                                    background: dark ? "#112B1B" : "#ECFDF5", color: "#10B981", border: `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`
+                                  }}>
+                                    Present
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>
