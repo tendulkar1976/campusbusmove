@@ -180,12 +180,15 @@ export default function AdminDashboard() {
     try {
       const driverName = alertDriverUid === "custom_temp" ? alertCustomDriverName.trim() : (users.find(u => u.id === alertDriverUid)?.name || "Driver");
       const driverPhone = alertDriverUid === "custom_temp" ? alertCustomDriverPhone.trim() : (users.find(u => u.id === alertDriverUid)?.phone || users.find(u => u.id === alertDriverUid)?.identifier || "");
+      const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
+      const rName = rObj ? rObj.name : alertRouteId;
       
       const docRef = await addDoc(collection(db, "driver_alerts"), {
         routeId: alertRouteId,
         driverUid: alertDriverUid,
-        customDriverName: alertDriverUid === "custom_temp" ? driverName : null,
-        customDriverPhone: alertDriverUid === "custom_temp" ? driverPhone : null,
+        driverName: driverName,
+        driverPhone: driverPhone,
+        routeName: rName,
         message: alertMessage.trim(),
         timestamp: Date.now(),
         active: true
@@ -194,8 +197,9 @@ export default function AdminDashboard() {
         id: docRef.id,
         routeId: alertRouteId,
         driverUid: alertDriverUid,
-        customDriverName: alertDriverUid === "custom_temp" ? driverName : null,
-        customDriverPhone: alertDriverUid === "custom_temp" ? driverPhone : null,
+        driverName: driverName,
+        driverPhone: driverPhone,
+        routeName: rName,
         message: alertMessage.trim(),
         timestamp: Date.now(),
         active: true
@@ -1935,9 +1939,16 @@ export default function AdminDashboard() {
                                   🕒 {dateStr}
                                 </span>
                               </div>
-                              <div style={{ fontSize: 13, color: t.text, fontWeight: 500, lineHeight: 1.4 }}>
-                                {alert.message}
-                              </div>
+                              {alert.driverName ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6, fontSize: 12, color: t.text }}>
+                                  <div>👤 <strong style={{ color: t.textSub }}>New Driver:</strong> {alert.driverName}</div>
+                                  <div>📞 <strong style={{ color: t.textSub }}>Phone No:</strong> {alert.driverPhone || "N/A"}</div>
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: 13, color: t.text, fontWeight: 500, lineHeight: 1.4 }}>
+                                  {alert.message}
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => deleteDriverAlert(alert.id)}

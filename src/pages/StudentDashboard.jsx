@@ -627,20 +627,52 @@ export default function StudentDashboard() {
             </p>
 
             {/* Alert Message Box */}
-            <div style={{
-              background: dark ? t.inputBg : t.bgCard2,
-              border: `1.5px solid ${t.border}`,
-              borderRadius: 12,
-              padding: "16px 14px",
-              textAlign: "left",
-              fontSize: 13,
-              fontWeight: 600,
-              color: t.text,
-              lineHeight: 1.5,
-              marginBottom: 20
-            }}>
-              {activeAlert.message}
-            </div>
+            {activeAlert.driverName ? (
+              <div style={{
+                background: dark ? t.inputBg : t.bgCard2,
+                border: `1.5px solid ${t.border}`,
+                borderRadius: 14,
+                padding: "16px 18px",
+                textAlign: "left",
+                fontSize: 13,
+                color: t.text,
+                lineHeight: 1.6,
+                marginBottom: 20
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${t.border}`, paddingBottom: 8, marginBottom: 8 }}>
+                  <span style={{ color: t.textMuted, fontWeight: 600 }}>New Driver:</span>
+                  <span style={{ fontWeight: 800, color: t.text }}>{activeAlert.driverName}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${t.border}`, paddingBottom: 8, marginBottom: 8 }}>
+                  <span style={{ color: t.textMuted, fontWeight: 600 }}>Phone No:</span>
+                  <span style={{ fontWeight: 800, color: t.accent }}>{activeAlert.driverPhone}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: t.textMuted, fontWeight: 600 }}>Assigned To:</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 6,
+                    background: dark ? "#311005" : "#FFF7ED", color: "#FF5A1F", border: `1px solid ${dark ? "#5D2B05" : "#FDE68A"}`
+                  }}>
+                    {activeAlert.routeName || activeAlert.routeId}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                background: dark ? t.inputBg : t.bgCard2,
+                border: `1.5px solid ${t.border}`,
+                borderRadius: 12,
+                padding: "16px 14px",
+                textAlign: "left",
+                fontSize: 13,
+                fontWeight: 600,
+                color: t.text,
+                lineHeight: 1.5,
+                marginBottom: 20
+              }}>
+                {activeAlert.message}
+              </div>
+            )}
 
             {/* Action Button */}
             <button
