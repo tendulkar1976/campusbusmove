@@ -46,6 +46,59 @@ export default function DriverDashboard() {
   const watchdogRef                 = useRef(null);
   const useHighAccuracyRef          = useRef(true);
   const adminInitiatedRef           = useRef(false);
+  const silentAudioRef              = useRef(null);
+
+  // --- Silent audio keep-alive: prevents phone OS from pausing the tab ---
+  // A ~1s silent WAV loop tricks Android/iOS into treating the browser
+  // as an active media player (like Spotify), keeping GPS alive in background.
+  const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+
+  function startSilentAudio(routeName) {
+    try {
+      if (!silentAudioRef.current) {
+        const audio = new Audio(SILENT_WAV);
+        audio.loop = true;
+        audio.volume = 0.001; // effectively silent but "playing"
+        silentAudioRef.current = audio;
+      }
+      silentAudioRef.current.play().catch(() => {});
+
+      // Set up Media Session API — this is what appears on the lock screen
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: "CampusMove Live Location",
+          artist: routeName || "Route Active",
+          album: "Location sharing in progress...",
+        });
+        navigator.mediaSession.setActionHandler("play", () => {
+          silentAudioRef.current?.play().catch(() => {});
+        });
+        navigator.mediaSession.setActionHandler("pause", () => {
+          // Do nothing — we don't want the driver accidentally stopping tracking
+        });
+        navigator.mediaSession.setActionHandler("stop", () => {});
+      }
+    } catch (e) {
+      console.warn("Silent audio / MediaSession setup failed:", e);
+    }
+  }
+
+  function stopSilentAudio() {
+    try {
+      if (silentAudioRef.current) {
+        silentAudioRef.current.pause();
+        silentAudioRef.current.currentTime = 0;
+      }
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
+        navigator.mediaSession.setActionHandler("stop", null);
+      }
+    } catch (e) {
+      console.warn("Error stopping silent audio:", e);
+    }
+  }
 
   // Wake lock helpers
   async function requestWakeLock() {
@@ -135,6 +188,8 @@ export default function DriverDashboard() {
 
     setTracking(true);
     requestWakeLock();
+    const adminRoute = routes.find(r => r.id === routeId);
+    startSilentAudio(adminRoute?.name || routeId); // Background keep-alive for admin-started trips
     startWatchingGPS();
 
     clearInterval(watchdogRef.current);
@@ -323,6 +378,7 @@ export default function DriverDashboard() {
 
     setTracking(true);
     requestWakeLock(); // Keep screen awake
+    startSilentAudio(selectedRoute?.name || selectedRouteId); // Background keep-alive
     startWatchingGPS();
 
     // Start watchdog timer (check every 20s, restart if silent for 45s to avoid interfering with GPS cold starts)
@@ -355,6 +411,7 @@ export default function DriverDashboard() {
 
     setTracking(false);
     releaseWakeLock(); // Let screen sleep
+    stopSilentAudio(); // Stop background keep-alive
     setGpsStatus("idle");
 
     const lastLat = myLocation?.lat || null;
@@ -382,6 +439,7 @@ export default function DriverDashboard() {
     if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     clearInterval(timerRef.current);
     releaseWakeLock(); // Cleanup on unmount
+    stopSilentAudio(); // Cleanup on unmount
   }, []);
 
   const selectedRoute = useMemo(() => routes.find(r => r.id === selectedRouteId), [routes, selectedRouteId]);
