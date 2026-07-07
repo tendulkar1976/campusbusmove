@@ -230,6 +230,49 @@ export default function AdminDashboard() {
     }
   }
 
+  async function popAlertAgain(alertObj) {
+    if (!window.confirm("Resend alert? This will make the announcement pop up again on all student/faculty dashboards.")) return;
+    try {
+      // Delete old document in Firestore
+      await deleteDoc(doc(db, "driver_alerts", alertObj.id));
+      
+      // Create new document in Firestore with same details but new timestamp/id
+      const docRef = await addDoc(collection(db, "driver_alerts"), {
+        routeId: alertObj.routeId,
+        driverUid: alertObj.driverUid,
+        driverName: alertObj.driverName,
+        driverPhone: alertObj.driverPhone,
+        routeName: alertObj.routeName,
+        message: alertObj.message,
+        timestamp: Date.now(),
+        active: true
+      });
+      
+      // Update local state
+      const newAlert = {
+        id: docRef.id,
+        routeId: alertObj.routeId,
+        driverUid: alertObj.driverUid,
+        driverName: alertObj.driverName,
+        driverPhone: alertObj.driverPhone,
+        routeName: alertObj.routeName,
+        message: alertObj.message,
+        timestamp: Date.now(),
+        active: true
+      };
+      
+      setDriverAlerts(prev => {
+        const filtered = prev.filter(a => a.id !== alertObj.id);
+        return [newAlert, ...filtered];
+      });
+      
+      alert("Alert re-triggered successfully!");
+    } catch (err) {
+      console.error("Failed to pop alert again:", err);
+      alert("Failed to re-trigger alert.");
+    }
+  }
+
   function getRoutePathFallback(routeId) {
     const lat = 12.8258;
     const lng = 77.7665;
@@ -1950,12 +1993,32 @@ export default function AdminDashboard() {
                                 </div>
                               )}
                             </div>
-                            <button
-                              onClick={() => deleteDriverAlert(alert.id)}
-                              style={S.delBtn}
-                            >
-                              Delete
-                            </button>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 90 }}>
+                              <button
+                                onClick={() => deleteDriverAlert(alert.id)}
+                                style={{ ...S.delBtn, width: "100%", textAlign: "center" }}
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => popAlertAgain(alert)}
+                                style={{
+                                  background: dark ? "#112B1B" : "#ECFDF5",
+                                  color: "#10B981",
+                                  border: `1.5px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`,
+                                  borderRadius: 8,
+                                  padding: "6px 12px",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  width: "100%",
+                                  textAlign: "center",
+                                  transition: "all 0.15s"
+                                }}
+                              >
+                                Pop Again
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
