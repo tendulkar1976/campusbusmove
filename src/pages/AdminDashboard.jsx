@@ -118,6 +118,11 @@ export default function AdminDashboard() {
   const [selectedDriverUid, setSelectedDriverUid] = useState("");
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [selectedFilterRouteId, setSelectedFilterRouteId] = useState("all");
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [selectedDateStr, setSelectedDateStr] = useState(
+    `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}-${String(new Date().getDate()).padStart(2,"0")}`
+  );
 
   useEffect(() => {
     return () => {
@@ -1436,118 +1441,211 @@ export default function AdminDashboard() {
                     ? attendanceLogs
                     : attendanceLogs.filter(log => log.routeId === selectedFilterRouteId);
 
-                  const getDayRange = (daysAgo) => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - daysAgo);
-                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-                    const end = start + 24 * 60 * 60 * 1000;
-                    return { start, end };
+                  const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+                  const firstDay = new Date(calYear, calMonth, 1).getDay();
+                  const daysInMonth = getDaysInMonth(calYear, calMonth);
+                  const monthName = new Date(calYear, calMonth).toLocaleString("default", { month: "long" });
+
+                  const cells = [];
+                  for (let i = 0; i < firstDay; i++) cells.push(null);
+                  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+                  const getDayLogs = (dateStr) => {
+                    return filteredLogs.filter(log => {
+                      const logDate = new Date(log.timestamp);
+                      const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, "0")}-${String(logDate.getDate()).padStart(2, "0")}`;
+                      return logDateStr === dateStr;
+                    });
                   };
 
-                  const getDayLabel = (daysAgo) => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - daysAgo);
-                    if (daysAgo === 0) return "Today (" + d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ")";
-                    if (daysAgo === 1) return "Yesterday (" + d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ")";
-                    if (daysAgo === 2) return "Day Before (" + d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ")";
-                    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                  const getDayCounts = (dateStr) => {
+                    const dayLogs = getDayLogs(dateStr);
+                    const students = dayLogs.filter(log => {
+                      const u = users.find(usr => usr.id === log.studentId);
+                      return (u?.role || "student") === "student";
+                    }).length;
+                    const faculty = dayLogs.filter(log => {
+                      const u = users.find(usr => usr.id === log.studentId);
+                      return u?.role === "teacher";
+                    }).length;
+                    return { students, faculty, total: students + faculty };
                   };
+
+                  const selectedLogs = getDayLogs(selectedDateStr);
+                  const selectedCounts = getDayCounts(selectedDateStr);
+
+                  const formattedSelectedDate = new Date(selectedDateStr).toLocaleDateString("en-IN", {
+                    day: "numeric", month: "long", year: "numeric"
+                  });
 
                   return (
                     <>
-                      {/* Boarding Stats Grid */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-                        {[0, 1, 2].map(daysAgo => {
-                          const range = getDayRange(daysAgo);
-                          const dayLogs = filteredLogs.filter(log => log.timestamp >= range.start && log.timestamp < range.end);
-                          
-                          const studentCount = dayLogs.filter(log => {
-                            const u = users.find(usr => usr.id === log.studentId);
-                            return (u?.role || "student") === "student";
-                          }).length;
-
-                          const facultyCount = dayLogs.filter(log => {
-                            const u = users.find(usr => usr.id === log.studentId);
-                            return u?.role === "teacher";
-                          }).length;
-
-                          const totalCount = studentCount + facultyCount;
-
-                          return (
-                            <div key={daysAgo} style={{
-                              background: dark ? t.inputBg : t.bgCard2,
-                              border: `1.5px solid ${t.border}`,
-                              borderRadius: 12,
-                              padding: "14px 12px",
-                              textAlign: "center"
-                            }}>
-                              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                                {getDayLabel(daysAgo)}
+                      {/* Calendar View */}
+                      <div style={{ background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+                        <div style={{ padding: "12px 16px", borderBottom: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <button
+                            onClick={() => {
+                              if (calMonth === 0) {
+                                setCalMonth(11);
+                                setCalYear(y => y - 1);
+                              } else {
+                                setCalMonth(m => m - 1);
+                              }
+                            }}
+                            style={{ background: "none", border: `1.5px solid ${t.border}`, color: t.textSub, cursor: "pointer", fontSize: 18, width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >
+                            ‹
+                          </button>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>{monthName} {calYear}</span>
+                          <button
+                            onClick={() => {
+                              if (calMonth === 11) {
+                                setCalMonth(0);
+                                setCalYear(y => y + 1);
+                              } else {
+                                setCalMonth(m => m + 1);
+                              }
+                            }}
+                            style={{ background: "none", border: `1.5px solid ${t.border}`, color: t.textSub, cursor: "pointer", fontSize: 18, width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >
+                            ›
+                          </button>
+                        </div>
+                        <div style={{ padding: 12 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
+                            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d, i) => (
+                              <div key={i} style={{ textAlign: "center", fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>
+                                {d}
                               </div>
-                              <div style={{ fontSize: 24, fontWeight: 800, color: totalCount > 0 ? t.accent : t.textMuted, margin: "6px 0", letterSpacing: "-1px" }}>
-                                {totalCount}
-                              </div>
-                              <div style={{ display: "flex", justifyContent: "center", gap: 8, fontSize: 11, color: t.textSub, fontWeight: 600 }}>
-                                <span>🎓 {studentCount}</span>
-                                <span>·</span>
-                                <span>💼 {facultyCount}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            ))}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                            {cells.map((d, i) => {
+                              if (!d) return <div key={i} />;
+                              const ds = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                              const counts = getDayCounts(ds);
+                              const isSelected = selectedDateStr === ds;
+                              const isToday = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}` === ds;
+
+                              let bg = "transparent";
+                              let color = t.textSub;
+                              let border = "none";
+
+                              if (isSelected) {
+                                bg = t.accent;
+                                color = "#fff";
+                              } else if (counts.total > 0) {
+                                bg = dark ? "#112B1B" : "#ECFDF5";
+                                color = "#10B981";
+                                border = `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`;
+                              } else if (isToday) {
+                                border = `1px solid ${t.accent}`;
+                                color = t.accent;
+                              }
+
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => setSelectedDateStr(ds)}
+                                  style={{
+                                    aspectRatio: "1",
+                                    borderRadius: 8,
+                                    border,
+                                    background: bg,
+                                    color,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                    padding: 2,
+                                    outline: "none",
+                                    fontFamily: "'Inter', sans-serif"
+                                  }}
+                                >
+                                  <span style={{ fontSize: 11, fontWeight: isToday || isSelected ? 800 : 500 }}>{d}</span>
+                                  {counts.total > 0 && !isSelected && (
+                                    <span style={{ fontSize: 8, fontWeight: 700, marginTop: 2, color: "#10B981" }}>
+                                      {counts.total}
+                                    </span>
+                                  )}
+                                  {counts.total > 0 && isSelected && (
+                                    <span style={{ fontSize: 8, fontWeight: 700, marginTop: 2, color: "#fff" }}>
+                                      {counts.total}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
 
-                      {filteredLogs.length === 0 ? (
-                        <div style={{ textAlign: "center", color: t.textMuted, padding: "40px 0" }}>
-                          No check-ins recorded for this route.
+                      {/* Selected Day Stats & List */}
+                      <div style={{ borderTop: `1.5px solid ${t.border}`, paddingTop: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: t.text }}>
+                            Check-ins: {formattedSelectedDate}
+                          </span>
+                          <div style={{ display: "flex", gap: 8, fontSize: 11, color: t.textSub, fontWeight: 700 }}>
+                            <span style={{ background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 6, padding: "2px 6px" }}>
+                              🎓 {selectedCounts.students} Students
+                            </span>
+                            <span style={{ background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 6, padding: "2px 6px" }}>
+                              💼 {selectedCounts.faculty} Faculty
+                            </span>
+                          </div>
                         </div>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "60vh", overflowY: "auto", paddingRight: 4 }}>
-                          {filteredLogs.map(log => {
-                            const userObj = users.find(u => u.id === log.studentId);
-                            const routeObj = routes.find(r => r.id === log.routeId) || PRESET_ROUTES.find(r => r.id === log.routeId);
-                            
-                            const isTeacher = userObj?.role === "teacher";
-                            const roleBadgeColor = isTeacher ? (dark ? "#1b4d2b" : "#e8f5e9") : (dark ? "#0c4a6e" : "#e0f2fe");
-                            const roleTextColor = isTeacher ? (dark ? "#a5d6a7" : "#2e7d32") : (dark ? "#38bdf8" : "#0369a1");
-                            
-                            const dateStr = new Date(log.timestamp).toLocaleDateString("en-IN", {
-                              day: "2-digit", month: "short", year: "numeric"
-                            });
-                            const timeStr = new Date(log.timestamp).toLocaleTimeString("en-IN", {
-                              hour: "2-digit", minute: "2-digit", hour12: true
-                            });
 
-                            return (
-                              <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
-                                <div>
+                        {selectedLogs.length === 0 ? (
+                          <div style={{ textAlign: "center", color: t.textMuted, padding: "30px 0", background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
+                            No boarding check-ins recorded for this date.
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "40vh", overflowY: "auto", paddingRight: 4 }}>
+                            {selectedLogs.map(log => {
+                              const userObj = users.find(u => u.id === log.studentId);
+                              const routeObj = routes.find(r => r.id === log.routeId) || PRESET_ROUTES.find(r => r.id === log.routeId);
+                              
+                              const isTeacher = userObj?.role === "teacher";
+                              const roleBadgeColor = isTeacher ? (dark ? "#1b4d2b" : "#e8f5e9") : (dark ? "#0c4a6e" : "#e0f2fe");
+                              const roleTextColor = isTeacher ? (dark ? "#a5d6a7" : "#2e7d32") : (dark ? "#38bdf8" : "#0369a1");
+                              
+                              const timeStr = new Date(log.timestamp).toLocaleTimeString("en-IN", {
+                                hour: "2-digit", minute: "2-digit", hour12: true
+                              });
+
+                              return (
+                                <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
+                                  <div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{userObj?.name || "Unknown User"}</span>
+                                      {userObj?.username && <span style={{ fontSize: 11, color: t.textMuted }}>@{userObj.username}</span>}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>
+                                      🚌 <strong>{routeObj?.name || log.routeId}</strong> · Boarded at {timeStr}
+                                    </div>
+                                  </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{userObj?.name || "Unknown User"}</span>
-                                    {userObj?.username && <span style={{ fontSize: 11, color: t.textMuted }}>@{userObj.username}</span>}
-                                  </div>
-                                  <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>
-                                    🚌 <strong>{routeObj?.name || log.routeId}</strong> · {dateStr} at {timeStr}
+                                    <span style={{
+                                      fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
+                                      background: roleBadgeColor, color: roleTextColor, textTransform: "uppercase"
+                                    }}>
+                                      {isTeacher ? "Faculty" : "Student"}
+                                    </span>
+                                    <span style={{
+                                      fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
+                                      background: dark ? "#112B1B" : "#ECFDF5", color: "#10B981", border: `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`
+                                    }}>
+                                      Present
+                                    </span>
                                   </div>
                                 </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <span style={{
-                                    fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
-                                    background: roleBadgeColor, color: roleTextColor, textTransform: "uppercase"
-                                  }}>
-                                    {isTeacher ? "Faculty" : "Student"}
-                                  </span>
-                                  <span style={{
-                                    fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
-                                    background: dark ? "#112B1B" : "#ECFDF5", color: "#10B981", border: `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`
-                                  }}>
-                                    Present
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </>
                   );
                 })()}
