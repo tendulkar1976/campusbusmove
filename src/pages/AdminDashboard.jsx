@@ -738,7 +738,7 @@ export default function AdminDashboard() {
     },
     {
       id: "routes",
-      label: "Manage Routes",
+      label: "Routes",
       icon: (color) => (
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -748,7 +748,7 @@ export default function AdminDashboard() {
     },
     {
       id: "users",
-      label: "Manage Users",
+      label: "Users",
       icon: (color) => (
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
