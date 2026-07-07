@@ -110,7 +110,7 @@ export default function DriverDashboard() {
         } else {
           if (trackingRef.current && adminInitiatedRef.current) {
             console.log("Admin forced stop trip");
-            autoStopFromAdmin();
+            stopTracking();
           }
         }
       }
@@ -150,26 +150,6 @@ export default function DriverDashboard() {
       }
     }, 20000);
   }
-
-  async function autoStopFromAdmin() {
-    clearTimeout(gpsRetryRef.current);
-    clearInterval(watchdogRef.current);
-    watchdogRef.current = null;
-    if (watchIdRef.current) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-    adminInitiatedRef.current = false;
-    setTracking(false);
-    releaseWakeLock();
-    setGpsStatus("idle");
-    tripDocRef.current = null;
-    setMyLocation(null);
-    setSpeed(0);
-    setHeading(0);
-    setAccuracy(null);
-  }
-
   // Trip history
   useEffect(() => {
     if (!user || tab !== "trips") return;
@@ -270,6 +250,12 @@ export default function DriverDashboard() {
         };
         setError(msgs[err.code] || "GPS error: " + err.message);
 
+        if (err.code === 1) {
+          setGpsAlert("blocked");
+        } else if (err.code === 2) {
+          setGpsAlert("off");
+        }
+
         if (err.code === 2 || err.code === 3) {
           setGpsStatus("waiting");
           if (useHighAccuracyRef.current) {
@@ -363,25 +349,29 @@ export default function DriverDashboard() {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
+
+    const activeTripId = tripDocRef.current;
+    tripDocRef.current = null;
+
     setTracking(false);
     releaseWakeLock(); // Let screen sleep
     setGpsStatus("idle");
 
-    writeToRTDB(
-      myLocation?.lat || null,
-      myLocation?.lng || null,
-      0, 0, false
-    );
-
+    const lastLat = myLocation?.lat || null;
+    const lastLng = myLocation?.lng || null;
     setMyLocation(null);
 
-    if (tripDocRef.current) {
-      await updateDoc(doc(db, "trips", tripDocRef.current), {
-        endTime: Date.now(), status: "completed",
-      });
-      tripDocRef.current = null;
+    if (activeTripId) {
+      try {
+        await updateDoc(doc(db, "trips", activeTripId), {
+          endTime: Date.now(), status: "completed",
+        });
+      } catch (err) {
+        console.error("Failed to update Firestore trip status:", err);
+      }
     }
 
+    writeToRTDB(lastLat, lastLng, 0, 0, false);
     setSpeed(0); setHeading(0); setAccuracy(null);
     adminInitiatedRef.current = false;
   }
@@ -707,7 +697,11 @@ export default function DriverDashboard() {
               <button
                 onClick={() => {
                   setGpsAlert(null);
-                  window.location.reload();
+                  if (trackingRef.current) {
+                    startWatchingGPS();
+                  } else {
+                    startTracking();
+                  }
                 }}
                 style={{
                   width: "100%",
@@ -722,15 +716,18 @@ export default function DriverDashboard() {
                   fontFamily: "'DM Sans', sans-serif"
                 }}
               >
-                🔄 Refresh Page
+                🔄 Retry Connection
               </button>
               <button
-                onClick={() => setGpsAlert(null)}
+                onClick={() => {
+                  setGpsAlert(null);
+                  window.location.reload();
+                }}
                 style={{
                   width: "100%",
                   background: "none",
-                  border: `1px solid ${t.border}`,
-                  color: t.textSub,
+                  border: `1.5px solid ${t.border}`,
+                  color: t.text,
                   borderRadius: 14,
                   padding: "12px 0",
                   fontSize: 13,
@@ -739,7 +736,24 @@ export default function DriverDashboard() {
                   fontFamily: "'DM Sans', sans-serif"
                 }}
               >
-                Close
+                Refresh Page
+              </button>
+              <button
+                onClick={() => setGpsAlert(null)}
+                style={{
+                  width: "100%",
+                  background: "none",
+                  border: "none",
+                  color: t.textSub,
+                  borderRadius: 14,
+                  padding: "8px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif"
+                }}
+              >
+                Cancel
               </button>
             </div>
           </div>
