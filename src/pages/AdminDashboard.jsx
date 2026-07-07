@@ -117,6 +117,8 @@ export default function AdminDashboard() {
   const [selectedStopIndex, setSelectedStopIndex] = useState(-1);
   const [selectedDriverUid, setSelectedDriverUid] = useState("");
   const [loginLogs, setLoginLogs] = useState([]);
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [selectedFilterRouteId, setSelectedFilterRouteId] = useState("all");
 
   useEffect(() => {
     return () => {
@@ -131,6 +133,15 @@ export default function AdminDashboard() {
         .sort((a, b) => b.timestamp - a.timestamp);
       setLoginLogs(logs);
     }).catch(err => console.error("Error fetching login logs:", err));
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab !== "attendance") return;
+    getDocs(collection(db, "attendance")).then(snap => {
+      const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => b.timestamp - a.timestamp);
+      setAttendanceLogs(logs);
+    }).catch(err => console.error("Error fetching attendance logs:", err));
   }, [tab]);
 
   function openOverrideModal(prId) {
@@ -630,6 +641,19 @@ export default function AdminDashboard() {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
           <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
           <path d="M12 6V12L16 14" />
+        </svg>
+      )
+    },
+    {
+      id: "attendance",
+      label: "Attendance Logs",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
         </svg>
       )
     }
@@ -1442,6 +1466,100 @@ export default function AdminDashboard() {
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════ ATTENDANCE LOGS TAB ══════════════ */}
+          {tab === "attendance" && (
+            <div style={S.card}>
+              <div style={S.cardHead}>
+                <span style={S.cardLabel}>Boarding & Attendance History</span>
+                <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 600 }}>Individual Bus Check-Ins</span>
+              </div>
+              <div style={{ padding: 20 }}>
+                {/* Route filter dropdown */}
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    Filter by Bus Route
+                  </label>
+                  <select
+                    value={selectedFilterRouteId}
+                    onChange={e => setSelectedFilterRouteId(e.target.value)}
+                    style={{ ...S.input, marginBottom: 0, height: 44, padding: "0 14px" }}
+                  >
+                    <option value="all">All Routes / Buses</option>
+                    {[
+                      ...PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(r => ({ ...r, isPreset: true })),
+                      ...routes.map(r => ({ ...r, isPreset: false }))
+                    ].map(r => (
+                      <option key={r.id} value={r.id}>{r.name} ({r.label || "No Label"})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Logs list */}
+                {(() => {
+                  const filteredLogs = selectedFilterRouteId === "all"
+                    ? attendanceLogs
+                    : attendanceLogs.filter(log => log.routeId === selectedFilterRouteId);
+
+                  if (filteredLogs.length === 0) {
+                    return (
+                      <div style={{ textAlign: "center", color: t.textMuted, padding: "40px 0" }}>
+                        No check-ins recorded for this route.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "60vh", overflowY: "auto", paddingRight: 4 }}>
+                      {filteredLogs.map(log => {
+                        const userObj = users.find(u => u.id === log.studentId);
+                        const routeObj = routes.find(r => r.id === log.routeId) || PRESET_ROUTES.find(r => r.id === log.routeId);
+                        
+                        const isTeacher = userObj?.role === "teacher";
+                        const roleBadgeColor = isTeacher ? (dark ? "#1b4d2b" : "#e8f5e9") : (dark ? "#0c4a6e" : "#e0f2fe");
+                        const roleTextColor = isTeacher ? (dark ? "#a5d6a7" : "#2e7d32") : (dark ? "#38bdf8" : "#0369a1");
+                        
+                        const dateStr = new Date(log.timestamp).toLocaleDateString("en-IN", {
+                          day: "2-digit", month: "short", year: "numeric"
+                        });
+                        const timeStr = new Date(log.timestamp).toLocaleTimeString("en-IN", {
+                          hour: "2-digit", minute: "2-digit", hour12: true
+                        });
+
+                        return (
+                          <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{userObj?.name || "Unknown User"}</span>
+                                {userObj?.username && <span style={{ fontSize: 11, color: t.textMuted }}>@{userObj.username}</span>}
+                              </div>
+                              <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>
+                                🚌 <strong>{routeObj?.name || log.routeId}</strong> · {dateStr} at {timeStr}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
+                                background: roleBadgeColor, color: roleTextColor, textTransform: "uppercase"
+                              }}>
+                                {isTeacher ? "Faculty" : "Student"}
+                              </span>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
+                                background: dark ? "#112B1B" : "#ECFDF5", color: "#10B981", border: `1px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`
+                              }}>
+                                Present
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
