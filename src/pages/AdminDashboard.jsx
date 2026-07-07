@@ -181,7 +181,7 @@ export default function AdminDashboard() {
       const currentLive = liveStatusRef.current[routeId]?.live;
 
       // If the trip was stopped externally (active is false), clear the simulation interval
-      if (currentLive && currentLive.active === false) {
+      if (state.type === "driver" && state.tripId && currentLive && currentLive.tripId === state.tripId && currentLive.active === false) {
         console.log("Trip was stopped externally. Clearing admin interval.");
         if (overrideIntervalsRef.current[routeId]) {
           clearInterval(overrideIntervalsRef.current[routeId]);
@@ -192,7 +192,7 @@ export default function AdminDashboard() {
       }
 
       // If the driver is online and actively streaming real GPS coordinates, stop the admin simulation to prevent conflict
-      if (currentLive && currentLive.active === true && currentLive.source === "driver-gps") {
+      if (state.type === "driver" && state.tripId && currentLive && currentLive.tripId === state.tripId && currentLive.active === true && currentLive.source === "driver-gps") {
         console.log("Driver GPS is active. Suspending admin simulation loop to prevent coordinates conflict.");
         if (overrideIntervalsRef.current[routeId]) {
           clearInterval(overrideIntervalsRef.current[routeId]);
