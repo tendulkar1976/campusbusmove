@@ -1471,6 +1471,13 @@ export default function AdminDashboard() {
                     return { students, faculty, total: students + faculty };
                   };
 
+                  const getMonthlyTotal = () => {
+                    return filteredLogs.filter(log => {
+                      const logDate = new Date(log.timestamp);
+                      return logDate.getMonth() === calMonth && logDate.getFullYear() === calYear;
+                    }).length;
+                  };
+
                   const selectedLogs = getDayLogs(selectedDateStr);
                   const selectedCounts = getDayCounts(selectedDateStr);
 
@@ -1496,7 +1503,15 @@ export default function AdminDashboard() {
                           >
                             ‹
                           </button>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>{monthName} {calYear}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>{monthName} {calYear}</span>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, padding: "2.5px 8px", borderRadius: 6,
+                              background: dark ? "#1a2e3b" : "#e0f2fe", color: dark ? "#38bdf8" : "#0284c7"
+                            }}>
+                              {getMonthlyTotal()} Total Check-ins
+                            </span>
+                          </div>
                           <button
                             onClick={() => {
                               if (calMonth === 11) {
