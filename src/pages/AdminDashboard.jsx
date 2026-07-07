@@ -1450,50 +1450,48 @@ export default function AdminDashboard() {
             <>
               {/* Current plan metrics */}
               {subscription && !showPlans && (
-                <div style={{ ...S.card, border: `1px solid ${currentPlan.color}33` }}>
-                  <div style={{ padding: "20px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                      <div style={{ width: 48, height: 48, background: `${currentPlan.color}15`, borderRadius: 14, display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "center", fontSize: 24 }}>{currentPlan.emoji}</div>
+                <div style={{ ...S.card, border: `1.5px solid ${currentPlan.color}33` }}>
+                  <div style={{ padding: "18px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 24 }}>{currentPlan.emoji}</span>
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
+                          <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
+                            {subscription.status === "trial" ? "Trial License" : `₹${(subscription.billing === "yearly" ? currentPlan.yearly : currentPlan.monthly).toLocaleString("en-IN")}/${subscription.billing === "yearly" ? "year" : "month"}`}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>Expires</div>
+                        <div style={{ fontSize: 13, color: daysLeft <= 7 ? "#F59E0B" : t.textSub, fontWeight: 700, marginTop: 4 }}>{formatDate(subscription.expiryDate)}</div>
+                      </div>
+                    </div>
+
+                    {/* Progress tracking bars */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: `1.5px solid ${t.border}`, paddingTop: 16 }}>
                       <div>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
-                        <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                          {subscription.status === "trial" ? "Trial License" : `₹${(subscription.billing === "yearly" ? currentPlan.yearly : currentPlan.monthly).toLocaleString("en-IN")} / ${subscription.billing === "yearly" ? "year" : "month"}`}
+                        <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Routes quota</span>
+                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{totalRoutes} / {currentPlan.limits.routes === Infinity ? "Unlimited" : currentPlan.limits.routes}</span>
+                        </div>
+                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
+                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.routes === Infinity ? "40%" : `${Math.min(100, (totalRoutes / currentPlan.limits.routes) * 100)}%`, transition: "width 0.4s" }}/>
                         </div>
                       </div>
-                      <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                        <div style={{ fontSize: 10, color: "#555", fontWeight: 700, textTransform: "uppercase" }}>License status</div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: isExpired ? "#F87171" : isWarning ? "#FBBF24" : "#4ADE80", marginTop: 4 }}>
-                          {isExpired ? "Expired" : subscription.status === "trial" ? "Trial Active" : "Active"}
+                      <div>
+                        <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Students capacity</span>
+                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{commuterCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
+                        </div>
+                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
+                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.students === Infinity ? "20%" : `${Math.min(100, (commuterCount / currentPlan.limits.students) * 100)}%`, transition: "width 0.4s" }}/>
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-                      {[
-                        ["Authorized on", formatDate(subscription.startDate)],
-                        ["Expiry date", formatDate(subscription.expiryDate)],
-                        ["Days remaining", isExpired ? "Expired" : `${daysLeft} days`],
-                        ["Billing cycle", subscription.billing === "yearly" ? "Yearly (10% off)" : "Monthly"],
-                      ].map(([l, v]) => (
-                        <div key={l} style={{ background: dark ? t.inputBg : t.bgCard2, borderRadius: 10, padding: "12px 14px", border: `1.5px solid ${t.border}` }}>
-                          <div style={{ fontSize: 9, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6, fontWeight: 700 }}>{l}</div>
-                          <div style={{ fontSize: 13, color: t.textSub, fontWeight: 700 }}>{v}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 10, color: t.textMuted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 700 }}>Included plan privileges</div>
-                      {currentPlan.features.map((f, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                          <span style={{ color: currentPlan.color, fontSize: 14 }}>✓</span>
-                          <span style={{ fontSize: 13, color: t.textSub }}>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button onClick={() => setShowPlans(true)} className="add-btn" style={{ width: "100%", background: currentPlan.id === "basic" ? t.accent : "transparent", border: `1.5px solid ${currentPlan.id === "basic" ? t.accent : t.border}`, borderRadius: 10, padding: "14px 0", color: currentPlan.id === "basic" ? "#fff" : t.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
-                      {currentPlan.id === "basic" ? "⚡ Upgrade to Enterprise Premium" : "Change subscription plan"}
+                    <button onClick={() => setShowPlans(true)} style={{ marginTop: 18, width: "100%", background: "transparent", border: `1.5px solid ${currentPlan.color}44`, borderRadius: 10, padding: "12px 0", color: currentPlan.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
+                      {subscription.plan === "basic" ? "⚡ Upgrade to Premium Features" : "Manage billing licenses"}
                     </button>
                   </div>
                 </div>
