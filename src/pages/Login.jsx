@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { db, auth } from "../firebase";
-import { getDoc, doc, setDoc } from "firebase/firestore";
+import { getDoc, doc, setDoc, collection, addDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useTheme } from "../context/ThemeContext";
 
@@ -191,6 +191,16 @@ export default function Login() {
           setLoading(false); setBusPhase("idle"); return;
         }
 
+        // Log login event
+        await addDoc(collection(db, "login_history"), {
+          userId: cred.user.uid,
+          name: snap.data().name || username,
+          username: username,
+          role: userRole,
+          campusId: "alliance-bangalore",
+          timestamp: Date.now()
+        });
+
         setTimeout(() => navigate("/student"), 600);
       } else {
         if (!form.name.trim()) { setError("Enter your full name."); setLoading(false); setBusPhase("idle"); return; }
@@ -206,6 +216,17 @@ export default function Login() {
           profile.pickupPoint = (form.pickupPoint || "").trim();
         }
         await setDoc(doc(db, "users", cred.user.uid), profile);
+
+        // Log registration login event
+        await addDoc(collection(db, "login_history"), {
+          userId: cred.user.uid,
+          name: profile.name,
+          username: username,
+          role: role,
+          campusId: "alliance-bangalore",
+          timestamp: Date.now()
+        });
+
         setTimeout(() => navigate("/student"), 600);
       }
     } catch (err) {

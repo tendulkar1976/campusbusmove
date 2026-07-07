@@ -116,12 +116,22 @@ export default function AdminDashboard() {
   const [overrideType, setOverrideType] = useState("simulation");
   const [selectedStopIndex, setSelectedStopIndex] = useState(-1);
   const [selectedDriverUid, setSelectedDriverUid] = useState("");
+  const [loginLogs, setLoginLogs] = useState([]);
 
   useEffect(() => {
     return () => {
       Object.values(overrideIntervalsRef.current).forEach(clearInterval);
     };
   }, []);
+
+  useEffect(() => {
+    if (tab !== "logins") return;
+    getDocs(collection(db, "login_history")).then(snap => {
+      const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => b.timestamp - a.timestamp);
+      setLoginLogs(logs);
+    }).catch(err => console.error("Error fetching login logs:", err));
+  }, [tab]);
 
   function openOverrideModal(prId) {
     const routeObj = routes.find(r => r.id === prId) || PRESET_ROUTES.find(r => r.id === prId);
@@ -610,6 +620,16 @@ export default function AdminDashboard() {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
           <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+      )
+    },
+    {
+      id: "logins",
+      label: "Login Logs",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
+          <path d="M12 6V12L16 14" />
         </svg>
       )
     }
@@ -1374,6 +1394,56 @@ export default function AdminDashboard() {
                 </>
               )}
             </>
+          )}
+
+          {/* ══════════════ LOGIN LOGS TAB ══════════════ */}
+          {tab === "logins" && (
+            <div style={S.card}>
+              <div style={S.cardHead}>
+                <span style={S.cardLabel}>User Login History</span>
+                <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 600 }}>Tracks Students & Faculty</span>
+              </div>
+              <div style={{ padding: 20 }}>
+                {loginLogs.length === 0 ? (
+                  <div style={{ textAlign: "center", color: t.textMuted, padding: "40px 0" }}>
+                    No logins recorded yet.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "60vh", overflowY: "auto", paddingRight: 4 }}>
+                    {loginLogs.map(log => {
+                      const isTeacher = log.role === "teacher";
+                      const roleBadgeColor = isTeacher ? (dark ? "#1b4d2b" : "#e8f5e9") : (dark ? "#0c4a6e" : "#e0f2fe");
+                      const roleTextColor = isTeacher ? (dark ? "#a5d6a7" : "#2e7d32") : (dark ? "#38bdf8" : "#0369a1");
+                      const dateStr = new Date(log.timestamp).toLocaleDateString("en-IN", {
+                        day: "2-digit", month: "short", year: "numeric"
+                      });
+                      const timeStr = new Date(log.timestamp).toLocaleTimeString("en-IN", {
+                        hour: "2-digit", minute: "2-digit", hour12: true
+                      });
+                      return (
+                        <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{log.name}</span>
+                              <span style={{ fontSize: 11, color: t.textMuted }}>@{log.username}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>
+                              📅 {dateStr} at {timeStr}
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 8,
+                            background: roleBadgeColor, color: roleTextColor, textTransform: "uppercase"
+                          }}>
+                            {isTeacher ? "Faculty" : "Student"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
         </div>
