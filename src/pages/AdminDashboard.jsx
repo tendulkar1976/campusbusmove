@@ -1015,54 +1015,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              {/* Usage & Plan overview card */}
-              {subscription && (
-                <div style={{ ...S.card, border: `1.5px solid ${currentPlan.color}33` }}>
-                  <div style={{ padding: "18px 20px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 24 }}>{currentPlan.emoji}</span>
-                        <div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
-                          <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
-                            {subscription.status === "trial" ? "Trial License" : `₹${(subscription.billing === "yearly" ? currentPlan.yearly : currentPlan.monthly).toLocaleString("en-IN")}/${subscription.billing === "yearly" ? "year" : "month"}`}
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>Expires</div>
-                        <div style={{ fontSize: 13, color: daysLeft <= 7 ? "#F59E0B" : t.textSub, fontWeight: 700, marginTop: 4 }}>{formatDate(subscription.expiryDate)}</div>
-                      </div>
-                    </div>
 
-                    {/* Progress tracking bars */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: `1.5px solid ${t.border}`, paddingTop: 16 }}>
-                      <div>
-                        <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Routes quota</span>
-                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{totalRoutes} / {currentPlan.limits.routes === Infinity ? "Unlimited" : currentPlan.limits.routes}</span>
-                        </div>
-                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
-                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.routes === Infinity ? "40%" : `${Math.min(100, (totalRoutes / currentPlan.limits.routes) * 100)}%`, transition: "width 0.4s" }}/>
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Students capacity</span>
-                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{commuterCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
-                        </div>
-                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
-                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.students === Infinity ? "20%" : `${Math.min(100, (commuterCount / currentPlan.limits.students) * 100)}%`, transition: "width 0.4s" }}/>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ marginTop: 18, width: "100%", background: "transparent", border: `1.5px solid ${currentPlan.color}44`, borderRadius: 10, padding: "12px 0", color: currentPlan.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
-                      {subscription.plan === "basic" ? "⚡ Upgrade to Premium Features" : "Manage billing licenses"}
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* Live telemetry list */}
               <div style={S.card}>
