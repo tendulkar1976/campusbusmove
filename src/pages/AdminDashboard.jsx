@@ -129,6 +129,7 @@ export default function AdminDashboard() {
   const [alertRouteId, setAlertRouteId] = useState("");
   const [alertDriverUid, setAlertDriverUid] = useState("");
   const [alertCustomDriverName, setAlertCustomDriverName] = useState("");
+  const [alertCustomDriverPhone, setAlertCustomDriverPhone] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
   const [alertPublishing, setAlertPublishing] = useState(false);
 
@@ -169,19 +170,22 @@ export default function AdminDashboard() {
     if (e) e.preventDefault();
     if (!alertRouteId) return alert("Please select a route.");
     if (!alertDriverUid) return alert("Please select a driver.");
-    if (alertDriverUid === "custom_temp" && !alertCustomDriverName.trim()) {
-      return alert("Please enter the custom driver's name.");
+    if (alertDriverUid === "custom_temp") {
+      if (!alertCustomDriverName.trim()) return alert("Please enter the custom driver's name.");
+      if (!alertCustomDriverPhone.trim()) return alert("Please enter the custom driver's phone number.");
     }
     if (!alertMessage.trim()) return alert("Please enter an alert message.");
 
     setAlertPublishing(true);
     try {
       const driverName = alertDriverUid === "custom_temp" ? alertCustomDriverName.trim() : (users.find(u => u.id === alertDriverUid)?.name || "Driver");
+      const driverPhone = alertDriverUid === "custom_temp" ? alertCustomDriverPhone.trim() : (users.find(u => u.id === alertDriverUid)?.phone || users.find(u => u.id === alertDriverUid)?.identifier || "");
       
       const docRef = await addDoc(collection(db, "driver_alerts"), {
         routeId: alertRouteId,
         driverUid: alertDriverUid,
         customDriverName: alertDriverUid === "custom_temp" ? driverName : null,
+        customDriverPhone: alertDriverUid === "custom_temp" ? driverPhone : null,
         message: alertMessage.trim(),
         timestamp: Date.now(),
         active: true
@@ -191,6 +195,7 @@ export default function AdminDashboard() {
         routeId: alertRouteId,
         driverUid: alertDriverUid,
         customDriverName: alertDriverUid === "custom_temp" ? driverName : null,
+        customDriverPhone: alertDriverUid === "custom_temp" ? driverPhone : null,
         message: alertMessage.trim(),
         timestamp: Date.now(),
         active: true
@@ -199,6 +204,7 @@ export default function AdminDashboard() {
       setAlertRouteId("");
       setAlertDriverUid("");
       setAlertCustomDriverName("");
+      setAlertCustomDriverPhone("");
       setAlertMessage("");
       alert("Alert published successfully!");
     } catch (err) {
@@ -1771,8 +1777,14 @@ export default function AdminDashboard() {
                         setAlertRouteId(rid);
                         const rObj = routes.find(r => r.id === rid) || PRESET_ROUTES.find(r => r.id === rid);
                         if (rObj && alertDriverUid) {
-                          const dObj = users.find(u => u.id === alertDriverUid);
-                          setAlertMessage(`Driver Assignment Update: ${dObj ? dObj.name : "New Driver"} is driving ${rObj.name} today instead of the previous driver.`);
+                          if (alertDriverUid === "custom_temp") {
+                            setAlertMessage(`Driver Assignment Update: ${alertCustomDriverName || "New Driver"} (${alertCustomDriverPhone || "No Phone"}) is the newly assigned driver for ${rObj.name}.`);
+                          } else {
+                            const dObj = users.find(u => u.id === alertDriverUid);
+                            if (dObj) {
+                              setAlertMessage(`Driver Assignment Update: ${dObj.name} (${dObj.phone || dObj.identifier || "No Phone"}) is the newly assigned driver for ${rObj.name}.`);
+                            }
+                          }
                         }
                       }}
                       style={S.input}
@@ -1798,22 +1810,23 @@ export default function AdminDashboard() {
                         setAlertDriverUid(duid);
                         if (duid === "custom_temp") {
                           setAlertCustomDriverName("");
+                          setAlertCustomDriverPhone("");
                           if (alertRouteId) {
                             const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
-                            setAlertMessage(`Driver Assignment Update: New Driver is driving ${rObj ? rObj.name : "Route"} today instead of the previous driver.`);
+                            setAlertMessage(`Driver Assignment Update: New Driver (No Phone) is the newly assigned driver for ${rObj ? rObj.name : "Route"}.`);
                           }
                         } else {
                           const dObj = users.find(u => u.id === duid);
                           if (alertRouteId && dObj) {
                             const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
-                            setAlertMessage(`Driver Assignment Update: ${dObj.name} is driving ${rObj ? rObj.name : "Route"} today instead of the previous driver.`);
+                            setAlertMessage(`Driver Assignment Update: ${dObj.name} (${dObj.phone || dObj.identifier || "No Phone"}) is the newly assigned driver for ${rObj ? rObj.name : "Route"}.`);
                           }
                         }
                       }}
                       style={S.input}
                     >
                       <option value="">Select a driver...</option>
-                      <option value="custom_temp">➕ Add Temporary / Custom Driver...</option>
+                      <option value="custom_temp">temporary driver</option>
                       {users.filter(u => u.role === "driver" && !u.blocked).map(drv => (
                         <option key={drv.id} value={drv.id}>{drv.name} ({drv.phone || drv.identifier || "No Phone"})</option>
                       ))}
@@ -1821,24 +1834,45 @@ export default function AdminDashboard() {
                   </div>
 
                   {alertDriverUid === "custom_temp" && (
-                    <div style={{ marginBottom: 14 }}>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                        Custom Driver Name
-                      </label>
-                      <input
-                        type="text"
-                        value={alertCustomDriverName}
-                        onChange={e => {
-                          const name = e.target.value;
-                          setAlertCustomDriverName(name);
-                          if (alertRouteId) {
-                            const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
-                            setAlertMessage(`Driver Assignment Update: ${name || "New Driver"} is driving ${rObj ? rObj.name : "Route"} today instead of the previous driver.`);
-                          }
-                        }}
-                        placeholder="e.g. Ramesh Kumar"
-                        style={S.input}
-                      />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                          Driver Name
+                        </label>
+                        <input
+                          type="text"
+                          value={alertCustomDriverName}
+                          onChange={e => {
+                            const name = e.target.value;
+                            setAlertCustomDriverName(name);
+                            if (alertRouteId) {
+                              const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
+                              setAlertMessage(`Driver Assignment Update: ${name || "New Driver"} (${alertCustomDriverPhone || "No Phone"}) is the newly assigned driver for ${rObj ? rObj.name : "Route"}.`);
+                            }
+                          }}
+                          placeholder="e.g. Ramesh Kumar"
+                          style={S.input}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                          Driver Phone Number
+                        </label>
+                        <input
+                          type="text"
+                          value={alertCustomDriverPhone}
+                          onChange={e => {
+                            const phone = e.target.value;
+                            setAlertCustomDriverPhone(phone);
+                            if (alertRouteId) {
+                              const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
+                              setAlertMessage(`Driver Assignment Update: ${alertCustomDriverName || "New Driver"} (${phone || "No Phone"}) is the newly assigned driver for ${rObj ? rObj.name : "Route"}.`);
+                            }
+                          }}
+                          placeholder="e.g. 9876543210"
+                          style={S.input}
+                        />
+                      </div>
                     </div>
                   )}
 
