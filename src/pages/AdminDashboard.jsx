@@ -124,6 +124,13 @@ export default function AdminDashboard() {
     `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}-${String(new Date().getDate()).padStart(2,"0")}`
   );
 
+  // Driver Change Alerts state
+  const [driverAlerts, setDriverAlerts] = useState([]);
+  const [alertRouteId, setAlertRouteId] = useState("");
+  const [alertDriverUid, setAlertDriverUid] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertPublishing, setAlertPublishing] = useState(false);
+
   useEffect(() => {
     return () => {
       Object.values(overrideIntervalsRef.current).forEach(clearInterval);
@@ -139,12 +146,69 @@ export default function AdminDashboard() {
     }).catch(err => console.error("Error fetching attendance logs:", err));
   }, [tab]);
 
+  // Load driver alerts
+  useEffect(() => {
+    if (tab !== "alerts") return;
+    getDocs(collection(db, "driver_alerts")).then(snap => {
+      const alerts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => b.timestamp - a.timestamp);
+      setDriverAlerts(alerts);
+    }).catch(err => console.error("Error fetching driver alerts:", err));
+  }, [tab]);
+
   function openOverrideModal(prId) {
     const routeObj = routes.find(r => r.id === prId) || PRESET_ROUTES.find(r => r.id === prId);
     setOverrideModalRoute(routeObj);
     setOverrideType("driver");
     setSelectedStopIndex(-1);
     setSelectedDriverUid("");
+  }
+
+  async function publishDriverAlert(e) {
+    if (e) e.preventDefault();
+    if (!alertRouteId) return alert("Please select a route.");
+    if (!alertDriverUid) return alert("Please select a driver.");
+    if (!alertMessage.trim()) return alert("Please enter an alert message.");
+
+    setAlertPublishing(true);
+    try {
+      const docRef = await addDoc(collection(db, "driver_alerts"), {
+        routeId: alertRouteId,
+        driverUid: alertDriverUid,
+        message: alertMessage.trim(),
+        timestamp: Date.now(),
+        active: true
+      });
+      const newAlert = {
+        id: docRef.id,
+        routeId: alertRouteId,
+        driverUid: alertDriverUid,
+        message: alertMessage.trim(),
+        timestamp: Date.now(),
+        active: true
+      };
+      setDriverAlerts(prev => [newAlert, ...prev]);
+      setAlertRouteId("");
+      setAlertDriverUid("");
+      setAlertMessage("");
+      alert("Alert published successfully!");
+    } catch (err) {
+      console.error("Failed to publish alert:", err);
+      alert("Failed to publish alert. Try again.");
+    } finally {
+      setAlertPublishing(false);
+    }
+  }
+
+  async function deleteDriverAlert(id) {
+    if (!window.confirm("Are you sure you want to delete this alert?")) return;
+    try {
+      await deleteDoc(doc(db, "driver_alerts", id));
+      setDriverAlerts(prev => prev.filter(a => a.id !== id));
+    } catch (err) {
+      console.error("Failed to delete alert:", err);
+      alert("Failed to delete alert.");
+    }
   }
 
   function getRoutePathFallback(routeId) {
@@ -639,6 +703,16 @@ export default function AdminDashboard() {
           <line x1="16" y1="13" x2="8" y2="13" />
           <line x1="16" y1="17" x2="8" y2="17" />
           <polyline points="10 9 9 9 8 9" />
+        </svg>
+      )
+    },
+    {
+      id: "alerts",
+      label: "Driver Alerts",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
       )
     }
@@ -1666,6 +1740,144 @@ export default function AdminDashboard() {
                 })()}
               </div>
             </div>
+          )}
+
+          {/* ══════════════ DRIVER ALERTS TAB ══════════════ */}
+          {tab === "alerts" && (
+            <>
+              {/* Alert Creation Card */}
+              <div style={S.card}>
+                <div style={S.cardHead}>
+                  <span style={S.cardLabel}>Publish Driver Alert</span>
+                </div>
+                <form onSubmit={publishDriverAlert} style={{ padding: 20 }}>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                      Select Route / Bus
+                    </label>
+                    <select
+                      value={alertRouteId}
+                      onChange={e => {
+                        const rid = e.target.value;
+                        setAlertRouteId(rid);
+                        const rObj = routes.find(r => r.id === rid) || PRESET_ROUTES.find(r => r.id === rid);
+                        if (rObj && alertDriverUid) {
+                          const dObj = users.find(u => u.id === alertDriverUid);
+                          setAlertMessage(`Driver Assignment Update: ${dObj ? dObj.name : "New Driver"} is driving ${rObj.name} today instead of the previous driver.`);
+                        }
+                      }}
+                      style={S.input}
+                    >
+                      <option value="">Select a route...</option>
+                      {[
+                        ...PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).map(r => ({ ...r, isPreset: true })),
+                        ...routes.map(r => ({ ...r, isPreset: false }))
+                      ].map(r => (
+                        <option key={r.id} value={r.id}>{r.name} ({r.label || "No Label"})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                      Select New Driver
+                    </label>
+                    <select
+                      value={alertDriverUid}
+                      onChange={e => {
+                        const duid = e.target.value;
+                        setAlertDriverUid(duid);
+                        const dObj = users.find(u => u.id === duid);
+                        if (alertRouteId && dObj) {
+                          const rObj = routes.find(r => r.id === alertRouteId) || PRESET_ROUTES.find(r => r.id === alertRouteId);
+                          setAlertMessage(`Driver Assignment Update: ${dObj.name} is driving ${rObj ? rObj.name : "Route"} today instead of the previous driver.`);
+                        }
+                      }}
+                      style={S.input}
+                    >
+                      <option value="">Select a driver...</option>
+                      {users.filter(u => u.role === "driver" && !u.blocked).map(drv => (
+                        <option key={drv.id} value={drv.id}>{drv.name} ({drv.phone || drv.identifier || "No Phone"})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                      Alert Message
+                    </label>
+                    <textarea
+                      value={alertMessage}
+                      onChange={e => setAlertMessage(e.target.value)}
+                      placeholder="e.g. Attention: John Doe is driving Route -3 today instead of D1."
+                      style={{
+                        ...S.input,
+                        height: 90,
+                        resize: "none",
+                        padding: "12px 14px",
+                        lineHeight: "1.5"
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={alertPublishing}
+                    className="add-btn"
+                    style={S.addBtn}
+                  >
+                    {alertPublishing ? "Publishing Alert..." : "📢 Publish Alert to Dashboards"}
+                  </button>
+                </form>
+              </div>
+
+              {/* Active Alerts List */}
+              <div style={S.card}>
+                <div style={S.cardHead}>
+                  <span style={S.cardLabel}>Active Dashboard Alerts</span>
+                  <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 600 }}>Displayed immediately on student/faculty dashboards</span>
+                </div>
+                <div style={{ padding: 20 }}>
+                  {driverAlerts.length === 0 ? (
+                    <div style={{ textAlign: "center", color: t.textMuted, padding: "30px 0" }}>
+                      No active alerts found. Published alerts expire after deletion.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {driverAlerts.map(alert => {
+                        const routeObj = routes.find(r => r.id === alert.routeId) || PRESET_ROUTES.find(r => r.id === alert.routeId);
+                        const dateStr = new Date(alert.timestamp).toLocaleDateString("en-IN", {
+                          day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+                        });
+                        return (
+                          <div key={alert.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 14, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12 }}>
+                            <div style={{ flex: 1, paddingRight: 16 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 4, background: dark ? "#311005" : "#FFF7ED", color: "#FF5A1F", border: `1px solid ${dark ? "#5D2B05" : "#FDE68A"}` }}>
+                                  {routeObj ? routeObj.name : alert.routeId}
+                                </span>
+                                <span style={{ fontSize: 11, color: t.textMuted }}>
+                                  🕒 {dateStr}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 13, color: t.text, fontWeight: 500, lineHeight: 1.4 }}>
+                                {alert.message}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => deleteDriverAlert(alert.id)}
+                              style={S.delBtn}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
         </div>

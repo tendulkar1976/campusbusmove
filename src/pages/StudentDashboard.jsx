@@ -132,6 +132,7 @@ export default function StudentDashboard() {
   const [calMonth, setCalMonth]     = useState(new Date().getMonth());
   const [calYear, setCalYear]       = useState(new Date().getFullYear());
   const [loading, setLoading]       = useState(!routeCache);
+  const [activeAlert, setActiveAlert] = useState(null);
 
   const geofenceTimerRef = useRef(null);
   const markedDateRef    = useRef(null);
@@ -193,6 +194,27 @@ export default function StudentDashboard() {
     getDocs(query(collection(db,"attendance"), where("studentId","==",user.uid), where("date","==",today))).then(snap => {
       if (!snap.empty) { const d=snap.docs[0].data(); markedDateRef.current=today; setAttendanceStatus(d.status); setAttendanceLog(p=>({...p,[today]:d.status})); }
     });
+  }, [user]);
+
+  // ── Listen for Driver Change alerts ──
+  useEffect(() => {
+    if (!user) return;
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    
+    getDocs(collection(db, "driver_alerts")).then(snap => {
+      const activeAlerts = snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(alert => alert.timestamp >= oneDayAgo)
+        .sort((a, b) => b.timestamp - a.timestamp); // newest first
+      
+      if (activeAlerts.length > 0) {
+        const latest = activeAlerts[0];
+        const dismissed = JSON.parse(localStorage.getItem("dismissed_alerts") || "[]");
+        if (!dismissed.includes(latest.id)) {
+          setActiveAlert(latest);
+        }
+      }
+    }).catch(err => console.error("Error checking driver alerts:", err));
   }, [user]);
 
   // ── GPS watch ──
@@ -545,6 +567,112 @@ export default function StudentDashboard() {
           <ProfileView user={user} routes={routes} t={t} dark={dark} />
         )}
       </div>
+
+      {/* ══════════════ DRIVER CHANGE POPUP MODAL ══════════════ */}
+      {activeAlert && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: dark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.45)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: 20
+        }}>
+          <div style={{
+            background: t.bgCard,
+            border: `1.5px solid ${t.border}`,
+            borderRadius: 20,
+            width: "100%",
+            maxWidth: 400,
+            padding: 24,
+            textAlign: "center",
+            boxShadow: dark ? "0 20px 50px rgba(0,0,0,0.5)" : "0 20px 50px rgba(0,0,0,0.15)",
+            animation: "alertScaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
+          }}>
+            <style>{`
+              @keyframes alertScaleUp {
+                from { transform: scale(0.9); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+              }
+            `}</style>
+            
+            {/* Announcement Icon */}
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: dark ? "#311005" : "#FFF7ED",
+              border: `1.5px solid ${dark ? "#5D2B05" : "#FDE68A"}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px"
+            }}>
+              <span style={{ fontSize: 28 }}>📢</span>
+            </div>
+
+            {/* Title */}
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: t.text, margin: "0 0 8px" }}>
+              Driver Update Alert
+            </h3>
+            
+            <p style={{ fontSize: 12, color: t.textMuted, margin: "0 0 16px" }}>
+              The transport department has published a driver change alert:
+            </p>
+
+            {/* Alert Message Box */}
+            <div style={{
+              background: dark ? t.inputBg : t.bgCard2,
+              border: `1.5px solid ${t.border}`,
+              borderRadius: 12,
+              padding: "16px 14px",
+              textAlign: "left",
+              fontSize: 13,
+              fontWeight: 600,
+              color: t.text,
+              lineHeight: 1.5,
+              marginBottom: 20
+            }}>
+              {activeAlert.message}
+            </div>
+
+            {/* Action Button */}
+            <button
+              onClick={() => {
+                const dismissed = JSON.parse(localStorage.getItem("dismissed_alerts") || "[]");
+                if (!dismissed.includes(activeAlert.id)) {
+                  dismissed.push(activeAlert.id);
+                  localStorage.setItem("dismissed_alerts", JSON.stringify(dismissed));
+                }
+                setActiveAlert(null);
+              }}
+              style={{
+                width: "100%",
+                background: t.accent,
+                color: "#fff",
+                border: "none",
+                borderRadius: 12,
+                padding: "13px 0",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: `0 4px 14px ${t.accent}33`,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+              onMouseLeave={e => e.currentTarget.style.transform = "none"}
+            >
+              Got It, Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
