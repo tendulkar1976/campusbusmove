@@ -202,7 +202,6 @@ export default function DriverDashboard() {
     return () => document.removeEventListener("visibilitychange", h);
   }, []);
 
-  // Write to RTDB helper
   function writeToRTDB(lat, lng, spd, hdg, active) {
     const rid = selectedRouteIdRef.current;
     if (!rid) return;
@@ -213,6 +212,7 @@ export default function DriverDashboard() {
       speed: spd,
       heading: hdg,
       updatedAt: Date.now(),
+      source: "driver-gps"
     };
     if (adminInitiatedRef.current) {
       data.adminStarted = true;

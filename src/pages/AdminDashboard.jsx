@@ -107,7 +107,12 @@ export default function AdminDashboard() {
   // Override control refs & states
   const overrideIntervalsRef = useRef({});
   const overrideStateRef = useRef({});
+  const liveStatusRef = useRef({});
   const [overrideModalRoute, setOverrideModalRoute] = useState(null);
+
+  useEffect(() => {
+    liveStatusRef.current = liveStatus;
+  }, [liveStatus]);
   const [overrideType, setOverrideType] = useState("simulation");
   const [selectedStopIndex, setSelectedStopIndex] = useState(-1);
   const [selectedDriverUid, setSelectedDriverUid] = useState("");
@@ -173,6 +178,29 @@ export default function AdminDashboard() {
       const state = overrideStateRef.current[routeId];
       if (!state) return;
 
+      const currentLive = liveStatusRef.current[routeId]?.live;
+
+      // If the trip was stopped externally (active is false), clear the simulation interval
+      if (currentLive && currentLive.active === false) {
+        console.log("Trip was stopped externally. Clearing admin interval.");
+        if (overrideIntervalsRef.current[routeId]) {
+          clearInterval(overrideIntervalsRef.current[routeId]);
+          delete overrideIntervalsRef.current[routeId];
+        }
+        delete overrideStateRef.current[routeId];
+        return;
+      }
+
+      // If the driver is online and actively streaming real GPS coordinates, stop the admin simulation to prevent conflict
+      if (currentLive && currentLive.active === true && currentLive.source === "driver-gps") {
+        console.log("Driver GPS is active. Suspending admin simulation loop to prevent coordinates conflict.");
+        if (overrideIntervalsRef.current[routeId]) {
+          clearInterval(overrideIntervalsRef.current[routeId]);
+          delete overrideIntervalsRef.current[routeId];
+        }
+        return;
+      }
+
       let lat = 12.8258;
       let lng = 77.7665;
       let speed = 0;
@@ -203,7 +231,8 @@ export default function AdminDashboard() {
         lng,
         updatedAt: Date.now(),
         adminStarted: state.adminStarted,
-        tripId: state.tripId
+        tripId: state.tripId,
+        source: "admin-simulation"
       }).catch(err => console.error("Admin RTDB write failed:", err));
     };
 
