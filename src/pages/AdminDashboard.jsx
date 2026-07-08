@@ -18,8 +18,8 @@ const PLANS = {
     id: "basic",
     name: "Basic",
     emoji: "🚌",
-    monthly: 3000,
-    yearly: 32400,   // 3000 * 12 * 0.9 (10% off)
+    monthly: 5000,
+    yearly: 54000,   // 5000 * 12 * 0.9 (10% off)
     color: "#60A5FA",
     features: [
       "Live GPS tracking",
@@ -34,8 +34,8 @@ const PLANS = {
     id: "premium",
     name: "Premium",
     emoji: "⚡",
-    monthly: 9000,
-    yearly: 97200,   // 9000 * 12 * 0.9 (10% off)
+    monthly: 12000,
+    yearly: 129600,   // 12000 * 12 * 0.9 (10% off)
     color: "#FF5A1F",
     features: [
       "Everything in Basic",
