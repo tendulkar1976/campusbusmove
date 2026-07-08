@@ -26,13 +26,13 @@ export function AuthProvider({ children }) {
             setLoading(false);
             return;
           }
-          setRole(firebaseUser.email === "gamethunder83@gmail.com" ? "superadmin" : data.role);
+          setRole(data.role);
           setCampusId(data.campusId);
           setBlocked(false);
         } else {
           // Fallback if user doc doesn't exist yet
           if (firebaseUser.email === "gamethunder83@gmail.com") {
-            setRole("superadmin");
+            setRole("admin");
             setBlocked(false);
           } else {
             setRole(null);
