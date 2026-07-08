@@ -31,6 +31,7 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error('Razorpay Signature Verification Error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to verify payment signature' });
+    const errMsg = error.description || (error.error && error.error.description) || error.message || String(error);
+    return res.status(500).json({ error: 'Failed to verify payment signature', details: errMsg });
   }
 }

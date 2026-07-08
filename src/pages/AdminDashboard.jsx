@@ -663,8 +663,15 @@ export default function AdminDashboard() {
       });
 
       if (!orderRes.ok) {
-        const errText = await orderRes.text();
-        throw new Error(errText || "Failed to create order on server");
+        let errMsg = "Failed to create order on server";
+        try {
+          const errJson = await orderRes.json();
+          errMsg = errJson.details || errJson.error || errMsg;
+        } catch {
+          const errText = await orderRes.text();
+          if (errText) errMsg = errText;
+        }
+        throw new Error(errMsg);
       }
 
       orderData = await orderRes.json();
