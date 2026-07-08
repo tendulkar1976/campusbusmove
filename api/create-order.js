@@ -12,8 +12,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Amount must be at least 100 paise (1 INR)' });
   }
 
-  const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TAufD9QSOv2HRE';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || '3OsQpLiPq10zEtln93bTsxDf';
 
   if (!keyId || !keySecret) {
     return res.status(401).json({ error: 'Razorpay API credentials are not configured' });
