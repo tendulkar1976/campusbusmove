@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { ref, onValue, set } from "firebase/database";
 import { db, rtdb, secondaryAuth } from "../firebase";
@@ -72,7 +73,8 @@ const DEFAULT_SUB = {
 };
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, role, logout } = useAuth();
+  const navigate = useNavigate();
   const { dark, toggle, t } = useTheme();
   const [tab, setTab] = useState("overview");
   const [liveStatus, setLiveStatus] = useState({});
@@ -1080,6 +1082,28 @@ export default function AdminDashboard() {
                 <span style={S.badge}>{subscription.status === "trial" ? "Trial" : "Paid"}</span>
               </div>
             )}
+
+            {role === "superadmin" && (
+              <button 
+                onClick={() => navigate("/superadmin")} 
+                style={{ 
+                  width: "100%", 
+                  background: "#FF5A1F22", 
+                  border: "1.5px solid #FF5A1F88", 
+                  borderRadius: 10, 
+                  padding: "10px 0", 
+                  fontSize: 12, 
+                  color: "#FF5A1F", 
+                  fontWeight: 800, 
+                  cursor: "pointer", 
+                  marginBottom: 14,
+                  fontFamily: "'Inter',sans-serif",
+                  boxShadow: "none"
+                }}
+              >
+                🛠️ Go to Superadmin Mode
+              </button>
+            )}
             
             {/* Desktop Theme Switcher */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "0 4px" }}>
@@ -1090,7 +1114,7 @@ export default function AdminDashboard() {
             </div>
 
             <button onClick={logout} style={{ ...S.addBtn, background: "transparent", border: `1.5px solid ${t.border}`, padding: "10px 0", fontSize: 12, color: t.textSub, boxShadow: "none" }}>
-              ↩ Sign Out
+               ↩ Sign Out
             </button>
           </div>
         </div>
@@ -1103,6 +1127,11 @@ export default function AdminDashboard() {
             <span style={{ ...S.badge, padding: "2px 6px", fontSize: 9 }}>Admin</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {role === "superadmin" && (
+              <button onClick={() => navigate("/superadmin")} style={{ background: "#FF5A1F22", border: "1.5px solid #FF5A1F88", borderRadius: 8, padding: "4px 8px", color: "#FF5A1F", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                🛠️ Super
+              </button>
+            )}
             <button onClick={toggle} style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${t.border}`, background: t.bgCard, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
               {dark ? "☀️" : "🌙"}
             </button>

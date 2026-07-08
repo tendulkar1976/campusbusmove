@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { db } from "../firebase";
@@ -35,6 +36,7 @@ const PLANS = {
 export default function SuperadminDashboard() {
   const { user, logout } = useAuth();
   const { dark, toggleTheme, t } = useTheme();
+  const navigate = useNavigate();
 
   // Tab state
   const [tab, setTab] = useState("overview");
@@ -277,6 +279,23 @@ export default function SuperadminDashboard() {
             }}
           >
             {dark ? "☀️ Light" : "🌙 Dark"}
+          </button>
+
+          <button 
+            onClick={() => navigate("/admin")}
+            style={{
+              background: "#FF5A1F22",
+              border: "1.5px solid #FF5A1F88",
+              borderRadius: "10px",
+              padding: "10px 16px",
+              color: "#FF5A1F",
+              fontWeight: 800,
+              fontSize: "13px",
+              cursor: "pointer",
+              fontFamily: "'Inter', sans-serif"
+            }}
+          >
+            🏫 Campus Admin Panel
           </button>
           
           <button 
