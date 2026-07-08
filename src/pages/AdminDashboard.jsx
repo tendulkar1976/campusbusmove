@@ -635,11 +635,7 @@ export default function AdminDashboard() {
   }
 
   async function selectPlan(planId) {
-    const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
-    if (!keyId) {
-      alert("Billing configuration error: Razorpay Key ID is not set on the server. Configure VITE_RAZORPAY_KEY_ID in project environment settings.");
-      return;
-    }
+    const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TAufD9QSOv2HRE";
 
     setPlanSaving(true);
     const loaded = await loadRazorpayScript();
@@ -765,7 +761,7 @@ export default function AdminDashboard() {
 
   // ── Derived values ──
   const daysLeft = subscription ? getDaysLeft(subscription.expiryDate) : 0;
-  const isExpired = subscription && daysLeft === 0 && subscription.status !== "trial";
+  const isExpired = subscription && daysLeft === 0;
   const isWarning = daysLeft <= 7 && daysLeft > 0;
   const currentPlan = PLANS[subscription?.plan || "basic"];
   const activeBuses = Object.values(liveStatus).filter(r => r?.live?.active).length;
@@ -775,6 +771,14 @@ export default function AdminDashboard() {
   const driverCount = users.filter(u => u.role === "driver").length;
   const blockedCount = users.filter(u => u.blocked).length;
   const totalRoutes = PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + routes.length;
+
+  // ── Auto-force billing tab if subscription is expired ──
+  useEffect(() => {
+    if (isExpired && tab !== "billing") {
+      setTab("billing");
+      setShowPlans(true);
+    }
+  }, [isExpired, tab]);
 
   // Filters logic
   const filteredUsers = useMemo(() => {
@@ -1050,9 +1054,22 @@ export default function AdminDashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
             {navItems.map(item => {
               const active = tab === item.id;
-              const currentColor = active ? t.accent : t.textMuted;
+              const isBlocked = isExpired && item.id !== "billing";
+              const currentColor = isBlocked ? "#666" : (active ? t.accent : t.textMuted);
               return (
-                <button key={item.id} style={S.tabBtn(active)} onClick={() => { setTab(item.id); setShowPlans(false); }}>
+                <button 
+                  key={item.id} 
+                  style={{
+                    ...S.tabBtn(active),
+                    opacity: isBlocked ? 0.45 : 1,
+                    cursor: isBlocked ? "not-allowed" : "pointer"
+                  }} 
+                  onClick={() => { 
+                    if (isBlocked) return;
+                    setTab(item.id); 
+                    setShowPlans(false); 
+                  }}
+                >
                   {item.icon(currentColor)}
                   <span>{item.label}</span>
                 </button>
@@ -1104,20 +1121,30 @@ export default function AdminDashboard() {
           <div style={{ display: "flex", gap: 4, width: "100%" }}>
             {navItems.map(item => {
               const active = tab === item.id;
+              const isBlocked = isExpired && item.id !== "billing";
               return (
-                <button key={item.id} style={{
-                  flex: 1,
-                  padding: "8px 0",
-                  border: "none",
-                  borderRadius: 8,
-                  background: active ? (dark ? "#1F2937" : "#EFF6FF") : "transparent",
-                  color: active ? t.accent : t.textMuted,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "'Inter', sans-serif",
-                  transition: "all 0.2s"
-                }} onClick={() => { setTab(item.id); setShowPlans(false); }}>
+                <button 
+                  key={item.id} 
+                  style={{
+                    flex: 1,
+                    padding: "8px 0",
+                    border: "none",
+                    borderRadius: 8,
+                    background: active ? (dark ? "#1F2937" : "#EFF6FF") : "transparent",
+                    color: isBlocked ? "#666" : (active ? t.accent : t.textMuted),
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: isBlocked ? "not-allowed" : "pointer",
+                    fontFamily: "'Inter', sans-serif",
+                    opacity: isBlocked ? 0.45 : 1,
+                    transition: "all 0.2s"
+                  }} 
+                  onClick={() => { 
+                    if (isBlocked) return;
+                    setTab(item.id); 
+                    setShowPlans(false); 
+                  }}
+                >
                   {item.label.split(" ")[0]}
                 </button>
               );
@@ -1580,72 +1607,72 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                   </div>
-
-                  {/* Billing History and Invoices list */}
-                  <div style={{ ...S.card, marginTop: 20 }}>
-                    <div style={{ padding: "18px 20px", borderBottom: `1.5px solid ${t.border}` }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", color: t.text }}>
-                        📄 Billing History & Invoices
-                      </span>
-                    </div>
-                    
-                    <div style={{ padding: "10px 20px" }}>
-                      {loadingHistory ? (
-                        <div style={{ padding: "30px 0", textAlign: "center", color: t.textMuted, fontSize: 13 }}>
-                          Loading history...
-                        </div>
-                      ) : paymentsHistory.length === 0 ? (
-                        <div style={{ padding: "40px 0", textAlign: "center", color: t.textMuted, fontSize: 13 }}>
-                          No invoice records found. Past purchases will appear here.
-                        </div>
-                      ) : (
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
-                            <thead>
-                              <tr style={{ borderBottom: `1.5px solid ${t.border}`, color: t.textMuted }}>
-                                <th style={{ padding: "12px 8px", fontWeight: 700 }}>Date</th>
-                                <th style={{ padding: "12px 8px", fontWeight: 700 }}>Plan Details</th>
-                                <th style={{ padding: "12px 8px", fontWeight: 700 }}>Amount</th>
-                                <th style={{ padding: "12px 8px", fontWeight: 700, textAlign: "right" }}>Invoice</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {paymentsHistory.map((pay, i) => (
-                                <tr key={i} style={{ borderBottom: `1px solid ${t.border}`, color: t.text }}>
-                                  <td style={{ padding: "12px 8px" }}>{new Date(pay.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
-                                  <td style={{ padding: "12px 8px" }}>
-                                    <span style={{ fontWeight: 700 }}>{PLANS[pay.planId]?.name || pay.planId}</span>
-                                    <span style={{ fontSize: 10, color: t.textMuted, marginLeft: 6, textTransform: "capitalize" }}>({pay.billing})</span>
-                                  </td>
-                                  <td style={{ padding: "12px 8px", fontWeight: 700 }}>₹{pay.amount?.toLocaleString("en-IN")}</td>
-                                  <td style={{ padding: "12px 8px", textAlign: "right" }}>
-                                    <button 
-                                      onClick={() => setSelectedInvoice(pay)}
-                                      style={{
-                                        background: dark ? "#222" : "#f0f0f0",
-                                        border: `1.5px solid ${t.border}`,
-                                        borderRadius: 8,
-                                        padding: "6px 12px",
-                                        color: t.text,
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        cursor: "pointer",
-                                        fontFamily: "'Inter',sans-serif"
-                                      }}
-                                    >
-                                      View Invoice
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </>
               )}
+
+              {/* Billing History and Invoices list */}
+              <div style={{ ...S.card, marginTop: 20 }}>
+                <div style={{ padding: "18px 20px", borderBottom: `1.5px solid ${t.border}` }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", color: t.text }}>
+                    📄 Billing History & Invoices
+                  </span>
+                </div>
+                
+                <div style={{ padding: "10px 20px" }}>
+                  {loadingHistory ? (
+                    <div style={{ padding: "30px 0", textAlign: "center", color: t.textMuted, fontSize: 13 }}>
+                      Loading history...
+                    </div>
+                  ) : paymentsHistory.length === 0 ? (
+                    <div style={{ padding: "40px 0", textAlign: "center", color: t.textMuted, fontSize: 13 }}>
+                      No invoice records found. Past purchases will appear here.
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1.5px solid ${t.border}`, color: t.textMuted }}>
+                            <th style={{ padding: "12px 8px", fontWeight: 700 }}>Date</th>
+                            <th style={{ padding: "12px 8px", fontWeight: 700 }}>Plan Details</th>
+                            <th style={{ padding: "12px 8px", fontWeight: 700 }}>Amount</th>
+                            <th style={{ padding: "12px 8px", fontWeight: 700, textAlign: "right" }}>Invoice</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentsHistory.map((pay, i) => (
+                            <tr key={i} style={{ borderBottom: `1px solid ${t.border}`, color: t.text }}>
+                              <td style={{ padding: "12px 8px" }}>{new Date(pay.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                              <td style={{ padding: "12px 8px" }}>
+                                <span style={{ fontWeight: 700 }}>{PLANS[pay.planId]?.name || pay.planId}</span>
+                                <span style={{ fontSize: 10, color: t.textMuted, marginLeft: 6, textTransform: "capitalize" }}>({pay.billing})</span>
+                              </td>
+                              <td style={{ padding: "12px 8px", fontWeight: 700 }}>₹{pay.amount?.toLocaleString("en-IN")}</td>
+                              <td style={{ padding: "12px 8px", textAlign: "right" }}>
+                                <button 
+                                  onClick={() => setSelectedInvoice(pay)}
+                                  style={{
+                                    background: dark ? "#222" : "#f0f0f0",
+                                    border: `1.5px solid ${t.border}`,
+                                    borderRadius: 8,
+                                    padding: "6px 12px",
+                                    color: t.text,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    fontFamily: "'Inter',sans-serif"
+                                  }}
+                                >
+                                  View Invoice
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Plan comparison selector */}
               {showPlans && (

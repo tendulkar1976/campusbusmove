@@ -118,6 +118,36 @@ export default function StudentDashboard() {
   const { user, campusId, logout } = useAuth();
   const { dark, toggle, t } = useTheme();
 
+  const [subExpired, setSubExpired] = useState(false);
+  const [checkingSub, setCheckingSub] = useState(true);
+
+  // ── Verify subscription status ──
+  useEffect(() => {
+    if (!campusId) {
+      setCheckingSub(false);
+      return;
+    }
+    setCheckingSub(true);
+    getDoc(doc(db, "subscriptions", campusId)).then(snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const expiry = data.expiryDate || 0;
+        const daysLeft = Math.max(0, Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24)));
+        if (daysLeft === 0) {
+          setSubExpired(true);
+        } else {
+          setSubExpired(false);
+        }
+      } else {
+        setSubExpired(true);
+      }
+      setCheckingSub(false);
+    }).catch(() => {
+      setSubExpired(true);
+      setCheckingSub(false);
+    });
+  }, [campusId]);
+
   const [tab, setTab]               = useState("track");
   const [myRoute, setMyRoute]       = useState(null);
   const [routes, setRoutes]         = useState([]);
@@ -293,6 +323,80 @@ export default function StudentDashboard() {
 
   const handleTabChange = useCallback(v => setTab(v), []);
   const handleRouteSelect = useCallback(r => setSelected(r), []);
+
+  if (checkingSub) {
+    return (
+      <div style={{ minHeight: "100vh", background: t.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, fontFamily: "'Inter',sans-serif" }}>
+        <div style={{ fontSize: 36 }}>🚌</div>
+        <div style={{ width: 140, height: 3, background: t.border, borderRadius: 2, overflow: "hidden", position: "relative" }}>
+          <div style={{ height: "100%", width: "40%", background: t.accent, borderRadius: 2, position: "absolute", animation: "loadingSwipe 1.2s ease-in-out infinite alternate" }} />
+        </div>
+        <style>{`
+          @keyframes loadingSwipe { from{left:0%} to{left:60%} }
+        `}</style>
+        <div style={{ color: t.accent, fontSize: 12, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase" }}>Checking Subscription</div>
+      </div>
+    );
+  }
+
+  if (subExpired) {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        background: dark ? "#0D0D11" : "#F3F4F6",
+        color: t.text,
+        fontFamily: "'Inter', sans-serif",
+        padding: 24,
+        textAlign: "center"
+      }}>
+        <div style={{
+          background: dark ? "#1E1E24" : "#FFFFFF",
+          border: `1.5px solid ${t.border}`,
+          borderRadius: 20,
+          padding: "40px 30px",
+          maxWidth: 480,
+          width: "100%",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 20
+        }}>
+          <div style={{ width: 64, height: 64, background: "#EF444415", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>
+            🔒
+          </div>
+          <div>
+            <h2 style={{ margin: "0 0 10px 0", fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px" }}>Service Suspended</h2>
+            <p style={{ margin: 0, fontSize: 13, color: t.textSub, lineHeight: 1.6 }}>
+              The institutional subscription for your campus has expired. 
+              Please contact your transport office or campus administrator to renew the plan and restore access.
+            </p>
+          </div>
+          <button 
+            onClick={logout} 
+            style={{ 
+              background: "#EF4444", 
+              border: "none", 
+              borderRadius: 10, 
+              padding: "12px 24px", 
+              color: "#fff", 
+              fontWeight: 700, 
+              fontSize: 13, 
+              cursor: "pointer",
+              marginTop: 10,
+              width: "100%"
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return (
     <div style={{ minHeight:"100vh", background:t.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, fontFamily:"'Inter',sans-serif" }}>
