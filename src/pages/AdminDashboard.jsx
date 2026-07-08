@@ -99,6 +99,8 @@ export default function AdminDashboard() {
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [planSaving, setPlanSaving] = useState(false);
   const [showBillingSuccess, setShowBillingSuccess] = useState(false);
+  const [razorpayKeyId, setRazorpayKeyId] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
 
   // ── Search & Filters state ──
   const [userSearch, setUserSearch] = useState("");
@@ -411,6 +413,43 @@ export default function AdminDashboard() {
     }).catch(() => setSubscription(DEFAULT_SUB));
   }, []);
 
+  // ── Load Razorpay Key ──
+  useEffect(() => {
+    getDoc(doc(db, "settings", "razorpay")).then(snap => {
+      if (snap.exists()) {
+        setRazorpayKeyId(snap.data().keyId || "");
+      }
+    }).catch(err => console.error("Error loading Razorpay Key:", err));
+  }, []);
+
+  async function saveRazorpayKey(key) {
+    setSavingKey(true);
+    try {
+      await setDoc(doc(db, "settings", "razorpay"), { keyId: key.trim() }, { merge: true });
+      setRazorpayKeyId(key.trim());
+      alert("Razorpay Key ID saved successfully!");
+    } catch (err) {
+      console.error("Error saving Razorpay Key:", err);
+      alert("Failed to save Razorpay Key. Please try again.");
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
+  function loadRazorpayScript() {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  }
+
   useEffect(() => {
     const r = ref(rtdb, "routes");
     const unsub = onValue(r, snap => { if (snap.exists()) setLiveStatus(snap.val()); });
@@ -595,25 +634,70 @@ export default function AdminDashboard() {
   }
 
   async function selectPlan(planId) {
+    if (!razorpayKeyId) {
+      alert("Please configure your Razorpay Key ID under 'Razorpay Settings' first.");
+      return;
+    }
+
     setPlanSaving(true);
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      alert("Failed to load Razorpay Checkout SDK. Please check your internet connection.");
+      setPlanSaving(false);
+      return;
+    }
+
     const amount = billingCycle === "yearly" ? PLANS[planId].yearly : PLANS[planId].monthly;
     const durationMs = billingCycle === "yearly" ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
-    const newSub = {
-      plan: planId,
-      billing: billingCycle,
-      status: "active",
-      startDate: Date.now(),
-      expiryDate: Date.now() + durationMs,
-      amount,
-      campusId: "alliance-bangalore",
-      updatedAt: Date.now(),
+
+    const options = {
+      key: razorpayKeyId,
+      amount: amount * 100, // in paise
+      currency: "INR",
+      name: "CampusMove",
+      description: `${PLANS[planId].name} Plan Subscription (${billingCycle})`,
+      image: "/bus.svg",
+      handler: async function (response) {
+        try {
+          const newSub = {
+            plan: planId,
+            billing: billingCycle,
+            status: "active",
+            startDate: Date.now(),
+            expiryDate: Date.now() + durationMs,
+            amount,
+            campusId: "alliance-bangalore",
+            updatedAt: Date.now(),
+            razorpayPaymentId: response.razorpay_payment_id || "",
+          };
+          await setDoc(doc(db, "subscriptions", "alliance-bangalore"), newSub);
+          setSubscription(newSub);
+          setShowPlans(false);
+          setShowBillingSuccess(true);
+          setTimeout(() => setShowBillingSuccess(false), 4000);
+        } catch (err) {
+          console.error("Failed to update subscription after payment:", err);
+          alert("Payment was successful (ID: " + response.razorpay_payment_id + "), but we failed to update your subscription details. Please contact support.");
+        } finally {
+          setPlanSaving(false);
+        }
+      },
+      prefill: {
+        name: user?.name || user?.displayName || "",
+        email: user?.email || "",
+      },
+      theme: {
+        color: PLANS[planId].color || "#FF5A1F",
+      },
+      modal: {
+        ondismiss: function () {
+          setPlanSaving(false);
+        }
+      }
     };
-    await setDoc(doc(db, "subscriptions", "alliance-bangalore"), newSub);
-    setSubscription(newSub);
-    setPlanSaving(false);
-    setShowPlans(false);
-    setShowBillingSuccess(true);
-    setTimeout(() => setShowBillingSuccess(false), 4000);
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   }
 
   // ── Derived values ──
@@ -1400,7 +1484,8 @@ export default function AdminDashboard() {
             <>
               {/* Current plan metrics */}
               {subscription && !showPlans && (
-                <div style={{ ...S.card, border: `1.5px solid ${currentPlan.color}33` }}>
+                <>
+                  <div style={{ ...S.card, border: `1.5px solid ${currentPlan.color}33` }}>
                   <div style={{ padding: "18px 20px" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1445,7 +1530,58 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </div>
-              )}
+
+                {/* Razorpay Settings configuration card */}
+                <div style={{ ...S.card, marginTop: 20 }}>
+                  <div style={{ padding: "18px 20px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", color: t.text, marginBottom: 8 }}>
+                      💳 Razorpay Settings
+                    </div>
+                    <div style={{ fontSize: 12, color: t.textSub, marginBottom: 14, lineHeight: "1.5" }}>
+                      Configure your Razorpay Public Key ID to accept real payments. Use a test key (<code style={{ color: t.accent, background: dark ? "#222" : "#f5f5f5", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>rzp_test_...</code>) for sandbox simulation, or a live key (<code style={{ color: t.accent, background: dark ? "#222" : "#f5f5f5", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>rzp_live_...</code>) for production.
+                    </div>
+                    
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <input 
+                        type="password" 
+                        placeholder="rzp_test_..." 
+                        value={razorpayKeyId} 
+                        onChange={(e) => setRazorpayKeyId(e.target.value)} 
+                        style={{
+                          flex: 1,
+                          background: dark ? t.inputBg : t.bgCard2,
+                          border: `1.5px solid ${t.border}`,
+                          borderRadius: 10,
+                          padding: "11px 14px",
+                          color: t.text,
+                          fontSize: 13,
+                          outline: "none",
+                          fontFamily: "monospace"
+                        }}
+                      />
+                      <button 
+                        onClick={() => saveRazorpayKey(razorpayKeyId)} 
+                        disabled={savingKey} 
+                        style={{
+                          background: t.accent,
+                          border: "none",
+                          borderRadius: 10,
+                          padding: "11px 20px",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          fontFamily: "'Inter',sans-serif",
+                          boxShadow: `0 4px 10px ${t.accent}22`,
+                          transition: "opacity 0.2s"
+                        }}
+                      >
+                        {savingKey ? "Saving..." : "Save Key"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>)}
 
               {/* Plan comparison selector */}
               {showPlans && (
