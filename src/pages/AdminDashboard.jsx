@@ -99,6 +99,7 @@ export default function AdminDashboard() {
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [planSaving, setPlanSaving] = useState(false);
   const [showBillingSuccess, setShowBillingSuccess] = useState(false);
+  const [selectedCheckoutPlan, setSelectedCheckoutPlan] = useState(null);
 
   // ── Search & Filters state ──
   const [userSearch, setUserSearch] = useState("");
@@ -403,12 +404,18 @@ export default function AdminDashboard() {
   useEffect(() => {
     getDoc(doc(db, "subscriptions", "alliance-bangalore")).then(snap => {
       if (snap.exists()) {
-        setSubscription(snap.data());
+        const data = snap.data();
+        setSubscription(data);
+        setSelectedCheckoutPlan(data.plan || "basic");
       } else {
         setDoc(doc(db, "subscriptions", "alliance-bangalore"), DEFAULT_SUB);
         setSubscription(DEFAULT_SUB);
+        setSelectedCheckoutPlan(DEFAULT_SUB.plan || "basic");
       }
-    }).catch(() => setSubscription(DEFAULT_SUB));
+    }).catch(() => {
+      setSubscription(DEFAULT_SUB);
+      setSelectedCheckoutPlan(DEFAULT_SUB.plan || "basic");
+    });
   }, []);
 
   function loadRazorpayScript() {
@@ -1528,8 +1535,23 @@ export default function AdminDashboard() {
                   {Object.values(PLANS).map(plan => {
                     const price = billingCycle === "yearly" ? plan.yearly : plan.monthly;
                     const isCurrent = subscription?.plan === plan.id && subscription?.billing === billingCycle;
+                    const isSelected = selectedCheckoutPlan === plan.id;
                     return (
-                      <div key={plan.id} style={{ background: t.bgCard, border: `2px solid ${isCurrent ? plan.color : t.border}`, borderRadius: 12, padding: "24px", marginBottom: 16, position: "relative", boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
+                      <div 
+                        key={plan.id} 
+                        onClick={() => { if (!isCurrent) setSelectedCheckoutPlan(plan.id); }}
+                        style={{ 
+                          background: t.bgCard, 
+                          border: `2px solid ${isSelected ? plan.color : t.border}`, 
+                          borderRadius: 12, 
+                          padding: "24px", 
+                          marginBottom: 16, 
+                          position: "relative", 
+                          boxShadow: isSelected ? `0 4px 20px ${plan.color}22` : (dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)"),
+                          cursor: isCurrent ? "default" : "pointer",
+                          transition: "all 0.25s ease"
+                        }}
+                      >
                         {plan.id === "premium" && (
                           <div style={{ position: "absolute", top: -10, right: 20, background: "#FF5A1F", borderRadius: 6, padding: "3px 12px", fontSize: 10, fontWeight: 800, color: "#fff", letterSpacing: "0.5px" }}>POPULAR</div>
                         )}
@@ -1566,21 +1588,71 @@ export default function AdminDashboard() {
                         </div>
 
                         <button
-                          onClick={() => selectPlan(plan.id)}
-                          disabled={planSaving || isCurrent}
-                          className="add-btn"
-                          style={{ width: "100%", background: isCurrent ? (dark ? t.inputBg : t.bgCard2) : plan.color, border: "none", borderRadius: 10, padding: "14px 0", color: isCurrent ? t.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: isCurrent ? "not-allowed" : "pointer", fontFamily: "'Inter',sans-serif" }}>
-                          {planSaving ? "Activating License..." : isCurrent ? "Active Plan" : `Select ${plan.name}`}
+                          onClick={(e) => { 
+                            e.stopPropagation();
+                            if (!isCurrent) setSelectedCheckoutPlan(plan.id); 
+                          }}
+                          disabled={isCurrent}
+                          style={{ 
+                            width: "100%", 
+                            background: isCurrent ? (dark ? t.inputBg : t.bgCard2) : (isSelected ? plan.color : "transparent"), 
+                            border: isCurrent ? "none" : `1.5px solid ${plan.color}`, 
+                            borderRadius: 10, 
+                            padding: "14px 0", 
+                            color: isCurrent ? t.textMuted : (isSelected ? "#fff" : plan.color), 
+                            fontSize: 13, 
+                            fontWeight: 700, 
+                            cursor: isCurrent ? "not-allowed" : "pointer", 
+                            fontFamily: "'Inter',sans-serif",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          {isCurrent ? "Active Plan" : (isSelected ? "Selected ✓" : `Select ${plan.name}`)}
                         </button>
-
-                        {!isCurrent && (
-                          <div style={{ textAlign: "center", marginTop: 10, fontSize: 11, color: t.textMuted }}>
-                            ⚡ Instant activation (Razorpay payment integration pending)
-                          </div>
-                        )}
                       </div>
                     );
                   })}
+
+                  {/* Proceed to Payment sticky bar */}
+                  {selectedCheckoutPlan && selectedCheckoutPlan !== (subscription?.plan === "basic" && subscription?.billing !== billingCycle ? "" : subscription?.plan) && (
+                    <div style={{ 
+                      ...S.card, 
+                      marginTop: 24, 
+                      padding: "20px", 
+                      border: `2px solid ${PLANS[selectedCheckoutPlan].color}`, 
+                      background: dark ? "#1E1E24" : "#FFF8F5", 
+                      boxShadow: `0 8px 30px ${PLANS[selectedCheckoutPlan].color}15`,
+                      transition: "all 0.25s ease" 
+                    }}>
+                      <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px" }}>Checkout Summary</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: t.text, marginTop: 4 }}>
+                            {PLANS[selectedCheckoutPlan].emoji} {PLANS[selectedCheckoutPlan].name} Plan · {billingCycle === "yearly" ? "Yearly billing" : "Monthly cycle"}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => selectPlan(selectedCheckoutPlan)}
+                          disabled={planSaving}
+                          style={{
+                            background: PLANS[selectedCheckoutPlan].color,
+                            border: "none",
+                            borderRadius: 12,
+                            padding: "14px 28px",
+                            color: "#fff",
+                            fontSize: 14,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            fontFamily: "'Inter',sans-serif",
+                            boxShadow: `0 4px 16px ${PLANS[selectedCheckoutPlan].color}44`,
+                            transition: "transform 0.15s, opacity 0.2s"
+                          }}
+                        >
+                          {planSaving ? "Opening checkout..." : `Proceed to Pay ₹${(billingCycle === "yearly" ? PLANS[selectedCheckoutPlan].yearly : PLANS[selectedCheckoutPlan].monthly).toLocaleString("en-IN")}`}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </>
