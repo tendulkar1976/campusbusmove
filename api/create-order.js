@@ -39,6 +39,15 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Razorpay Order Creation Error:', error);
     const errMsg = error.description || (error.error && error.error.description) || error.message || String(error);
-    return res.status(500).json({ error: 'Failed to create order', details: errMsg });
+    return res.status(500).json({ 
+      error: 'Failed to create order', 
+      details: errMsg,
+      diagnostics: {
+        keyIdPrefix: keyId ? keyId.substring(0, 8) : "none",
+        keyIdIsFallback: keyId === 'rzp_test_TAufD9QSOv2HRE',
+        keySecretLength: keySecret ? keySecret.length : 0,
+        keySecretIsFallback: keySecret === '3OsQpLiPq10zEtln93bTsxDf'
+      }
+    });
   }
 }

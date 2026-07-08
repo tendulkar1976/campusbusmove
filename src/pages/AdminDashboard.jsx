@@ -667,6 +667,9 @@ export default function AdminDashboard() {
         try {
           const errJson = await orderRes.json();
           errMsg = errJson.details || errJson.error || errMsg;
+          if (errJson.diagnostics) {
+            errMsg += `\n\nDiagnostics:\n- Key ID Prefix: ${errJson.diagnostics.keyIdPrefix}\n- Key ID Fallback: ${errJson.diagnostics.keyIdIsFallback}\n- Key Secret Length: ${errJson.diagnostics.keySecretLength}\n- Key Secret Fallback: ${errJson.diagnostics.keySecretIsFallback}`;
+          }
         } catch {
           const errText = await orderRes.text();
           if (errText) errMsg = errText;
