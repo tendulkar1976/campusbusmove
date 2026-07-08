@@ -651,16 +651,58 @@ export default function AdminDashboard() {
 
     const amount = billingCycle === "yearly" ? PLANS[planId].yearly : PLANS[planId].monthly;
     const durationMs = billingCycle === "yearly" ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+    const amountInPaise = amount * 100;
+
+    let orderData;
+    try {
+      const orderRes = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountInPaise,
+          currency: "INR",
+          receipt: `receipt_sub_${Date.now()}`
+        })
+      });
+
+      if (!orderRes.ok) {
+        const errText = await orderRes.text();
+        throw new Error(errText || "Failed to create order on server");
+      }
+
+      orderData = await orderRes.json();
+    } catch (err) {
+      console.error("Order creation failed:", err);
+      alert("Error: " + err.message);
+      setPlanSaving(false);
+      return;
+    }
 
     const options = {
       key: keyId,
-      amount: amount * 100, // in paise
-      currency: "INR",
+      amount: orderData.amount,
+      currency: orderData.currency,
       name: "CampusMove",
       description: `${PLANS[planId].name} Plan Subscription (${billingCycle})`,
       image: "/bus.svg",
+      order_id: orderData.order_id,
       handler: async function (response) {
         try {
+          const verifyRes = await fetch("/api/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+
+          if (!verifyRes.ok) {
+            const verifyErr = await verifyRes.json();
+            throw new Error(verifyErr.error || "Payment verification failed");
+          }
+
           const newSub = {
             plan: planId,
             billing: billingCycle,
@@ -693,8 +735,8 @@ export default function AdminDashboard() {
           setShowBillingSuccess(true);
           setTimeout(() => setShowBillingSuccess(false), 4000);
         } catch (err) {
-          console.error("Failed to update subscription after payment:", err);
-          alert("Payment was successful (ID: " + response.razorpay_payment_id + "), but we failed to update your subscription details. Please contact support.");
+          console.error("Signature verification failed:", err);
+          alert("Verification Error: " + err.message);
         } finally {
           setPlanSaving(false);
         }
@@ -714,6 +756,10 @@ export default function AdminDashboard() {
     };
 
     const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', function (resp) {
+      alert("Payment failed: " + resp.error.description);
+      setPlanSaving(false);
+    });
     rzp.open();
   }
 
