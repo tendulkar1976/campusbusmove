@@ -1027,20 +1027,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {subscription?.status === "trial" && (
-        <div style={{ background: dark ? "#0F172A" : "#EFF6FF", borderBottom: `1.5px solid ${dark ? "#1E3A8A" : "#BFDBFE"}`, padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 30 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🎯</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.accent }}>14-day Institutional Trial Active — {daysLeft} days left</div>
-              <div style={{ fontSize: 11, color: t.textSub, marginTop: 2 }}>Unlock unlimited routes, attendance automation, and analytics.</div>
-            </div>
-          </div>
-          <button onClick={() => { setTab("billing"); setShowPlans(true); }} style={{ background: t.accent, border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", boxShadow: `0 2px 10px ${t.accent}44` }}>
-            Upgrade Now
-          </button>
-        </div>
-      )}
+
 
       {showBillingSuccess && (
         <div style={{ background: dark ? "#0D2012" : "#ECFDF5", borderBottom: `1.5px solid ${dark ? "#1E4D2B" : "#A7F3D0"}`, padding: "14px 20px", display: "flex", alignItems: "center", gap: 10, zIndex: 30 }}>
