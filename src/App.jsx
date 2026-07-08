@@ -10,6 +10,7 @@ const Login           = lazy(() => import("./pages/Login"));
 const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
 const DriverDashboard  = lazy(() => import("./pages/DriverDashboard"));
 const AdminDashboard   = lazy(() => import("./pages/AdminDashboard"));
+const SuperadminDashboard = lazy(() => import("./pages/SuperadminDashboard"));
 
 function Spinner() {
   const { t } = useTheme();
@@ -28,6 +29,7 @@ function Spinner() {
 function RoleRedirect() {
   const { role, loading } = useAuth();
   if (loading) return <Spinner />;
+  if (role === "superadmin") return <Navigate to="/superadmin" replace />;
   if (role === "admin")  return <Navigate to="/admin"   replace />;
   if (role === "driver") return <Navigate to="/driver"  replace />;
   return <Navigate to="/student" replace />;
@@ -56,6 +58,11 @@ export default function App() {
                 <Route path="/admin"   element={
                   <ProtectedRoute allowedRoles={["admin"]}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                }/>
+                <Route path="/superadmin" element={
+                  <ProtectedRoute allowedRoles={["superadmin"]}>
+                    <SuperadminDashboard />
                   </ProtectedRoute>
                 }/>
                 <Route path="*" element={<Navigate to="/" replace />} />
