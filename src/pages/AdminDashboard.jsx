@@ -100,6 +100,9 @@ export default function AdminDashboard() {
   const [planSaving, setPlanSaving] = useState(false);
   const [showBillingSuccess, setShowBillingSuccess] = useState(false);
   const [selectedCheckoutPlan, setSelectedCheckoutPlan] = useState(null);
+  const [paymentsHistory, setPaymentsHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   // ── Search & Filters state ──
   const [userSearch, setUserSearch] = useState("");
@@ -418,6 +421,22 @@ export default function AdminDashboard() {
     });
   }, []);
 
+  // ── Load payments history ──
+  useEffect(() => {
+    setLoadingHistory(true);
+    getDocs(collection(db, "payments")).then(snap => {
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => p.campusId === "alliance-bangalore")
+        .sort((a, b) => b.timestamp - a.timestamp);
+      setPaymentsHistory(list);
+      setLoadingHistory(false);
+    }).catch(err => {
+      console.error("Error loading payments:", err);
+      setLoadingHistory(false);
+    });
+  }, []);
+
   function loadRazorpayScript() {
     return new Promise((resolve) => {
       if (window.Razorpay) {
@@ -655,6 +674,21 @@ export default function AdminDashboard() {
           };
           await setDoc(doc(db, "subscriptions", "alliance-bangalore"), newSub);
           setSubscription(newSub);
+
+          const paymentLog = {
+            paymentId: response.razorpay_payment_id || "",
+            planId,
+            billing: billingCycle,
+            amount,
+            timestamp: Date.now(),
+            campusId: "alliance-bangalore",
+            status: "success",
+            customerName: user?.name || user?.displayName || "Administrator",
+            customerEmail: user?.email || "",
+          };
+          await addDoc(collection(db, "payments"), paymentLog);
+          setPaymentsHistory(prev => [paymentLog, ...prev]);
+
           setShowPlans(false);
           setShowBillingSuccess(true);
           setTimeout(() => setShowBillingSuccess(false), 4000);
@@ -1467,51 +1501,117 @@ export default function AdminDashboard() {
             <>
               {/* Current plan metrics */}
               {subscription && !showPlans && (
-                <div style={{ ...S.card, border: `1.5px solid ${currentPlan.color}33` }}>
-                  <div style={{ padding: "18px 20px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 24 }}>{currentPlan.emoji}</span>
+                <>
+                  <div style={{ ...S.card, border: `1.5px solid ${currentPlan.color}33` }}>
+                    <div style={{ padding: "18px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyBetween: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 24 }}>{currentPlan.emoji}</span>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
+                            <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
+                              {subscription.status === "trial" ? "Trial License" : `₹${(subscription.billing === "yearly" ? currentPlan.yearly : currentPlan.monthly).toLocaleString("en-IN")}/${subscription.billing === "yearly" ? "year" : "month"}`}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>Expires</div>
+                          <div style={{ fontSize: 13, color: daysLeft <= 7 ? "#F59E0B" : t.textSub, fontWeight: 700, marginTop: 4 }}>{formatDate(subscription.expiryDate)}</div>
+                        </div>
+                      </div>
+
+                      {/* Progress tracking bars */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: `1.5px solid ${t.border}`, paddingTop: 16 }}>
                         <div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: currentPlan.color }}>{currentPlan.name} Plan</div>
-                          <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
-                            {subscription.status === "trial" ? "Trial License" : `₹${(subscription.billing === "yearly" ? currentPlan.yearly : currentPlan.monthly).toLocaleString("en-IN")}/${subscription.billing === "yearly" ? "year" : "month"}`}
+                          <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Routes quota</span>
+                            <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{totalRoutes} / {currentPlan.limits.routes === Infinity ? "Unlimited" : currentPlan.limits.routes}</span>
+                          </div>
+                          <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
+                            <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.routes === Infinity ? "40%" : `${Math.min(100, (totalRoutes / currentPlan.limits.routes) * 100)}%`, transition: "width 0.4s" }}/>
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Students capacity</span>
+                            <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{commuterCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
+                          </div>
+                          <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
+                            <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.students === Infinity ? "20%" : `${Math.min(100, (commuterCount / currentPlan.limits.students) * 100)}%`, transition: "width 0.4s" }}/>
                           </div>
                         </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>Expires</div>
-                        <div style={{ fontSize: 13, color: daysLeft <= 7 ? "#F59E0B" : t.textSub, fontWeight: 700, marginTop: 4 }}>{formatDate(subscription.expiryDate)}</div>
-                      </div>
-                    </div>
 
-                    {/* Progress tracking bars */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: `1.5px solid ${t.border}`, paddingTop: 16 }}>
-                      <div>
-                        <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Routes quota</span>
-                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{totalRoutes} / {currentPlan.limits.routes === Infinity ? "Unlimited" : currentPlan.limits.routes}</span>
-                        </div>
-                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
-                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.routes === Infinity ? "40%" : `${Math.min(100, (totalRoutes / currentPlan.limits.routes) * 100)}%`, transition: "width 0.4s" }}/>
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 500 }}>Students capacity</span>
-                          <span style={{ fontSize: 12, color: t.textSub, fontWeight: 700 }}>{commuterCount} / {currentPlan.limits.students === Infinity ? "Unlimited" : currentPlan.limits.students}</span>
-                        </div>
-                        <div style={{ height: 4, background: dark ? t.inputBg : t.bgCard2, borderRadius: 2 }}>
-                          <div style={{ height: 4, background: currentPlan.color, borderRadius: 2, width: currentPlan.limits.students === Infinity ? "20%" : `${Math.min(100, (commuterCount / currentPlan.limits.students) * 100)}%`, transition: "width 0.4s" }}/>
-                        </div>
-                      </div>
+                      <button onClick={() => setShowPlans(true)} style={{ marginTop: 18, width: "100%", background: "transparent", border: `1.5px solid ${currentPlan.color}44`, borderRadius: 10, padding: "12px 0", color: currentPlan.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
+                        {subscription.plan === "basic" ? "⚡ Upgrade to Premium Features" : "Manage billing licenses"}
+                      </button>
                     </div>
-
-                    <button onClick={() => setShowPlans(true)} style={{ marginTop: 18, width: "100%", background: "transparent", border: `1.5px solid ${currentPlan.color}44`, borderRadius: 10, padding: "12px 0", color: currentPlan.color, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif", transition: "all 0.2s" }}>
-                      {subscription.plan === "basic" ? "⚡ Upgrade to Premium Features" : "Manage billing licenses"}
-                    </button>
                   </div>
-                </div>
+
+                  {/* Billing History and Invoices list */}
+                  <div style={{ ...S.card, marginTop: 20 }}>
+                    <div style={{ padding: "18px 20px", borderBottom: `1.5px solid ${t.border}` }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", color: t.text }}>
+                        📄 Billing History & Invoices
+                      </span>
+                    </div>
+                    
+                    <div style={{ padding: "10px 20px" }}>
+                      {loadingHistory ? (
+                        <div style={{ padding: "30px 0", textAlign: "center", color: t.textMuted, fontSize: 13 }}>
+                          Loading history...
+                        </div>
+                      ) : paymentsHistory.length === 0 ? (
+                        <div style={{ padding: "40px 0", textAlign: "center", color: t.textMuted, fontSize: 13 }}>
+                          No invoice records found. Past purchases will appear here.
+                        </div>
+                      ) : (
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
+                            <thead>
+                              <tr style={{ borderBottom: `1.5px solid ${t.border}`, color: t.textMuted }}>
+                                <th style={{ padding: "12px 8px", fontWeight: 700 }}>Date</th>
+                                <th style={{ padding: "12px 8px", fontWeight: 700 }}>Plan Details</th>
+                                <th style={{ padding: "12px 8px", fontWeight: 700 }}>Amount</th>
+                                <th style={{ padding: "12px 8px", fontWeight: 700, textAlign: "right" }}>Invoice</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paymentsHistory.map((pay, i) => (
+                                <tr key={i} style={{ borderBottom: `1px solid ${t.border}`, color: t.text }}>
+                                  <td style={{ padding: "12px 8px" }}>{new Date(pay.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                                  <td style={{ padding: "12px 8px" }}>
+                                    <span style={{ fontWeight: 700 }}>{PLANS[pay.planId]?.name || pay.planId}</span>
+                                    <span style={{ fontSize: 10, color: t.textMuted, marginLeft: 6, textTransform: "capitalize" }}>({pay.billing})</span>
+                                  </td>
+                                  <td style={{ padding: "12px 8px", fontWeight: 700 }}>₹{pay.amount?.toLocaleString("en-IN")}</td>
+                                  <td style={{ padding: "12px 8px", textAlign: "right" }}>
+                                    <button 
+                                      onClick={() => setSelectedInvoice(pay)}
+                                      style={{
+                                        background: dark ? "#222" : "#f0f0f0",
+                                        border: `1.5px solid ${t.border}`,
+                                        borderRadius: 8,
+                                        padding: "6px 12px",
+                                        color: t.text,
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                        fontFamily: "'Inter',sans-serif"
+                                      }}
+                                    >
+                                      View Invoice
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Plan comparison selector */}
@@ -1650,6 +1750,147 @@ export default function AdminDashboard() {
                         >
                           {planSaving ? "Opening checkout..." : `Proceed to Pay ₹${(billingCycle === "yearly" ? PLANS[selectedCheckoutPlan].yearly : PLANS[selectedCheckoutPlan].monthly).toLocaleString("en-IN")}`}
                         </button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Invoice Modal Overlay */}
+                  {selectedInvoice && (
+                    <div style={{
+                      position: "fixed",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: "rgba(0,0,0,0.6)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 9999,
+                      padding: 20,
+                      backdropFilter: "blur(4px)",
+                      WebkitBackdropFilter: "blur(4px)",
+                    }}>
+                      <div style={{
+                        background: dark ? "#1E1E24" : "#FFFFFF",
+                        border: `1.5px solid ${t.border}`,
+                        borderRadius: 16,
+                        width: "100%",
+                        maxWidth: 500,
+                        boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+                        overflow: "hidden",
+                        position: "relative"
+                      }}>
+                        {/* Invoice header */}
+                        <div style={{
+                          background: `linear-gradient(135deg, ${PLANS[selectedInvoice.planId]?.color || t.accent}, ${dark ? "#111" : "#FF7B47"})`,
+                          padding: "24px",
+                          color: "#fff",
+                          position: "relative"
+                        }}>
+                          <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-0.5px" }}>CampusMove Receipt</div>
+                              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>Transaction ID: {selectedInvoice.paymentId}</div>
+                            </div>
+                            <button 
+                              onClick={() => setSelectedInvoice(null)}
+                              style={{
+                                background: "rgba(255,255,255,0.2)",
+                                border: "none",
+                                borderRadius: "50%",
+                                width: 32,
+                                height: 32,
+                                color: "#fff",
+                                fontSize: 16,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyCenter: "center",
+                                justifyContent: "center"
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Invoice details */}
+                        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 18 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, borderBottom: `1.5px solid ${t.border}`, paddingBottom: 16 }}>
+                            <div>
+                              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>Billed To</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginTop: 4 }}>{selectedInvoice.customerName}</div>
+                              <div style={{ fontSize: 11, color: t.textSub, marginTop: 2 }}>{selectedInvoice.customerEmail}</div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase" }}>Date Paid</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginTop: 4 }}>
+                                {new Date(selectedInvoice.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </div>
+                              <div style={{ display: "inline-block", fontSize: 10, background: "#D1FAE5", color: "#065F46", fontWeight: 800, padding: "2px 8px", borderRadius: 6, marginTop: 6 }}>
+                                PAID ✓
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Item table list */}
+                          <div>
+                            <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, textTransform: "uppercase", marginBottom: 8 }}>Itemized Summary</div>
+                            <div style={{ background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 10, padding: 14 }}>
+                              <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", fontSize: 13, color: t.text, fontWeight: 700 }}>
+                                <span>{PLANS[selectedInvoice.planId]?.name || selectedInvoice.planId} Subscription</span>
+                                <span>₹{selectedInvoice.amount?.toLocaleString("en-IN")}</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: t.textMuted, marginTop: 4 }}>
+                                Billing Cycle: {selectedInvoice.billing === "yearly" ? "Yearly (10% discount included)" : "Monthly cycle"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Total calculation */}
+                          <div style={{ display: "flex", justifyBetween: "center", justifyContent: "space-between", alignItems: "center", borderTop: `1.5px solid ${t.border}`, paddingTop: 16, marginTop: 10 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>Total Charged</span>
+                            <span style={{ fontSize: 20, fontWeight: 900, color: PLANS[selectedInvoice.planId]?.color || t.accent }}>₹{selectedInvoice.amount?.toLocaleString("en-IN")}</span>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                            <button 
+                              onClick={() => window.print()}
+                              style={{
+                                flex: 1,
+                                background: "transparent",
+                                border: `1.5px solid ${t.border}`,
+                                borderRadius: 10,
+                                padding: "12px 0",
+                                color: t.text,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                fontFamily: "'Inter',sans-serif"
+                              }}
+                            >
+                              🖨 Print Invoice
+                            </button>
+                            <button 
+                              onClick={() => setSelectedInvoice(null)}
+                              style={{
+                                flex: 1,
+                                background: PLANS[selectedInvoice.planId]?.color || t.accent,
+                                border: "none",
+                                borderRadius: 10,
+                                padding: "12px 0",
+                                color: "#fff",
+                                fontSize: 13,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                fontFamily: "'Inter',sans-serif"
+                              }}
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
