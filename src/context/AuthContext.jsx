@@ -34,6 +34,9 @@ export function AuthProvider({ children }) {
           if (firebaseUser.email === "gamethunder83@gmail.com") {
             setRole("admin");
             setBlocked(false);
+          } else if (firebaseUser.email === "superadmin@campusmove.com") {
+            setRole("superadmin");
+            setBlocked(false);
           } else {
             setRole(null);
           }

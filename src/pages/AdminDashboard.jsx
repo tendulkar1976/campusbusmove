@@ -72,7 +72,7 @@ const DEFAULT_SUB = {
 };
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const { dark, toggle, t } = useTheme();
   const [tab, setTab] = useState("overview");
   const [liveStatus, setLiveStatus] = useState({});
@@ -870,7 +870,7 @@ export default function AdminDashboard() {
       return { fontSize: 11, padding: "4px 10px", borderRadius: 20, background: bg, color, border };
     },
     rolePill: (role) => {
-      const isAdm = role === "admin";
+      const isAdm = role === "admin" || role === "superadmin";
       const isDrv = role === "driver";
       const isTea = role === "teacher";
       return {
@@ -1115,7 +1115,7 @@ export default function AdminDashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 28, height: 28, background: "#FF5A1F", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🚌</div>
             <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>CampusMove</span>
-            <span style={{ ...S.badge, padding: "2px 6px", fontSize: 9 }}>Admin</span>
+            <span style={{ ...S.badge, padding: "2px 6px", fontSize: 9 }}>{role === "superadmin" ? "Super Admin" : "Admin"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={toggle} style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${t.border}`, background: t.bgCard, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
@@ -1446,6 +1446,7 @@ export default function AdminDashboard() {
                             <option value="teacher">Faculty / Teacher</option>
                             <option value="driver">Driver</option>
                             <option value="admin">Admin</option>
+                            {role === "superadmin" && <option value="superadmin">Super Admin</option>}
                           </select>
                           <button onClick={() => setConfirmId({ id: u.id, action: "delete" })} style={S.delBtn}>🗑 Delete</button>
                         </div>
@@ -1488,6 +1489,7 @@ export default function AdminDashboard() {
                       <option value="teacher">Faculty / Teacher</option>
                       <option value="driver">Driver</option>
                       <option value="admin">Admin</option>
+                      {role === "superadmin" && <option value="superadmin">Super Admin</option>}
                     </select>
                   </div>
                   <div style={{ marginBottom: 14 }}>

@@ -28,7 +28,7 @@ function Spinner() {
 function RoleRedirect() {
   const { role, loading } = useAuth();
   if (loading) return <Spinner />;
-  if (role === "admin")  return <Navigate to="/admin"   replace />;
+  if (role === "admin" || role === "superadmin")  return <Navigate to="/admin"   replace />;
   if (role === "driver") return <Navigate to="/driver"  replace />;
   return <Navigate to="/student" replace />;
 }
@@ -54,7 +54,7 @@ export default function App() {
                   </ProtectedRoute>
                 }/>
                 <Route path="/admin"   element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
+                  <ProtectedRoute allowedRoles={["admin", "superadmin"]}>
                     <AdminDashboard />
                   </ProtectedRoute>
                 }/>

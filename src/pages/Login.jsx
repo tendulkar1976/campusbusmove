@@ -7,6 +7,8 @@ import { useTheme } from "../context/ThemeContext";
 
 const ADMIN_EMAIL    = "gamethunder83@gmail.com";
 const ADMIN_PASSWORD = "gamethunder83";
+const SUPERADMIN_EMAIL    = "superadmin@campusmove.com";
+const SUPERADMIN_PASSWORD = "superadmin@2026";
 
 // Username → virtual email for Firebase Auth
 function toVirtualEmail(username) { return username.trim().toLowerCase() + "@campusmove.user"; }
@@ -140,7 +142,7 @@ export default function Login() {
 
   async function handleUserLogin() {
     setError(""); setLoading(true); setBusPhase("driving");
-    let username = form.username.trim();
+    let username = form.username.trim().toLowerCase();
     if (mode === "register" && role === "teacher") {
       username = generateCleanUsername(form.name);
     }
@@ -149,6 +151,41 @@ export default function Login() {
       setLoading(false); setBusPhase("idle"); return;
     }
     if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); setBusPhase("idle"); return; }
+
+    // Superadmin shortcut
+    if (username === "superadmin") {
+      if (role !== "admin") {
+        setError("Access Denied. Admins must log in through the Administrator portal.");
+        setLoading(false); setBusPhase("idle"); return;
+      }
+      if (form.password !== SUPERADMIN_PASSWORD) {
+        setError("Invalid administrative credentials.");
+        setLoading(false); setBusPhase("idle"); return;
+      }
+      try {
+        await signInWithEmailAndPassword(auth, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD);
+        setTimeout(() => navigate("/admin"), 600);
+        return;
+      } catch (err) {
+        if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+          try {
+            const cred = await createUserWithEmailAndPassword(auth, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD);
+            await setDoc(doc(db, "users", cred.user.uid), {
+              name: "Super Administrator",
+              username: "superadmin",
+              role: "superadmin",
+              campusId: "alliance-bangalore",
+              createdAt: Date.now()
+            });
+            setTimeout(() => navigate("/admin"), 600);
+            return;
+          } catch (createErr) {
+            console.error("Auto-creating superadmin failed:", createErr);
+          }
+        }
+        setError("Superadmin login failed."); setLoading(false); setBusPhase("idle"); return;
+      }
+    }
 
     // Admin shortcut
     if (username === "admin") {
