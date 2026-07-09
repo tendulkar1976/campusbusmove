@@ -183,6 +183,9 @@ export default function SuperadminDashboard() {
 
   // Filtered Users list
   const filteredUsers = usersList.filter(u => {
+    // Restrict to admins only
+    if (u.role !== "admin" && u.role !== "superadmin") return false;
+
     const query = userSearch.toLowerCase();
     const matchesSearch = 
       (u.name || "").toLowerCase().includes(query) ||
@@ -487,11 +490,9 @@ export default function SuperadminDashboard() {
                     outline: "none"
                   }}
                 >
-                  <option value="all">All Roles</option>
-                  <option value="admin">Admins Only</option>
-                  <option value="driver">Drivers Only</option>
-                  <option value="student">Students Only</option>
-                  <option value="superadmin">Superadmins Only</option>
+                  <option value="all">All Admin Roles</option>
+                  <option value="admin">Campus Admins</option>
+                  <option value="superadmin">Superadmins</option>
                 </select>
 
                 <select
@@ -550,8 +551,6 @@ export default function SuperadminDashboard() {
                                 padding: "4px 8px"
                               }}
                             >
-                              <option value="student">Student</option>
-                              <option value="driver">Driver</option>
                               <option value="admin">Admin</option>
                               <option value="superadmin">Superadmin</option>
                             </select>
