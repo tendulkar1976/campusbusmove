@@ -164,7 +164,7 @@ export default function Login() {
       }
       try {
         await signInWithEmailAndPassword(auth, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD);
-        setTimeout(() => navigate("/admin"), 600);
+        setTimeout(() => navigate("/superadmin"), 600);
         return;
       } catch (err) {
         if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
@@ -177,7 +177,7 @@ export default function Login() {
               campusId: "alliance-bangalore",
               createdAt: Date.now()
             });
-            setTimeout(() => navigate("/admin"), 600);
+            setTimeout(() => navigate("/superadmin"), 600);
             return;
           } catch (createErr) {
             console.error("Auto-creating superadmin failed:", createErr);

@@ -75,6 +75,76 @@ export default function AdminDashboard() {
   const { user, role, logout } = useAuth();
   const { dark, toggle, t } = useTheme();
   const [tab, setTab] = useState("overview");
+
+  const [campusId, setCampusId] = useState("alliance-bangalore");
+  const [campuses, setCampuses] = useState([
+    { id: "alliance-bangalore", name: "Alliance University (Bangalore)" }
+  ]);
+  const [newCampus, setNewCampus] = useState({ id: "", name: "" });
+  const [campusSaving, setCampusSaving] = useState(false);
+
+  const [editingCampusSub, setEditingCampusSub] = useState(null);
+  const [editedPlan, setEditedPlan] = useState("basic");
+  const [editedStatus, setEditedStatus] = useState("active");
+  const [editedExpiryDays, setEditedExpiryDays] = useState(30);
+  const [editedAmount, setEditedAmount] = useState(0);
+
+  useEffect(() => {
+    if (role !== "superadmin" && user?.campusId) {
+      setCampusId(user.campusId);
+    }
+  }, [role, user]);
+
+  useEffect(() => {
+    getDocs(collection(db, "campuses")).then(snap => {
+      if (!snap.empty) {
+        setCampuses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } else {
+        setDoc(doc(db, "campuses", "alliance-bangalore"), { name: "Alliance University (Bangalore)" });
+      }
+    }).catch(() => {});
+  }, []);
+
+  async function handleAddCampus(e) {
+    e.preventDefault();
+    if (!newCampus.id.trim() || !newCampus.name.trim()) return;
+    const cleanId = newCampus.id.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    setCampusSaving(true);
+    try {
+      await setDoc(doc(db, "campuses", cleanId), { name: newCampus.name.trim() });
+      await setDoc(doc(db, "subscriptions", cleanId), DEFAULT_SUB);
+      setCampuses(prev => [...prev, { id: cleanId, name: newCampus.name.trim() }]);
+      setNewCampus({ id: "", name: "" });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCampusSaving(false);
+    }
+  }
+
+  async function saveCampusSubscription(targetCampusId) {
+    const expiryDate = Date.now() + editedExpiryDays * 24 * 60 * 60 * 1000;
+    const subObj = {
+      plan: editedPlan,
+      status: editedStatus,
+      amount: Number(editedAmount),
+      expiryDate,
+      startDate: Date.now(),
+      campusId: targetCampusId,
+      updatedAt: Date.now(),
+      razorpayPaymentId: "manual-override-by-superadmin"
+    };
+    try {
+      await setDoc(doc(db, "subscriptions", targetCampusId), subObj);
+      if (targetCampusId === campusId) {
+        setSubscription(subObj);
+      }
+      setEditingCampusSub(null);
+      alert("Campus subscription updated successfully!");
+    } catch (err) {
+      alert("Failed to update subscription: " + err.message);
+    }
+  }
   const [liveStatus, setLiveStatus] = useState({});
   const [routes, setRoutes] = useState([]);
   const [users, setUsers] = useState([]);
@@ -406,13 +476,13 @@ export default function AdminDashboard() {
 
   // ── Load subscription ──
   useEffect(() => {
-    getDoc(doc(db, "subscriptions", "alliance-bangalore")).then(snap => {
+    getDoc(doc(db, "subscriptions", campusId)).then(snap => {
       if (snap.exists()) {
         const data = snap.data();
         setSubscription(data);
         setSelectedCheckoutPlan(data.plan || "basic");
       } else {
-        setDoc(doc(db, "subscriptions", "alliance-bangalore"), DEFAULT_SUB);
+        setDoc(doc(db, "subscriptions", campusId), DEFAULT_SUB);
         setSubscription(DEFAULT_SUB);
         setSelectedCheckoutPlan(DEFAULT_SUB.plan || "basic");
       }
@@ -420,7 +490,7 @@ export default function AdminDashboard() {
       setSubscription(DEFAULT_SUB);
       setSelectedCheckoutPlan(DEFAULT_SUB.plan || "basic");
     });
-  }, []);
+  }, [campusId]);
 
   // ── Load payments history ──
   useEffect(() => {
@@ -428,7 +498,7 @@ export default function AdminDashboard() {
     getDocs(collection(db, "payments")).then(snap => {
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(p => p.campusId === "alliance-bangalore")
+        .filter(p => p.campusId === campusId)
         .sort((a, b) => b.timestamp - a.timestamp);
       setPaymentsHistory(list);
       setLoadingHistory(false);
@@ -436,7 +506,7 @@ export default function AdminDashboard() {
       console.error("Error loading payments:", err);
       setLoadingHistory(false);
     });
-  }, []);
+  }, [campusId]);
 
   function loadRazorpayScript() {
     return new Promise((resolve) => {
@@ -529,7 +599,7 @@ export default function AdminDashboard() {
       const profile = {
         name: newUser.name.trim(),
         role: newUser.role,
-        campusId: "alliance-bangalore",
+        campusId: campusId,
         blocked: false,
         createdAt: Date.now()
       };
@@ -569,7 +639,7 @@ export default function AdminDashboard() {
   async function addRoute() {
     if (!newRoute.name || !newRoute.label) return;
     setSaving(true);
-    await addDoc(collection(db, "routes"), { ...newRoute, campusId: "alliance-bangalore", path: [], stops: [], createdAt: Date.now() });
+    await addDoc(collection(db, "routes"), { ...newRoute, campusId: campusId, path: [], stops: [], createdAt: Date.now() });
     setSaving(false);
     setNewRoute({ name: "", label: "", description: "" });
     loadRoutes();
@@ -717,11 +787,11 @@ export default function AdminDashboard() {
             startDate: Date.now(),
             expiryDate: Date.now() + durationMs,
             amount,
-            campusId: "alliance-bangalore",
+            campusId: campusId,
             updatedAt: Date.now(),
             razorpayPaymentId: response.razorpay_payment_id || "",
           };
-          await setDoc(doc(db, "subscriptions", "alliance-bangalore"), newSub);
+          await setDoc(doc(db, "subscriptions", campusId), newSub);
           setSubscription(newSub);
 
           const paymentLog = {
@@ -730,7 +800,7 @@ export default function AdminDashboard() {
             billing: billingCycle,
             amount,
             timestamp: Date.now(),
-            campusId: "alliance-bangalore",
+            campusId: campusId,
             status: "success",
             customerName: user?.name || user?.displayName || "Administrator",
             customerEmail: user?.email || "",
@@ -776,24 +846,26 @@ export default function AdminDashboard() {
   const isWarning = daysLeft <= 7 && daysLeft > 0;
   const currentPlan = PLANS[subscription?.plan || "basic"];
   const activeBuses = Object.values(liveStatus).filter(r => r?.live?.active).length;
-  const studentCount = users.filter(u => u.role === "student").length;
-  const teacherCount = users.filter(u => u.role === "teacher").length;
+  const campusUsers = users.filter(u => u.campusId === campusId);
+  const studentCount = campusUsers.filter(u => u.role === "student").length;
+  const teacherCount = campusUsers.filter(u => u.role === "teacher").length;
   const commuterCount = studentCount + teacherCount;
-  const driverCount = users.filter(u => u.role === "driver").length;
-  const blockedCount = users.filter(u => u.blocked).length;
-  const totalRoutes = PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + routes.length;
+  const driverCount = campusUsers.filter(u => u.role === "driver").length;
+  const blockedCount = campusUsers.filter(u => u.blocked).length;
+  const campusRoutes = routes.filter(r => r.campusId === campusId);
+  const totalRoutes = PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id)).length + campusRoutes.length;
 
   // ── Auto-force billing tab if subscription is expired ──
   useEffect(() => {
-    if (isExpired && tab !== "billing") {
+    if (role !== "superadmin" && isExpired && tab !== "billing") {
       setTab("billing");
       setShowPlans(true);
     }
-  }, [isExpired, tab]);
+  }, [isExpired, tab, role]);
 
   // Filters logic
   const filteredUsers = useMemo(() => {
-    let list = users;
+    let list = users.filter(u => u.campusId === campusId);
     
     // 1. Filter by role
     if (userRoleFilter !== "all") {
@@ -813,7 +885,7 @@ export default function AdminDashboard() {
       (u.email && u.email.toLowerCase().includes(q)) ||
       (u.phone && u.phone.includes(q))
     );
-  }, [users, userSearch, userRoleFilter]);
+  }, [users, userSearch, userRoleFilter, campusId]);
 
   const filteredPresetRoutes = useMemo(() => {
     const prs = PRESET_ROUTES.filter(pr => !hiddenPresets.includes(pr.id));
@@ -826,28 +898,31 @@ export default function AdminDashboard() {
   }, [hiddenPresets, routeSearch]);
 
   const filteredCustomRoutes = useMemo(() => {
-    if (!routeSearch.trim()) return routes;
+    const campusR = routes.filter(r => r.campusId === campusId);
+    if (!routeSearch.trim()) return campusR;
     const q = routeSearch.toLowerCase();
-    return routes.filter(r => 
+    return campusR.filter(r => 
       r.name.toLowerCase().includes(q) || 
       r.label.toLowerCase().includes(q) ||
       (r.description && r.description.toLowerCase().includes(q))
     );
-  }, [routes, routeSearch]);
+  }, [routes, routeSearch, campusId]);
+
+  const accentColor = role === "superadmin" ? "#7C3AED" : t.accent;
 
   const S = {
     screen: { minHeight: "100vh", background: t.bg, fontFamily: "'Inter', sans-serif", color: t.text, display: "flex", flexDirection: "column", transition: "background 0.25s, color 0.25s" },
     sidebar: { background: t.bgCard, borderRight: `1.5px solid ${t.border}`, flexDirection: "column", padding: "28px 24px", width: "260px", flexShrink: 0 },
     topbar: { background: t.bgCard, borderBottom: `1.5px solid ${t.border}`, alignItems: "center", justifyContent: "space-between", padding: "16px 20px", height: "64px" },
     content: { flex: 1, padding: "24px 20px 60px", maxWidth: "960px", margin: "0 auto", width: "100%", boxSizing: "border-box" },
-    tabBtn: (active) => ({ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", border: "none", borderRadius: 12, background: active ? (dark ? "#1F2937" : "#EFF6FF") : "transparent", cursor: "pointer", color: active ? t.accent : t.textMuted, fontSize: 14, fontWeight: active ? 700 : 500, textAlign: "left", transition: "all 0.2s ease-in-out", borderLeft: active ? `3px solid ${t.accent}` : "3px solid transparent", fontFamily: "'Inter', sans-serif" }),
-    badge: { background: dark ? "#251206" : "#FFF7ED", border: `1px solid ${dark ? "#4D260B" : "#FDBA74"}`, borderRadius: 8, padding: "4px 8px", color: "#FF5A1F", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" },
+    tabBtn: (active) => ({ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", border: "none", borderRadius: 12, background: active ? (dark ? "#1F2937" : "#F5F3FF") : "transparent", cursor: "pointer", color: active ? accentColor : t.textMuted, fontSize: 14, fontWeight: active ? 700 : 500, textAlign: "left", transition: "all 0.2s ease-in-out", borderLeft: active ? `3px solid ${accentColor}` : "3px solid transparent", fontFamily: "'Inter', sans-serif" }),
+    badge: { background: role === "superadmin" ? (dark ? "#1F1625" : "#F5F3FF") : (dark ? "#251206" : "#FFF7ED"), border: `1px solid ${role === "superadmin" ? (dark ? "#4C2B68" : "#DDD6FE") : (dark ? "#4D260B" : "#FDBA74")}`, borderRadius: 8, padding: "4px 8px", color: role === "superadmin" ? "#7C3AED" : "#FF5A1F", fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" },
     card: { background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 18, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" },
     cardHead: { padding: "16px 20px", borderBottom: `1.5px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" },
     cardLabel: { fontSize: 10, color: t.textMuted, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" },
     row: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1.5px solid ${t.border}`, transition: "background 0.2s", color: t.text },
     input: { width: "100%", background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "13px 16px", color: t.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "'Inter', sans-serif", marginBottom: 10, transition: "border-color 0.15s" },
-    addBtn: { width: "100%", background: t.accent, border: "none", borderRadius: 10, padding: "14px 0", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.2s", boxShadow: `0 4px 12px ${t.accent}33` },
+    addBtn: { width: "100%", background: accentColor, border: "none", borderRadius: 10, padding: "14px 0", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.2s", boxShadow: `0 4px 12px ${accentColor}33` },
     delBtn: { background: "none", border: `1px solid ${dark ? "#5D1010" : "#FCA5A5"}`, borderRadius: 8, padding: "6px 12px", color: "#EF4444", fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s" },
     liveDot: (active, type) => {
       let bg = active ? "#10B981" : (dark ? "#374151" : "#D1D5DB");
@@ -885,7 +960,7 @@ export default function AdminDashboard() {
     blockBtn: (blocked) => ({ background: "none", border: `1px solid ${blocked ? (dark ? "#1E4D2B" : "#A7F3D0") : (dark ? "#5D3E10" : "#FDBA74")}`, borderRadius: 8, padding: "6px 12px", color: blocked ? "#10B981" : "#F59E0B", fontSize: 11, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s" }),
   };
 
-  const navItems = [
+  const baseItems = [
     {
       id: "overview",
       label: "Overview Panel",
@@ -954,6 +1029,19 @@ export default function AdminDashboard() {
       )
     }
   ];
+
+  const navItems = role === "superadmin" ? [
+    ...baseItems,
+    {
+      id: "superadmin",
+      label: "System Control",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+      )
+    }
+  ] : baseItems;
 
   return (
     <div style={S.screen}>
@@ -1055,10 +1143,38 @@ export default function AdminDashboard() {
         {/* ── DESKTOP SIDEBAR ── */}
         <div className="sidebar-panel" style={S.sidebar}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
-            <div style={{ width: 34, height: 34, background: "#FF5A1F", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚌</div>
-            <div>
+            <div style={{ width: 34, height: 34, background: role === "superadmin" ? "#7C3AED" : "#FF5A1F", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚌</div>
+            <div style={{ flex: 1 }}>
               <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.5px", color: t.text }}>CampusMove</span>
-              <div style={{ fontSize: 9, color: t.textMuted, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", marginTop: 2 }}>Alliance University</div>
+              {role === "superadmin" ? (
+                <select 
+                  value={campusId} 
+                  onChange={e => setCampusId(e.target.value)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: `1.5px dashed ${accentColor}`,
+                    color: t.text,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: "2px 0",
+                    width: "100%",
+                    outline: "none",
+                    cursor: "pointer",
+                    marginTop: 2
+                  }}
+                >
+                  {campuses.map(c => (
+                    <option key={c.id} value={c.id} style={{ background: t.bgCard, color: t.text }}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ fontSize: 9, color: t.textMuted, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", marginTop: 2 }}>
+                  {campuses.find(c => c.id === campusId)?.name || "Alliance University"}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1113,8 +1229,38 @@ export default function AdminDashboard() {
         {/* ── MOBILE HEADER (HIDDEN ON DESKTOP) ── */}
         <div className="topbar-panel" style={S.topbar}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 28, height: 28, background: "#FF5A1F", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🚌</div>
-            <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>CampusMove</span>
+            <div style={{ width: 28, height: 28, background: role === "superadmin" ? "#7C3AED" : "#FF5A1F", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🚌</div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>CampusMove</span>
+              {role === "superadmin" ? (
+                <select 
+                  value={campusId} 
+                  onChange={e => setCampusId(e.target.value)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: `1.2px dashed ${accentColor}`,
+                    color: t.text,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: "1px 0",
+                    marginLeft: 6,
+                    outline: "none",
+                    cursor: "pointer"
+                  }}
+                >
+                  {campuses.map(c => (
+                    <option key={c.id} value={c.id} style={{ background: t.bgCard, color: t.text }}>
+                      {c.name.split(" ")[0]}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: 10, color: t.textMuted, marginLeft: 6 }}>
+                  ({campuses.find(c => c.id === campusId)?.name || "AU"})
+                </span>
+              )}
+            </div>
             <span style={{ ...S.badge, padding: "2px 6px", fontSize: 9 }}>{role === "superadmin" ? "Super Admin" : "Admin"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2557,7 +2703,7 @@ export default function AdminDashboard() {
                       driverUid: selectedDriverUid,
                       routeId: overrideModalRoute.id,
                       routeName: overrideModalRoute.name,
-                      campusId: "alliance-bangalore",
+                      campusId: campusId,
                       startTime: Date.now(),
                       endTime: null,
                       status: "active",
