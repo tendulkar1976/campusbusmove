@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { ref, set, onValue } from "firebase/database";
+import { ref, set, onValue, get } from "firebase/database";
 import { collection, getDocs, addDoc, updateDoc, doc, query, where, getDoc, onSnapshot } from "firebase/firestore";
 import { rtdb, db, logActivity } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -430,6 +430,24 @@ export default function DriverDashboard() {
   async function startTracking() {
     if (!navigator.geolocation) { setError("GPS not supported on this device."); return; }
     if (!selectedRouteId) { setError("Please select a route first."); return; }
+
+    // Check if another driver is already active on this route in RTDB
+    try {
+      const routeLiveRef = ref(rtdb, `routes/${selectedRouteId}/live`);
+      const rtdbSnap = await get(routeLiveRef);
+      if (rtdbSnap.exists()) {
+        const liveData = rtdbSnap.val();
+        if (liveData.active === true && liveData.driverUid !== user.uid) {
+          const isStale = Date.now() - (liveData.updatedAt || 0) > 5 * 60 * 1000;
+          if (!isStale) {
+            alert(`⚠️ Conflict: Another driver is already active on this route! Please coordinate or select another route.`);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("RTDB conflict check failed, continuing:", err);
+    }
 
     // Run a quick check to alert if location is turned off or blocked
     navigator.geolocation.getCurrentPosition(
