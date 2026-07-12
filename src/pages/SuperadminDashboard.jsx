@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { db } from "../firebase";
+import { db, secondaryAuth } from "../firebase";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { 
   collection, 
   getDocs, 
@@ -61,6 +62,18 @@ export default function SuperadminDashboard() {
   const [overrideMonths, setOverrideMonths] = useState(1);
   const [overrideSaving, setOverrideSaving] = useState(false);
 
+  // State for creating new admin
+  const [newAdmin, setNewAdmin] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "admin",
+    campusId: ""
+  });
+  const [adminCreating, setAdminCreating] = useState(false);
+  const [adminCreateError, setAdminCreateError] = useState("");
+  const [adminCreateSuccess, setAdminCreateSuccess] = useState("");
+
   useEffect(() => {
     loadData();
   }, []);
@@ -96,6 +109,50 @@ export default function SuperadminDashboard() {
       console.error("Failed to load Superadmin data:", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreateAdmin(e) {
+    e.preventDefault();
+    setAdminCreateError("");
+    setAdminCreateSuccess("");
+
+    if (!newAdmin.name.trim()) return setAdminCreateError("Please enter full name.");
+    if (!newAdmin.email.trim() || !newAdmin.email.includes("@")) return setAdminCreateError("Please enter a valid email address.");
+    if (newAdmin.password.length < 6) return setAdminCreateError("Password must be at least 6 characters.");
+    if (newAdmin.role === "admin" && !newAdmin.campusId.trim()) return setAdminCreateError("Please assign a Campus ID for the Admin role.");
+
+    setAdminCreating(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, newAdmin.email.trim().toLowerCase(), newAdmin.password);
+      
+      const profile = {
+        name: newAdmin.name.trim(),
+        email: newAdmin.email.trim().toLowerCase(),
+        role: newAdmin.role,
+        campusId: newAdmin.role === "superadmin" ? "alliance-bangalore" : newAdmin.campusId.trim(),
+        blocked: false,
+        createdAt: Date.now()
+      };
+
+      await setDoc(doc(db, "users", cred.user.uid), profile);
+      await signOut(secondaryAuth);
+
+      setAdminCreateSuccess(`Administrator account for ${newAdmin.name} created successfully!`);
+      setNewAdmin({ name: "", email: "", password: "", role: "admin", campusId: "" });
+      loadData();
+    } catch (err) {
+      console.error("Admin creation failed:", err);
+      const c = err.code;
+      if (c === "auth/email-already-in-use") {
+        setAdminCreateError("This email address is already registered.");
+      } else if (c === "auth/weak-password") {
+        setAdminCreateError("Password must be at least 6 characters.");
+      } else {
+        setAdminCreateError(err.message);
+      }
+    } finally {
+      setAdminCreating(false);
     }
   }
 
@@ -626,6 +683,170 @@ export default function SuperadminDashboard() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* Add New Administrator Card */}
+              <div style={S.card}>
+                <div style={{ padding: "18px 20px", borderBottom: `1.5px solid ${t.border}` }}>
+                  <span style={{ fontSize: "13px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" }}>➕ Create New Administrator</span>
+                </div>
+                
+                <form onSubmit={handleCreateAdmin} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Full Name</label>
+                      <input 
+                        type="text" 
+                        value={newAdmin.name} 
+                        onChange={e => setNewAdmin({ ...newAdmin, name: e.target.value })}
+                        placeholder="e.g. Prof. Nair"
+                        style={{
+                          background: dark ? t.inputBg : "#f7f7f7",
+                          border: `1.5px solid ${t.border}`,
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                          color: t.text,
+                          outline: "none",
+                          fontSize: "13px"
+                        }}
+                      />
+                    </div>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Email Address</label>
+                      <input 
+                        type="email" 
+                        value={newAdmin.email} 
+                        onChange={e => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                        placeholder="e.g. nair@campusmove.com"
+                        style={{
+                          background: dark ? t.inputBg : "#f7f7f7",
+                          border: `1.5px solid ${t.border}`,
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                          color: t.text,
+                          outline: "none",
+                          fontSize: "13px"
+                        }}
+                      />
+                    </div>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Password</label>
+                      <input 
+                        type="password" 
+                        value={newAdmin.password} 
+                        onChange={e => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                        placeholder="Min 6 characters"
+                        style={{
+                          background: dark ? t.inputBg : "#f7f7f7",
+                          border: `1.5px solid ${t.border}`,
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                          color: t.text,
+                          outline: "none",
+                          fontSize: "13px"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Role Type</label>
+                      <select 
+                        value={newAdmin.role} 
+                        onChange={e => setNewAdmin({ ...newAdmin, role: e.target.value, campusId: e.target.value === "superadmin" ? "alliance-bangalore" : newAdmin.campusId })}
+                        style={{
+                          background: dark ? t.inputBg : "#f7f7f7",
+                          border: `1.5px solid ${t.border}`,
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                          color: t.text,
+                          outline: "none",
+                          fontSize: "13px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <option value="admin">Campus Admin</option>
+                        <option value="superadmin">Superadmin</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Campus Association</label>
+                      {newAdmin.role === "superadmin" ? (
+                        <input 
+                          type="text" 
+                          value="System Global" 
+                          disabled
+                          style={{
+                            background: dark ? "#222" : "#e0e0e0",
+                            border: `1.5px solid ${t.border}`,
+                            borderRadius: "8px",
+                            padding: "10px 12px",
+                            color: t.textMuted,
+                            fontSize: "13px",
+                            cursor: "not-allowed"
+                          }}
+                        />
+                      ) : (
+                        <select 
+                          value={newAdmin.campusId} 
+                          onChange={e => setNewAdmin({ ...newAdmin, campusId: e.target.value })}
+                          style={{
+                            background: dark ? t.inputBg : "#f7f7f7",
+                            border: `1.5px solid ${t.border}`,
+                            borderRadius: "8px",
+                            padding: "10px 12px",
+                            color: t.text,
+                            outline: "none",
+                            fontSize: "13px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <option value="">Select Campus</option>
+                          {campuses.map(c => (
+                            <option key={c.id} value={c.id}>{c.id}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+
+                  {adminCreateError && (
+                    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: 10, color: "#DC2626", fontSize: 12, fontWeight: 600 }}>
+                      ⚠️ {adminCreateError}
+                    </div>
+                  )}
+
+                  {adminCreateSuccess && (
+                    <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, padding: 10, color: "#047857", fontSize: 12, fontWeight: 600 }}>
+                      ✓ {adminCreateSuccess}
+                    </div>
+                  )}
+
+                  <button 
+                    type="submit" 
+                    disabled={adminCreating}
+                    style={{
+                      background: t.accent,
+                      border: "none",
+                      borderRadius: "10px",
+                      padding: "12px 24px",
+                      color: "#fff",
+                      fontWeight: 800,
+                      fontSize: "13px",
+                      cursor: adminCreating ? "not-allowed" : "pointer",
+                      fontFamily: "'Inter', sans-serif",
+                      boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+                      marginTop: "10px",
+                      alignSelf: "flex-start"
+                    }}
+                  >
+                    {adminCreating ? "Creating Administrator..." : "+ Create Administrator"}
+                  </button>
+                </form>
               </div>
             </div>
           )}
