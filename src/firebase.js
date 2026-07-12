@@ -20,3 +20,17 @@ export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
 export const db = getFirestore(app);
 export const rtdb = getDatabase(app);
+
+import { collection, addDoc } from "firebase/firestore";
+export async function logActivity(action, details, campusId = "global") {
+  try {
+    await addDoc(collection(db, "logs"), {
+      campusId,
+      action,
+      details,
+      timestamp: Date.now()
+    });
+  } catch (err) {
+    console.error("Activity logging failed:", err);
+  }
+}

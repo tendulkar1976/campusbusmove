@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
 import { ref, onValue } from "firebase/database";
-import { collection, query, where, getDocs, addDoc, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { rtdb, db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -148,7 +148,25 @@ export default function StudentDashboard() {
     });
   }, [campusId]);
 
+  useEffect(() => {
+    const unsubAnn = onSnapshot(doc(db, "settings", "global_announcement"), snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setGlobalAnnouncement(data);
+        const dismissedTime = localStorage.getItem("cm_dismissed_announcement");
+        if (dismissedTime && Number(dismissedTime) >= data.updatedAt) {
+          setAnnouncementDismissed(true);
+        } else {
+          setAnnouncementDismissed(false);
+        }
+      }
+    });
+    return () => unsubAnn();
+  }, []);
+
   const [tab, setTab]               = useState("track");
+  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [myRoute, setMyRoute]       = useState(null);
   const [routes, setRoutes]         = useState([]);
   const [selected, setSelected]     = useState(null);
@@ -484,6 +502,53 @@ export default function StudentDashboard() {
       </div>
 
       <div style={{ padding:"20px 20px 80px", maxWidth:480, margin:"0 auto" }}>
+
+        {/* Global Announcement Banner */}
+        {globalAnnouncement && globalAnnouncement.active && !announcementDismissed && (
+          <div style={{
+            background: globalAnnouncement.type === "warning" ? "#FFFBEB" : globalAnnouncement.type === "success" ? "#ECFDF5" : "#EFF6FF",
+            border: `1.5px solid ${globalAnnouncement.type === "warning" ? "#FDE68A" : globalAnnouncement.type === "success" ? "#A7F3D0" : "#BFDBFE"}`,
+            borderRadius: "12px",
+            padding: "14px 20px",
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "18px" }}>
+                {globalAnnouncement.type === "warning" ? "⚠️" : globalAnnouncement.type === "success" ? "📢" : "ℹ️"}
+              </span>
+              <span style={{ 
+                color: globalAnnouncement.type === "warning" ? "#92400E" : globalAnnouncement.type === "success" ? "#065F46" : "#1E40AF",
+                fontSize: "13px",
+                fontWeight: 700,
+                lineHeight: 1.5
+              }}>
+                {globalAnnouncement.message}
+              </span>
+            </div>
+            <button 
+              onClick={() => {
+                localStorage.setItem("cm_dismissed_announcement", String(globalAnnouncement.updatedAt));
+                setAnnouncementDismissed(true);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: globalAnnouncement.type === "warning" ? "#B45309" : globalAnnouncement.type === "success" ? "#047857" : "#1D4ED8",
+                fontSize: "16px",
+                cursor: "pointer",
+                fontWeight: 800,
+                padding: "4px"
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {tab==="track" && (
           <>

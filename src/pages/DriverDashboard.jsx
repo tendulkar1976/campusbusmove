@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { ref, set, onValue } from "firebase/database";
-import { collection, getDocs, addDoc, updateDoc, doc, query, where, getDoc } from "firebase/firestore";
-import { rtdb, db } from "../firebase";
+import { collection, getDocs, addDoc, updateDoc, doc, query, where, getDoc, onSnapshot } from "firebase/firestore";
+import { rtdb, db, logActivity } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import MapView from "../components/MapView";
@@ -49,7 +49,25 @@ export default function DriverDashboard() {
     });
   }, [campusId]);
 
+  useEffect(() => {
+    const unsubAnn = onSnapshot(doc(db, "settings", "global_announcement"), snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setGlobalAnnouncement(data);
+        const dismissedTime = localStorage.getItem("cm_dismissed_announcement");
+        if (dismissedTime && Number(dismissedTime) >= data.updatedAt) {
+          setAnnouncementDismissed(true);
+        } else {
+          setAnnouncementDismissed(false);
+        }
+      }
+    });
+    return () => unsubAnn();
+  }, []);
+
   const [tab, setTab]                         = useState("live");
+  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [routes, setRoutes]                   = useState([]);
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [tracking, setTracking]               = useState(false);
@@ -443,6 +461,12 @@ export default function DriverDashboard() {
     });
     tripDocRef.current = tripDoc.id;
 
+    await logActivity(
+      "Trip Started",
+      `Driver ${user.displayName || user.name || "Ramesh"} started trip for route: ${selectedRoute?.name || selectedRouteId}`,
+      campusId
+    );
+
     writeToRTDB(null, null, 0, 0, true); // Do not write fake coordinates, only write active state
     lastFirebaseUpdate.current = 0; // Set to 0 so first position writes immediately
     lastLocationUpdateTimestamp.current = Date.now();
@@ -497,6 +521,11 @@ export default function DriverDashboard() {
         await updateDoc(doc(db, "trips", activeTripId), {
           endTime: Date.now(), status: "completed",
         });
+        await logActivity(
+          "Trip Ended",
+          `Driver ${user.displayName || user.name || "Ramesh"} ended trip. Status updated to completed.`,
+          campusId
+        );
       } catch (err) {
         console.error("Failed to update Firestore trip status:", err);
       }
@@ -667,6 +696,53 @@ export default function DriverDashboard() {
       </div>
 
       <div style={S.body}>
+        {/* Global Announcement Banner */}
+        {globalAnnouncement && globalAnnouncement.active && !announcementDismissed && (
+          <div style={{
+            background: globalAnnouncement.type === "warning" ? "#FFFBEB" : globalAnnouncement.type === "success" ? "#ECFDF5" : "#EFF6FF",
+            border: `1.5px solid ${globalAnnouncement.type === "warning" ? "#FDE68A" : globalAnnouncement.type === "success" ? "#A7F3D0" : "#BFDBFE"}`,
+            borderRadius: "12px",
+            padding: "14px 20px",
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "18px" }}>
+                {globalAnnouncement.type === "warning" ? "⚠️" : globalAnnouncement.type === "success" ? "📢" : "ℹ️"}
+              </span>
+              <span style={{ 
+                color: globalAnnouncement.type === "warning" ? "#92400E" : globalAnnouncement.type === "success" ? "#065F46" : "#1E40AF",
+                fontSize: "13px",
+                fontWeight: 700,
+                lineHeight: 1.5
+              }}>
+                {globalAnnouncement.message}
+              </span>
+            </div>
+            <button 
+              onClick={() => {
+                localStorage.setItem("cm_dismissed_announcement", String(globalAnnouncement.updatedAt));
+                setAnnouncementDismissed(true);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: globalAnnouncement.type === "warning" ? "#B45309" : globalAnnouncement.type === "success" ? "#047857" : "#1D4ED8",
+                fontSize: "16px",
+                cursor: "pointer",
+                fontWeight: 800,
+                padding: "4px"
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {tab === "live" && (
           <>
             {!routes.length ? (

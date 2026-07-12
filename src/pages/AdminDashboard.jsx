@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { ref, onValue, set } from "firebase/database";
-import { db, rtdb, secondaryAuth } from "../firebase";
+import { db, rtdb, secondaryAuth, logActivity } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword } from "firebase/auth";
@@ -156,6 +156,8 @@ export default function AdminDashboard() {
   const [confirmId, setConfirmId] = useState(null);
   const [editingRoute, setEditingRoute] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
 
   const [newUser, setNewUser] = useState({ name: "", identifier: "", password: "", role: "student" });
   const [userCreating, setUserCreating] = useState(false);
@@ -392,6 +394,14 @@ export default function AdminDashboard() {
       adminStarted: config.adminStarted || false
     };
 
+    if (config.adminStarted) {
+      logActivity(
+        "Remote Trip Initiated",
+        `Admin remotely initiated trip for route: ${routeObj?.name || routeId}`,
+        campusId
+      );
+    }
+
     const updateLocation = () => {
       const state = overrideStateRef.current[routeId];
       if (!state) return;
@@ -467,6 +477,12 @@ export default function AdminDashboard() {
       delete overrideIntervalsRef.current[routeId];
     }
     delete overrideStateRef.current[routeId];
+
+    logActivity(
+      "Remote Trip Terminated",
+      `Admin stopped override/trip for route: ${routeId}`,
+      campusId
+    );
 
     set(ref(rtdb, `routes/${routeId}/live`), {
       active: false,
@@ -553,7 +569,22 @@ export default function AdminDashboard() {
     }).catch(() => { setHiddenPresets([]); setPresetsLoaded(true); });
   }, []);
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => { 
+    loadUsers(); 
+    const unsubAnn = onSnapshot(doc(db, "settings", "global_announcement"), snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setGlobalAnnouncement(data);
+        const dismissedTime = localStorage.getItem("cm_dismissed_announcement");
+        if (dismissedTime && Number(dismissedTime) >= data.updatedAt) {
+          setAnnouncementDismissed(true);
+        } else {
+          setAnnouncementDismissed(false);
+        }
+      }
+    });
+    return () => unsubAnn();
+  }, []);
 
   function getVirtualEmail(identifier, role) {
     const clean = identifier.trim().toLowerCase();
@@ -614,6 +645,12 @@ export default function AdminDashboard() {
       await setDoc(doc(db, "users", cred.user.uid), profile);
       await signOut(secondaryAuth);
 
+      await logActivity(
+        "User Registered",
+        `Registered new ${newUser.role.toUpperCase()}: ${newUser.name} (${newUser.identifier})`,
+        campusId
+      );
+
       setUserCreateSuccess(`Account for ${newUser.name} created successfully!`);
       setNewUser({ name: "", identifier: "", password: "", role: "student" });
       loadUsers();
@@ -640,6 +677,7 @@ export default function AdminDashboard() {
     if (!newRoute.name || !newRoute.label) return;
     setSaving(true);
     await addDoc(collection(db, "routes"), { ...newRoute, campusId: campusId, path: [], stops: [], createdAt: Date.now() });
+    await logActivity("Route Created", `Created route: ${newRoute.name} (${newRoute.label})`, campusId);
     setSaving(false);
     setNewRoute({ name: "", label: "", description: "" });
     loadRoutes();
@@ -1311,6 +1349,53 @@ export default function AdminDashboard() {
 
         {/* ── CONTENT CONTAINER ── */}
         <div className="admin-content" style={S.content}>
+
+          {/* Global Announcement Banner */}
+          {globalAnnouncement && globalAnnouncement.active && !announcementDismissed && (
+            <div style={{
+              background: globalAnnouncement.type === "warning" ? "#FFFBEB" : globalAnnouncement.type === "success" ? "#ECFDF5" : "#EFF6FF",
+              border: `1.5px solid ${globalAnnouncement.type === "warning" ? "#FDE68A" : globalAnnouncement.type === "success" ? "#A7F3D0" : "#BFDBFE"}`,
+              borderRadius: "12px",
+              padding: "14px 20px",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "18px" }}>
+                  {globalAnnouncement.type === "warning" ? "⚠️" : globalAnnouncement.type === "success" ? "📢" : "ℹ️"}
+                </span>
+                <span style={{ 
+                  color: globalAnnouncement.type === "warning" ? "#92400E" : globalAnnouncement.type === "success" ? "#065F46" : "#1E40AF",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  lineHeight: 1.5
+                }}>
+                  {globalAnnouncement.message}
+                </span>
+              </div>
+              <button 
+                onClick={() => {
+                  localStorage.setItem("cm_dismissed_announcement", String(globalAnnouncement.updatedAt));
+                  setAnnouncementDismissed(true);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: globalAnnouncement.type === "warning" ? "#B45309" : globalAnnouncement.type === "success" ? "#047857" : "#1D4ED8",
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  fontWeight: 800,
+                  padding: "4px"
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* ══════════════ OVERVIEW TAB ══════════════ */}
           {tab === "overview" && (

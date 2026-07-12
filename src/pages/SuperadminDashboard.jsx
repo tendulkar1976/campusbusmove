@@ -1,15 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { db, secondaryAuth } from "../firebase";
+import { db, secondaryAuth, logActivity, rtdb } from "../firebase";
+import { ref, onValue } from "firebase/database";
 import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { 
   collection, 
   getDocs, 
+  getDoc,
   doc, 
   setDoc, 
   updateDoc, 
-  deleteDoc 
+  deleteDoc,
+  onSnapshot
 } from "firebase/firestore";
 
 const PLANS = {
@@ -74,8 +77,49 @@ export default function SuperadminDashboard() {
   const [adminCreateError, setAdminCreateError] = useState("");
   const [adminCreateSuccess, setAdminCreateSuccess] = useState("");
 
+  // Announcement state
+  const [announcement, setAnnouncement] = useState({
+    message: "",
+    type: "info",
+    active: false,
+    updatedAt: 0
+  });
+  const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [announcementSuccess, setAnnouncementSuccess] = useState("");
+  const [logsList, setLogsList] = useState([]);
+  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+  const [liveRoutes, setLiveRoutes] = useState({});
+  const [routesList, setRoutesList] = useState([]);
+
   useEffect(() => {
     loadData();
+    const unsubAnn = onSnapshot(doc(db, "settings", "global_announcement"), snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setGlobalAnnouncement(data);
+        const dismissedTime = localStorage.getItem("cm_dismissed_announcement");
+        if (dismissedTime && Number(dismissedTime) >= data.updatedAt) {
+          setAnnouncementDismissed(true);
+        } else {
+          setAnnouncementDismissed(false);
+        }
+      }
+    });
+
+    const r = ref(rtdb, "routes");
+    const unsubRtdb = onValue(r, snap => {
+      if (snap.exists()) {
+        setLiveRoutes(snap.val());
+      } else {
+        setLiveRoutes({});
+      }
+    });
+
+    return () => {
+      unsubAnn();
+      unsubRtdb();
+    };
   }, []);
 
   async function loadData() {
@@ -104,6 +148,40 @@ export default function SuperadminDashboard() {
         ...doc.data()
       })).sort((a, b) => b.timestamp - a.timestamp);
       setPaymentsList(payments);
+
+      // 4. Get global announcement settings
+      try {
+        const annSnap = await getDoc(doc(db, "settings", "global_announcement"));
+        if (annSnap.exists()) {
+          setAnnouncement(annSnap.data());
+        }
+      } catch (annErr) {
+        console.error("Failed to load global announcement:", annErr);
+      }
+
+      // 5. Get activity logs
+      try {
+        const logSnap = await getDocs(collection(db, "logs"));
+        const logs = logSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })).sort((a, b) => b.timestamp - a.timestamp);
+        setLogsList(logs);
+      } catch (logErr) {
+        console.error("Failed to load activity logs:", logErr);
+      }
+
+      // 6. Get all routes mapping
+      try {
+        const routeSnap = await getDocs(collection(db, "routes"));
+        const routes = routeSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setRoutesList(routes);
+      } catch (routeErr) {
+        console.error("Failed to load routes:", routeErr);
+      }
 
     } catch (err) {
       console.error("Failed to load Superadmin data:", err);
@@ -138,6 +216,12 @@ export default function SuperadminDashboard() {
       await setDoc(doc(db, "users", cred.user.uid), profile);
       await signOut(secondaryAuth);
 
+      await logActivity(
+        "Admin Account Created", 
+        `Created ${newAdmin.role === "superadmin" ? "Superadmin" : "Campus Admin"} account for ${newAdmin.name} (${newAdmin.email.toLowerCase()})`,
+        newAdmin.role === "superadmin" ? "global" : newAdmin.campusId
+      );
+
       setAdminCreateSuccess(`Administrator account for ${newAdmin.name} created successfully!`);
       setNewAdmin({ name: "", email: "", password: "", role: "admin", campusId: "" });
       loadData();
@@ -153,6 +237,32 @@ export default function SuperadminDashboard() {
       }
     } finally {
       setAdminCreating(false);
+    }
+  }
+
+  async function handleSaveAnnouncement(e) {
+    e.preventDefault();
+    setAnnouncementSuccess("");
+    setSavingAnnouncement(true);
+    try {
+      const data = {
+        ...announcement,
+        updatedAt: Date.now()
+      };
+      await setDoc(doc(db, "settings", "global_announcement"), data);
+      
+      await logActivity(
+        "Broadcast Updated",
+        `Updated global announcement: "${announcement.message.substring(0, 50)}${announcement.message.length > 50 ? "..." : ""}" (Active: ${announcement.active ? "Yes" : "No"})`,
+        "global"
+      );
+
+      setAnnouncementSuccess("Global announcement broadcast settings saved successfully!");
+    } catch (err) {
+      console.error("Failed to save global announcement:", err);
+      alert("Error saving announcement: " + err.message);
+    } finally {
+      setSavingAnnouncement(false);
     }
   }
 
@@ -201,6 +311,12 @@ export default function SuperadminDashboard() {
       };
       await setDoc(doc(db, "payments", overrideLog.paymentId), overrideLog);
       setPaymentsList(prev => [overrideLog, ...prev]);
+
+      await logActivity(
+        "Subscription Override",
+        `Manual override: Updated plan for ${editingCampus.id} to ${overridePlan.toUpperCase()} (${overrideBilling}) for ${overrideMonths} month(s)`,
+        editingCampus.id
+      );
 
       setEditingCampus(null);
     } catch (err) {
@@ -254,6 +370,93 @@ export default function SuperadminDashboard() {
     
     return matchesSearch && matchesRole && matchesCampus;
   });
+
+  // Group statistics per campus dynamically
+  const campusStats = useMemo(() => {
+    const stats = {};
+    
+    // Initialize stats
+    campuses.forEach(c => {
+      stats[c.id] = {
+        id: c.id,
+        name: c.name || c.id,
+        plan: c.plan || "basic",
+        billing: c.billing || "monthly",
+        status: c.status || "active",
+        expiryDate: c.expiryDate || 0,
+        students: 0,
+        teachers: 0,
+        drivers: 0,
+        activeBuses: 0
+      };
+    });
+
+    // Aggregate users per campus
+    usersList.forEach(u => {
+      const cid = u.campusId;
+      if (cid && stats[cid]) {
+        if (u.role === "student") stats[cid].students++;
+        else if (u.role === "teacher") stats[cid].teachers++;
+        else if (u.role === "driver") stats[cid].drivers++;
+      }
+    });
+
+    // Count active buses from liveRoutes
+    const routeToCampus = {};
+    routesList.forEach(r => {
+      routeToCampus[r.id] = r.campusId;
+    });
+
+    Object.entries(liveRoutes).forEach(([rid, rData]) => {
+      if (rData && rData.live && rData.live.active) {
+        const cid = routeToCampus[rid];
+        if (cid && stats[cid]) {
+          stats[cid].activeBuses++;
+        }
+      }
+    });
+
+    return Object.values(stats);
+  }, [campuses, usersList, routesList, liveRoutes]);
+
+  const [hoveredChartIndex, setHoveredChartIndex] = useState(null);
+
+  // Aggregate monthly revenue dynamically
+  const revenueChartData = useMemo(() => {
+    const monthlyTotals = {};
+    const monthlySubscribers = {};
+
+    // Get last 6 months prefilled
+    const monthsToShow = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const label = d.toLocaleString("en-US", { month: "short", year: "numeric" });
+      monthsToShow.push(label);
+      monthlyTotals[label] = 0;
+      monthlySubscribers[label] = 0;
+    }
+
+    paymentsList.forEach(p => {
+      if (p.status === "success" && p.amount) {
+        const d = new Date(p.timestamp);
+        const label = d.toLocaleString("en-US", { month: "short", year: "numeric" });
+        
+        if (monthlyTotals[label] !== undefined) {
+          monthlyTotals[label] += p.amount;
+        }
+        if (monthlySubscribers[label] !== undefined) {
+          monthlySubscribers[label]++;
+        }
+      }
+    });
+
+    return monthsToShow.map(label => ({
+      label,
+      revenue: monthlyTotals[label],
+      subscribers: monthlySubscribers[label]
+    }));
+  }, [paymentsList]);
 
   // Theme-based Styles
   const S = {
@@ -364,6 +567,8 @@ export default function SuperadminDashboard() {
           ["overview", "📈 Overview"],
           ["campuses", "🏫 Campuses & Plans"],
           ["users", "👥 Global Users"],
+          ["announcements", "📢 Broadcast"],
+          ["logs", "📜 System Logs"],
           ["payments", "💰 Transactions"]
         ].map(([id, label]) => (
           <button 
@@ -375,6 +580,53 @@ export default function SuperadminDashboard() {
           </button>
         ))}
       </div>
+
+      {/* Global Announcement Banner */}
+      {globalAnnouncement && globalAnnouncement.active && !announcementDismissed && (
+        <div style={{
+          background: globalAnnouncement.type === "warning" ? "#FFFBEB" : globalAnnouncement.type === "success" ? "#ECFDF5" : "#EFF6FF",
+          border: `1.5px solid ${globalAnnouncement.type === "warning" ? "#FDE68A" : globalAnnouncement.type === "success" ? "#A7F3D0" : "#BFDBFE"}`,
+          borderRadius: "12px",
+          padding: "14px 20px",
+          marginBottom: "20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "18px" }}>
+              {globalAnnouncement.type === "warning" ? "⚠️" : globalAnnouncement.type === "success" ? "📢" : "ℹ️"}
+            </span>
+            <span style={{ 
+              color: globalAnnouncement.type === "warning" ? "#92400E" : globalAnnouncement.type === "success" ? "#065F46" : "#1E40AF",
+              fontSize: "13px",
+              fontWeight: 700,
+              lineHeight: 1.5
+            }}>
+              {globalAnnouncement.message}
+            </span>
+          </div>
+          <button 
+            onClick={() => {
+              localStorage.setItem("cm_dismissed_announcement", String(globalAnnouncement.updatedAt));
+              setAnnouncementDismissed(true);
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: globalAnnouncement.type === "warning" ? "#B45309" : globalAnnouncement.type === "success" ? "#047857" : "#1D4ED8",
+              fontSize: "16px",
+              cursor: "pointer",
+              fontWeight: 800,
+              padding: "4px"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Main Loader */}
       {loading ? (
@@ -446,6 +698,230 @@ export default function SuperadminDashboard() {
                       <span style={{ fontWeight: 700 }}>{usersList.filter(u => u.role === "driver").length}</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Interactive Revenue Chart */}
+              {(() => {
+                const maxRevenue = Math.max(...revenueChartData.map(d => d.revenue), 10000);
+                const maxSubs = Math.max(...revenueChartData.map(d => d.subscribers), 5);
+                const points = revenueChartData.map((d, i) => ({
+                  x: 50 + i * 76,
+                  y: 130 - (maxRevenue > 0 ? (d.revenue / maxRevenue) * 90 : 0)
+                }));
+                const areaPath = points.length > 0
+                  ? "M " + points.map(p => `${p.x} ${p.y}`).join(" L ") + ` L ${points[points.length - 1].x} 140 L ${points[0].x} 140 Z`
+                  : "";
+                const linePath = points.length > 0
+                  ? "M " + points.map(p => `${p.x} ${p.y}`).join(" L ")
+                  : "";
+
+                const subPoints = revenueChartData.map((d, i) => ({
+                  x: 50 + i * 76,
+                  y: 130 - (maxSubs > 0 ? (d.subscribers / maxSubs) * 90 : 0)
+                }));
+                const subLinePath = subPoints.length > 0
+                  ? "M " + subPoints.map(p => `${p.x} ${p.y}`).join(" L ")
+                  : "";
+
+                const activeHover = hoveredChartIndex !== null ? revenueChartData[hoveredChartIndex] : revenueChartData[revenueChartData.length - 1];
+
+                return (
+                  <div style={{ ...S.card, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", overflow: "hidden" }}>
+                    {/* Left: The SVG Chart */}
+                    <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "10px", borderRight: `1.5px solid ${t.border}` }}>
+                      <span style={{ fontSize: "12px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", color: t.textMuted }}>💸 Platform Revenue & Subscription Trends</span>
+                      
+                      <div style={{ position: "relative", flex: 1, minHeight: "150px", marginTop: "14px" }}>
+                        <svg viewBox="0 0 460 160" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+                          <defs>
+                            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />
+                              <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* Grid Lines */}
+                          {[20, 50, 80, 110, 140].map((yVal, i) => (
+                            <line 
+                              key={i} 
+                              x1="30" 
+                              y1={yVal} 
+                              x2="430" 
+                              y2={yVal} 
+                              stroke={t.border} 
+                              strokeWidth="1" 
+                              strokeDasharray="4 4" 
+                            />
+                          ))}
+
+                          {/* Area Fill */}
+                          {areaPath && (
+                            <path d={areaPath} fill="url(#areaGrad)" />
+                          )}
+
+                          {/* Revenue Line */}
+                          {linePath && (
+                            <path d={linePath} fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                          )}
+
+                          {/* Subscription Dotted Line */}
+                          {subLinePath && (
+                            <path d={subLinePath} fill="none" stroke={t.accent} strokeWidth="2.5" strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round" />
+                          )}
+
+                          {/* Data points */}
+                          {points.map((p, idx) => (
+                            <g key={idx}>
+                              <circle 
+                                cx={p.x} 
+                                cy={p.y} 
+                                r="4.5" 
+                                fill={hoveredChartIndex === idx ? "#10B981" : t.bgCard} 
+                                stroke="#10B981" 
+                                strokeWidth="2.5" 
+                                style={{ transition: "all 0.15s" }}
+                              />
+                              <circle 
+                                cx={p.x} 
+                                cy={p.y} 
+                                r="16" 
+                                fill="transparent" 
+                                style={{ cursor: "pointer" }}
+                                onMouseEnter={() => setHoveredChartIndex(idx)}
+                                onMouseLeave={() => setHoveredChartIndex(null)}
+                              />
+                            </g>
+                          ))}
+
+                          {/* X Axis Labels */}
+                          {revenueChartData.map((d, idx) => (
+                            <text 
+                              key={idx} 
+                              x={50 + idx * 76} 
+                              y="158" 
+                              textAnchor="middle" 
+                              fill={t.textMuted} 
+                              fontSize="9.5" 
+                              fontWeight="700"
+                            >
+                              {d.label.split(" ")[0]}
+                            </text>
+                          ))}
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Right: Legend and Info summary */}
+                    <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", justifyContent: "center", background: dark ? "rgba(255,255,255,0.01)" : "rgba(0,0,0,0.01)", gap: "16px" }}>
+                      <div>
+                        <div style={{ fontSize: "11px", color: t.textMuted, fontWeight: 800, textTransform: "uppercase" }}>Selected Month</div>
+                        <div style={{ fontSize: "18px", fontWeight: 800, color: t.text, marginTop: "4px" }}>{activeHover ? activeHover.label : "N/A"}</div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                        <div style={{ padding: "10px", background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: "10px" }}>
+                          <span style={{ fontSize: "10px", color: t.textMuted, fontWeight: 700, textTransform: "uppercase", display: "block" }}>Revenue</span>
+                          <span style={{ fontSize: "16px", fontWeight: 900, color: "#10B981", marginTop: "4px", display: "block" }}>
+                            ₹{activeHover ? activeHover.revenue.toLocaleString("en-IN") : "0"}
+                          </span>
+                        </div>
+                        
+                        <div style={{ padding: "10px", background: t.bgCard, border: `1.5px solid ${t.border}`, borderRadius: "10px" }}>
+                          <span style={{ fontSize: "10px", color: t.textMuted, fontWeight: 700, textTransform: "uppercase", display: "block" }}>Subscriptions</span>
+                          <span style={{ fontSize: "16px", fontWeight: 900, color: t.accent, marginTop: "4px", display: "block" }}>
+                            {activeHover ? activeHover.subscribers : "0"} bills
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ borderTop: `1.5px solid ${t.border}`, paddingTop: "12px", fontSize: "10.5px", color: t.textMuted, lineHeight: "1.4" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
+                          <span>Green line indicates monthly recurring revenue.</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.accent, display: "inline-block" }} />
+                          <span>Blue dashed line indicates billing transactions.</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Campus Usage & Engagement Stats Card */}
+              <div style={S.card}>
+                <div style={{ padding: "18px 20px", borderBottom: `1.5px solid ${t.border}` }}>
+                  <span style={{ fontSize: "13px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" }}>🏫 Campus Engagement & Usage Metrics</span>
+                </div>
+                <div style={{ padding: "10px 20px", overflowX: "auto" }}>
+                  {campusStats.length === 0 ? (
+                    <div style={{ padding: "30px 0", textAlign: "center", color: t.textMuted }}>No campus records available.</div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                      <thead>
+                        <tr style={{ borderBottom: `1.5px solid ${t.border}`, color: t.textMuted }}>
+                          <th style={{ padding: "12px 8px", textAlign: "left" }}>Campus ID</th>
+                          <th style={{ padding: "12px 8px", textAlign: "left" }}>Active Plan</th>
+                          <th style={{ padding: "12px 8px", textAlign: "center" }}>Students</th>
+                          <th style={{ padding: "12px 8px", textAlign: "center" }}>Faculty</th>
+                          <th style={{ padding: "12px 8px", textAlign: "center" }}>Drivers</th>
+                          <th style={{ padding: "12px 8px", textAlign: "center" }}>Active Buses</th>
+                          <th style={{ padding: "12px 8px", textAlign: "right" }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {campusStats.map((stat, i) => {
+                          const isActive = stat.status === "active" && (stat.expiryDate || 0) > Date.now();
+                          return (
+                            <tr key={i} style={{ borderBottom: `1px solid ${t.border}` }}>
+                              <td style={{ padding: "12px 8px", fontWeight: 700, color: t.text }}>{stat.id}</td>
+                              <td style={{ padding: "12px 8px", textTransform: "uppercase", fontWeight: 800, color: stat.plan === "premium" ? "#8B5CF6" : "#FF5A1F" }}>
+                                {stat.plan === "premium" ? "🚀 Premium" : "🚌 Basic"}
+                              </td>
+                              <td style={{ padding: "12px 8px", textAlign: "center" }}>{stat.students}</td>
+                              <td style={{ padding: "12px 8px", textAlign: "center" }}>{stat.teachers}</td>
+                              <td style={{ padding: "12px 8px", textAlign: "center" }}>{stat.drivers}</td>
+                              <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                                {stat.activeBuses > 0 ? (
+                                  <span style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "2px 8px",
+                                    borderRadius: 12,
+                                    fontSize: "11px",
+                                    fontWeight: 800,
+                                    background: "#D1FAE5",
+                                    color: "#065F46"
+                                  }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block", animation: "pulsePill 1.5s infinite" }} />
+                                    {stat.activeBuses} Live
+                                  </span>
+                                ) : (
+                                  <span style={{ color: t.textHint }}>0</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "12px 8px", textAlign: "right" }}>
+                                <span style={{
+                                  display: "inline-block",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  fontSize: "10px",
+                                  fontWeight: 800,
+                                  background: isActive ? "#D1FAE5" : "#FEE2E2",
+                                  color: isActive ? "#065F46" : "#991B1B"
+                                }}>
+                                  {isActive ? "ACTIVE" : "EXPIRED"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
 
@@ -899,6 +1375,155 @@ export default function SuperadminDashboard() {
                               Invoice
                             </button>
                           </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: ANNOUNCEMENTS */}
+          {tab === "announcements" && (
+            <div style={S.card}>
+              <div style={{ padding: "18px 20px", borderBottom: `1.5px solid ${t.border}` }}>
+                <span style={{ fontSize: "13px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" }}>📢 Global Announcement Broadcast</span>
+              </div>
+              <form onSubmit={handleSaveAnnouncement} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Broadcast Message</label>
+                  <textarea 
+                    value={announcement.message}
+                    onChange={e => setAnnouncement({ ...announcement, message: e.target.value })}
+                    placeholder="Enter broadcast message here..."
+                    rows={4}
+                    style={{
+                      background: dark ? t.inputBg : "#f7f7f7",
+                      border: `1.5px solid ${t.border}`,
+                      borderRadius: "8px",
+                      padding: "10px 12px",
+                      color: t.text,
+                      outline: "none",
+                      fontSize: "13px",
+                      fontFamily: "inherit",
+                      resize: "vertical"
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Alert Type Style</label>
+                    <select 
+                      value={announcement.type}
+                      onChange={e => setAnnouncement({ ...announcement, type: e.target.value })}
+                      style={{
+                        background: dark ? t.inputBg : "#f7f7f7",
+                        border: `1.5px solid ${t.border}`,
+                        borderRadius: "8px",
+                        padding: "10px 12px",
+                        color: t.text,
+                        outline: "none",
+                        fontSize: "13px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <option value="info">🔵 Information (Blue)</option>
+                      <option value="warning">🟡 Warning (Amber)</option>
+                      <option value="success">🟢 Success (Green)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: t.textMuted, textTransform: "uppercase" }}>Broadcast Status</label>
+                    <select 
+                      value={announcement.active ? "true" : "false"}
+                      onChange={e => setAnnouncement({ ...announcement, active: e.target.value === "true" })}
+                      style={{
+                        background: dark ? t.inputBg : "#f7f7f7",
+                        border: `1.5px solid ${t.border}`,
+                        borderRadius: "8px",
+                        padding: "10px 12px",
+                        color: t.text,
+                        outline: "none",
+                        fontSize: "13px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <option value="false">❌ Draft (Hidden)</option>
+                      <option value="true">🟢 Active (Live Announcement)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {announcementSuccess && (
+                  <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, padding: 10, color: "#047857", fontSize: 12, fontWeight: 600 }}>
+                    ✓ {announcementSuccess}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  disabled={savingAnnouncement}
+                  style={{
+                    background: t.accent,
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "12px 24px",
+                    color: "#fff",
+                    fontWeight: 800,
+                    fontSize: "13px",
+                    cursor: savingAnnouncement ? "not-allowed" : "pointer",
+                    fontFamily: "'Inter', sans-serif",
+                    marginTop: "10px",
+                    alignSelf: "flex-start"
+                  }}
+                >
+                  {savingAnnouncement ? "Saving Broadcast Settings..." : "Save Announcement Settings"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* TAB: SYSTEM LOGS */}
+          {tab === "logs" && (
+            <div style={S.card}>
+              <div style={{ padding: "18px 20px", borderBottom: `1.5px solid ${t.border}` }}>
+                <span style={{ fontSize: "13px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" }}>📜 Global Activity Logs</span>
+              </div>
+              <div style={{ padding: "10px 20px", overflowX: "auto" }}>
+                {logsList.length === 0 ? (
+                  <div style={{ padding: "40px 0", textAlign: "center", color: t.textMuted }}>No system logs registered. Perform administrative actions to test logs.</div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1.5px solid ${t.border}`, color: t.textMuted }}>
+                        <th style={{ padding: "12px 8px", textAlign: "left" }}>Timestamp</th>
+                        <th style={{ padding: "12px 8px", textAlign: "left" }}>Campus</th>
+                        <th style={{ padding: "12px 8px", textAlign: "left" }}>Action</th>
+                        <th style={{ padding: "12px 8px", textAlign: "left" }}>Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logsList.map((log, i) => (
+                        <tr key={i} style={{ borderBottom: `1px solid ${t.border}` }}>
+                          <td style={{ padding: "12px 8px", color: t.textHint }}>{new Date(log.timestamp).toLocaleString()}</td>
+                          <td style={{ padding: "12px 8px", fontWeight: 700, color: t.textSub }}>{log.campusId.toUpperCase()}</td>
+                          <td style={{ padding: "12px 8px" }}>
+                            <span style={{
+                              display: "inline-block",
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                              fontSize: "10px",
+                              fontWeight: 800,
+                              background: log.action.includes("Error") || log.action.includes("Failed") || log.action.includes("Terminated") ? "#FEE2E2" : "#E0F2FE",
+                              color: log.action.includes("Error") || log.action.includes("Failed") || log.action.includes("Terminated") ? "#991B1B" : "#0369A1"
+                            }}>
+                              {log.action}
+                            </span>
+                          </td>
+                          <td style={{ padding: "12px 8px", color: t.text }}>{log.details}</td>
                         </tr>
                       ))}
                     </tbody>
