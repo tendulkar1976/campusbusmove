@@ -39,37 +39,39 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <PermissionsGate>
-          <BrowserRouter>
-            <Suspense fallback={<Spinner />}>
-              <Routes>
-                <Route path="/login"   element={<Login />} />
-                <Route path="/"        element={<RoleRedirect />} />
-                <Route path="/student" element={
-                  <ProtectedRoute allowedRoles={["student", "teacher"]}>
+        <BrowserRouter>
+          <Suspense fallback={<Spinner />}>
+            <Routes>
+              <Route path="/login"   element={<Login />} />
+              <Route path="/"        element={<RoleRedirect />} />
+              <Route path="/student" element={
+                <ProtectedRoute allowedRoles={["student", "teacher"]}>
+                  <PermissionsGate>
                     <StudentDashboard />
-                  </ProtectedRoute>
-                }/>
-                <Route path="/driver"  element={
-                  <ProtectedRoute allowedRoles={["driver"]}>
+                  </PermissionsGate>
+                </ProtectedRoute>
+              }/>
+              <Route path="/driver"  element={
+                <ProtectedRoute allowedRoles={["driver"]}>
+                  <PermissionsGate>
                     <DriverDashboard />
-                  </ProtectedRoute>
-                }/>
-                <Route path="/admin"   element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }/>
-                <Route path="/superadmin" element={
-                  <ProtectedRoute allowedRoles={["superadmin"]}>
-                    <SuperadminDashboard />
-                  </ProtectedRoute>
-                }/>
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </PermissionsGate>
+                  </PermissionsGate>
+                </ProtectedRoute>
+              }/>
+              <Route path="/admin"   element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }/>
+              <Route path="/superadmin" element={
+                <ProtectedRoute allowedRoles={["superadmin"]}>
+                  <SuperadminDashboard />
+                </ProtectedRoute>
+              }/>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );
