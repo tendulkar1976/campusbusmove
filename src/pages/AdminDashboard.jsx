@@ -1935,7 +1935,7 @@ export default function AdminDashboard() {
                   })}
 
                   {/* Proceed to Payment sticky bar */}
-                  {selectedCheckoutPlan && selectedCheckoutPlan !== (subscription?.plan === "basic" && subscription?.billing !== billingCycle ? "" : subscription?.plan) && (
+                  {selectedCheckoutPlan && (selectedCheckoutPlan !== subscription?.plan || billingCycle !== subscription?.billing || isExpired) && (
                     <div style={{ 
                       ...S.card, 
                       marginTop: 24, 
