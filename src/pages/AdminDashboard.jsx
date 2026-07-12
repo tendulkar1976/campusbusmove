@@ -1841,48 +1841,7 @@ export default function AdminDashboard() {
                     <button onClick={() => setShowPlans(false)} style={{ background: "none", border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "6px 14px", color: t.textSub, fontSize: 12, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>← Back</button>
                   </div>
 
-                  {/* Test Mode Toggle Switch */}
-                  <div style={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    justifyContent: "space-between", 
-                    background: isTestMode ? "#FF5A1F11" : (dark ? t.inputBg : t.bgCard2), 
-                    border: `1.5px solid ${isTestMode ? "#FF5A1F88" : t.border}`, 
-                    borderRadius: 12, 
-                    padding: "12px 16px", 
-                    marginBottom: 20,
-                    transition: "all 0.2s"
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: isTestMode ? "#FF5A1F" : t.text }}>🧪 1-Rupee Test Mode</div>
-                      <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Temporarily overrides plan price to ₹1.00 for live payment tests.</div>
-                    </div>
-                    <button 
-                      onClick={() => setIsTestMode(!isTestMode)}
-                      style={{
-                        background: isTestMode ? "#FF5A1F" : (dark ? "#333" : "#e0e0e0"),
-                        border: "none",
-                        borderRadius: 20,
-                        width: 48,
-                        height: 26,
-                        cursor: "pointer",
-                        position: "relative",
-                        transition: "background 0.2s"
-                      }}
-                    >
-                      <div style={{
-                        position: "absolute",
-                        top: 3,
-                        left: isTestMode ? 25 : 3,
-                        width: 20,
-                        height: 20,
-                        borderRadius: "50%",
-                        background: "#fff",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                        transition: "left 0.2s"
-                      }}/>
-                    </button>
-                  </div>
+
 
                   {/* Toggle Billing billing cycle */}
                   <div style={{ display: "flex", background: dark ? t.inputBg : t.bgCard2, borderRadius: 12, padding: 4, marginBottom: 20, border: `1.5px solid ${t.border}` }}>
