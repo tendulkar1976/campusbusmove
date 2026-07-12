@@ -16,7 +16,7 @@ function formatDuration(ms) {
 }
 
 export default function DriverDashboard() {
-  const { user, role, campusId, logout } = useAuth();
+  const { user, campusId, logout } = useAuth();
   const { dark, toggle, t } = useTheme();
 
   const [subExpired, setSubExpired] = useState(false);
@@ -24,11 +24,6 @@ export default function DriverDashboard() {
 
   // ── Verify subscription status ──
   useEffect(() => {
-    if (campusId === "alliance-bangalore" || role === "superadmin" || role === "admin") {
-      setSubExpired(false);
-      setCheckingSub(false);
-      return;
-    }
     if (!campusId) {
       setCheckingSub(false);
       return;
