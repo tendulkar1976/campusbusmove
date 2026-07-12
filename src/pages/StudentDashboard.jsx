@@ -192,9 +192,24 @@ export default function StudentDashboard() {
     if (markedDateRef.current===today) return;
     markedDateRef.current=today;
     clearTimeout(geofenceTimerRef.current); geofenceTimerRef.current=null;
-    setAttendanceStatus(status);
-    await addDoc(collection(db,"attendance"),{studentId:user.uid,routeId:selected?.id,date:today,status,timestamp:Date.now(),campusId});
-    setAttendanceLog(p=>({...p,[today]:status}));
+    
+    try {
+      // Double check Firestore to guarantee no duplicate records are created for today
+      const q = query(collection(db, "attendance"), where("studentId", "==", user.uid), where("date", "==", today));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const d = snap.docs[0].data();
+        setAttendanceStatus(d.status);
+        setAttendanceLog(p => ({ ...p, [today]: d.status }));
+        return;
+      }
+      setAttendanceStatus(status);
+      await addDoc(collection(db,"attendance"),{studentId:user.uid,routeId:selected?.id,date:today,status,timestamp:Date.now(),campusId});
+      setAttendanceLog(p=>({...p,[today]:status}));
+    } catch (err) {
+      console.error("Error checking or saving attendance: ", err);
+      markedDateRef.current = null; // reset to allow retry
+    }
   }, [user, selected, campusId]);
 
   // ── Load routes ──
