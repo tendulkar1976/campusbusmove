@@ -895,6 +895,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
   const [form, setForm] = useState({
     name: "",
     program: "",
+    department: "",
     pickupPoint: "",
     validityMonth: "December",
     validityYear: new Date().getFullYear(),
@@ -911,6 +912,7 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
         setForm({
           name: data.name || "",
           program: data.program || "",
+          department: data.department || "",
           pickupPoint: data.pickupPoint || "",
           validityMonth: data.validityMonth || "December",
           validityYear: data.validityYear || new Date().getFullYear(),
@@ -962,6 +964,9 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
         updates.validityMonth = form.validityMonth;
         updates.validityYear = parseInt(form.validityYear) || new Date().getFullYear();
         updates.routeId = form.routeId;
+      } else if (profile.role === "teacher") {
+        updates.department = form.department.trim();
+        updates.pickupPoint = form.pickupPoint.trim();
       }
 
       await setDoc(doc(db, "users", user.uid), updates, { merge: true });
@@ -1106,6 +1111,97 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
         </div>
       )}
 
+      {isTeacher && profile && (
+        <div style={{
+          width: "100%",
+          background: dark 
+            ? "linear-gradient(135deg, #0F172A 0%, #052E21 50%, #064E3B 100%)" 
+            : "linear-gradient(135deg, #FFFFFF 0%, #ECFDF5 50%, #D1FAE5 100%)",
+          border: `1.5px solid ${dark ? "#065F46" : "#A7F3D0"}`,
+          borderRadius: 16,
+          padding: "20px 24px",
+          boxShadow: dark ? "0 8px 32px rgba(16, 185, 129, 0.18)" : "0 8px 32px rgba(16, 185, 129, 0.15)",
+          position: "relative",
+          overflow: "hidden",
+          transition: "all 0.25s ease"
+        }}>
+          {/* Card background watermarks/decorations */}
+          <svg style={{ position: "absolute", right: "-20px", bottom: "-20px", opacity: dark ? 0.03 : 0.06, pointerEvents: "none", transform: "rotate(-15deg)" }} width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v7c0 .6.4 1 1 1h1" />
+            <circle cx="8" cy="17" r="2" />
+            <circle cx="16" cy="17" r="2" />
+          </svg>
+
+          {/* Card Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1.5px solid ${dark ? "#065F46" : "#A7F3D0"}`, paddingBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 9, color: t.textMuted, textTransform: "uppercase", fontWeight: 800, letterSpacing: 1.5 }}>Alliance University</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginTop: 2 }}>FACULTY ID CARD</div>
+            </div>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={dark ? "#10B981" : "#059669"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
+
+          {/* Card Body */}
+          <div style={{ margin: "18px 0", display: "flex", gap: 14, alignItems: "center" }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: dark ? "#064E3B" : "#D1FAE5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+              fontWeight: 700,
+              color: dark ? "#10B981" : "#059669",
+              border: `1.5px solid ${dark ? "#10B981" : "#059669"}`
+            }}>
+              {getInitials(profile.name)}
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{profile.name}</div>
+              {profile.username && (
+                <div style={{ fontSize: 11, color: dark ? "#10B981" : "#059669", fontWeight: 600, marginTop: 2 }}>@{profile.username}</div>
+              )}
+              <div style={{ fontSize: 12, color: t.textSub, marginTop: 3 }}>{form.department || "Faculty Member"}</div>
+            </div>
+          </div>
+
+          {/* Card Meta details */}
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "1.2fr 1fr", 
+            gap: 10, 
+            background: dark ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)", 
+            padding: 12, 
+            borderRadius: 12, 
+            border: `1.5px solid ${dark ? "#065F46" : "#A7F3D0"}` 
+          }}>
+            <div>
+              <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Pick Up Stop</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: t.text, marginTop: 2 }}>{form.pickupPoint || "Not configured"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Access Status</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#10B981", marginTop: 2 }}>Verified Staff</div>
+            </div>
+          </div>
+
+          {/* Scanned ID card Image reference preview inside the card if present */}
+          {profile.idCardPhoto && (
+            <div style={{ marginTop: 14, borderTop: `1px dashed ${dark ? "#065F46" : "#A7F3D0"}`, paddingTop: 14 }}>
+              <div style={{ fontSize: 8, color: t.textMuted, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5, marginBottom: 6 }}>Scanned ID Card Photo</div>
+              <div style={{ width: "100%", height: 120, borderRadius: 8, overflow: "hidden", border: `1px solid ${dark ? "#1E293B" : "#E2E8F0"}` }}>
+                <img src={profile.idCardPhoto} style={{ width: "100%", height: "100%", objectFit: "contain", background: "#0F172A" }} alt="Scanned Faculty ID Card" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* EDIT PROFILE FORM */}
       <form onSubmit={handleSave} style={{
         background: t.bgCard,
@@ -1134,7 +1230,12 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
             <input name="pickupPoint" value={form.pickupPoint || ""} onChange={handleChange} style={inputStyle} placeholder="e.g. Silk Board Junction" />
           </div>
 
-          {!isTeacher && (
+          {isTeacher ? (
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Department / Designation</label>
+              <input name="department" value={form.department || ""} onChange={handleChange} style={inputStyle} placeholder="e.g. Department of CSE" />
+            </div>
+          ) : (
             <>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Program / Course</label>

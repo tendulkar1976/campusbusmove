@@ -66,7 +66,13 @@ export default function Login() {
       setUploadedImgUrl(url);
     }
 
-    const logs = [
+    const logs = role === "teacher" ? [
+      "📷 Camera initialized. Aligning Faculty ID card...",
+      "🔍 Card detected: 'ALLIANCE UNIVERSITY FACULTY ID'",
+      "⚡ Running OCR text recognition...",
+      "✅ Faculty ID Card detected successfully!",
+      "🎉 Scanning complete. Loading registration form..."
+    ] : [
       "📷 Camera initialized. Aligning bus pass...",
       "🔍 Card detected: 'ALLIANCE UNIVERSITY BUS PASS'",
       "⚡ Running OCR text recognition...",
@@ -269,17 +275,27 @@ export default function Login() {
     const virtualEmail = toVirtualEmail(username);
     try {
       const cred = await createUserWithEmailAndPassword(auth, virtualEmail, form.password);
-      await setDoc(doc(db, "users", cred.user.uid), {
+      
+      const profile = {
         name: scanData.name.trim(),
         username: username,
-        role: "student",
-        program: scanData.program.trim(),
+        role: role,
         pickupPoint: scanData.pickupPoint.trim(),
-        validityMonth: scanData.validityMonth,
-        validityYear: parseInt(scanData.validityYear) || new Date().getFullYear(),
         campusId: "alliance-bangalore",
         createdAt: Date.now(),
-      });
+        idCardPhoto: uploadedImgUrl || null
+      };
+
+      if (role === "student") {
+        profile.program = scanData.program.trim();
+        profile.validityMonth = scanData.validityMonth;
+        profile.validityYear = parseInt(scanData.validityYear) || new Date().getFullYear();
+      } else {
+        // Teacher fields
+        profile.department = scanData.program.trim();
+      }
+
+      await setDoc(doc(db, "users", cred.user.uid), profile);
       setTimeout(() => navigate("/student"), 600);
     } catch (err) {
       const c = err.code;
@@ -448,12 +464,12 @@ export default function Login() {
                     </>
                   )}
 
-                  {/* STUDENT REGISTER FLOW */}
-                  {role === "student" && mode === "register" && (
+                  {/* STUDENT & TEACHER REGISTER FLOW */}
+                  {(role === "student" || role === "teacher") && mode === "register" && (
                     <>
                       {scanStep === "capture" && (
                         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                          {/* Visual Scanner Area */}
+                           {/* Visual Scanner Area */}
                           <div style={{
                             width:"100%", height:200, background:"#0F172A", borderRadius:12,
                             position:"relative", display:"flex", flexDirection:"column",
@@ -479,8 +495,8 @@ export default function Login() {
                             ) : (
                               <div style={{ textAlign:"center", color:"#94A3B8", padding:"0 20px" }}>
                                 <div style={{ fontSize:32, marginBottom:8 }}>📷</div>
-                                <div style={{ fontSize:12, fontWeight:600 }}>No Bus Pass Loaded</div>
-                                <div style={{ fontSize:10, color:"#64748B", marginTop:4 }}>Upload or capture your bus pass to begin registration</div>
+                                <div style={{ fontSize:12, fontWeight:600 }}>{role === "teacher" ? "No ID Card Loaded" : "No Bus Pass Loaded"}</div>
+                                <div style={{ fontSize:10, color:"#64748B", marginTop:4 }}>{role === "teacher" ? "Upload or capture your faculty ID card to begin registration" : "Upload or capture your bus pass to begin registration"}</div>
                               </div>
                             )}
                           </div>
@@ -505,7 +521,7 @@ export default function Login() {
                               cursor: isScanning ? "not-allowed" : "pointer", fontFamily:"'Inter',sans-serif",
                               boxShadow: "0 4px 12px rgba(29,78,216,0.2)", textAlign:"center", transition:"background 0.2s"
                             }}>
-                              📸 Capture / Upload Pass Image
+                              {role === "teacher" ? "📸 Capture / Upload Faculty ID Card" : "📸 Capture / Upload Pass Image"}
                               <input type="file" accept="image/*" disabled={isScanning} onChange={handleFileUpload} style={{ display:"none" }} />
                             </label>
                           </div>
@@ -531,32 +547,47 @@ export default function Login() {
                                 position: "absolute", bottom: 6, right: 6, background: "rgba(15,23,42,0.8)",
                                 color: "#fff", padding: "3px 8px", borderRadius: 4, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5
                               }}>
-                                Pass Reference Image
+                                {role === "teacher" ? "ID Card Reference Image" : "Pass Reference Image"}
                               </div>
                             </div>
                           )}
 
                           <div style={{ background:"#ECFDF5", border:"1px solid #A7F3D0", borderRadius:10, padding:"12px 14px" }}>
-                            <div style={{ fontSize:12, fontWeight:700, color:"#065F46" }}>✅ Pass Loaded Successfully!</div>
-                            <div style={{ fontSize:11, color:"#047857", marginTop:2 }}>Fill in your bus pass details below to complete self-registration.</div>
+                            <div style={{ fontSize:12, fontWeight:700, color:"#065F46" }}>{role === "teacher" ? "✅ ID Card Loaded Successfully!" : "✅ Pass Loaded Successfully!"}</div>
+                            <div style={{ fontSize:11, color:"#047857", marginTop:2 }}>{role === "teacher" ? "Fill in your faculty details below to complete registration." : "Fill in your bus pass details below to complete self-registration."}</div>
                           </div>
 
                           {/* Calculated countdown badge */}
-                          <div style={{
-                            background: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#EFF6FF" : "#FEF2F2",
-                            border: `1px solid ${getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#BFDBFE" : "#FEE2E2"}`,
-                            borderRadius:8, padding:10, textAlign:"center"
-                          }}>
-                            <div style={{ fontSize:11, fontWeight:600, color: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#1E40AF" : "#991B1B" }}>
-                              Calculated Pass Validity:
+                          {role === "student" ? (
+                            <div style={{
+                              background: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#EFF6FF" : "#FEF2F2",
+                              border: `1px solid ${getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#BFDBFE" : "#FEE2E2"}`,
+                              borderRadius:8, padding:10, textAlign:"center"
+                            }}>
+                              <div style={{ fontSize:11, fontWeight:600, color: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#1E40AF" : "#991B1B" }}>
+                                Calculated Pass Validity:
+                              </div>
+                              <div style={{ fontSize:14, fontWeight:800, color: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#2563EB" : "#DC2626", marginTop:2 }}>
+                                {getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0
+                                  ? `Active (Expires in ${getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear)} days)`
+                                  : `Expired (${scanData.validityMonth} ${scanData.validityYear})`
+                                }
+                              </div>
                             </div>
-                            <div style={{ fontSize:14, fontWeight:800, color: getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0 ? "#2563EB" : "#DC2626", marginTop:2 }}>
-                              {getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear) > 0
-                                ? `Active (Expires in ${getDaysUntilExpiry(scanData.validityMonth, scanData.validityYear)} days)`
-                                : `Expired (${scanData.validityMonth} ${scanData.validityYear})`
-                              }
+                          ) : (
+                            <div style={{
+                              background: "#ECFDF5",
+                              border: "1px solid #A7F3D0",
+                              borderRadius:8, padding:10, textAlign:"center"
+                            }}>
+                              <div style={{ fontSize:11, fontWeight:600, color: "#047857" }}>
+                                Designation & Access:
+                              </div>
+                              <div style={{ fontSize:14, fontWeight:800, color: "#10B981", marginTop:2 }}>
+                                Verified Faculty Access (Permanent)
+                              </div>
                             </div>
-                          </div>
+                          )}
 
                           <div>
                             <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Full Name</label>
@@ -565,8 +596,8 @@ export default function Login() {
 
                           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                             <div>
-                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Program / Course</label>
-                              <input value={scanData.program} onChange={(e) => setScanData({...scanData, program: e.target.value})} style={inp} placeholder="e.g. B.Tech CSE" />
+                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>{role === "teacher" ? "Department / Designation" : "Program / Course"}</label>
+                              <input value={scanData.program} onChange={(e) => setScanData({...scanData, program: e.target.value})} style={inp} placeholder={role === "teacher" ? "e.g. Department of CSE" : "e.g. B.Tech CSE"} />
                             </div>
                             <div>
                               <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Pick Up Stop</label>
@@ -574,21 +605,22 @@ export default function Login() {
                             </div>
                           </div>
 
-                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                            <div>
-                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Validity Month</label>
-                              <select value={scanData.validityMonth} onChange={(e) => setScanData({...scanData, validityMonth: e.target.value})} style={{ ...inp, height:44, padding:"0 12px" }}>
-                                {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
-                                  <option key={m} value={m}>{m}</option>
-                                ))}
-                              </select>
+                          {role === "student" && (
+                            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                              <div>
+                                <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Validity Month</label>
+                                <select value={scanData.validityMonth} onChange={(e) => setScanData({...scanData, validityMonth: e.target.value})} style={{ ...inp, height:44, padding:"0 12px" }}>
+                                  {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Validity Year</label>
+                                <input type="number" value={scanData.validityYear} onChange={(e) => setScanData({...scanData, validityYear: e.target.value})} style={inp} placeholder="Year" />
+                              </div>
                             </div>
-                            <div>
-                              <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Validity Year</label>
-                              <input type="number" value={scanData.validityYear} onChange={(e) => setScanData({...scanData, validityYear: e.target.value})} style={inp} placeholder="Year" />
-                            </div>
-                          </div>
-
+                          )}
 
                           <div>
                             <label style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" }}>Password</label>
@@ -642,32 +674,13 @@ export default function Login() {
                   )}
 
                   {/* TEACHER FORM */}
-                  {role === "teacher" && (
+                  {role === "teacher" && mode === "login" && (
                     <>
-                      {mode === "register" && (
-                        <>
-                          <div>
-                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Full Name</label>
-                            <input name="name" value={form.name||""} onChange={handleChange} placeholder="e.g. Prof. Nair" style={inp} />
-                            {form.name && form.name.trim().length >= 3 && (
-                              <div style={{ fontSize:11, color:"#10B981", marginTop:5, fontWeight:600, display:"flex", alignItems:"center", gap:4 }}>
-                                🔑 Assigned Login Username: <span style={{ fontFamily:"monospace", background:"#ECFDF5", padding:"2px 6px", borderRadius:4, border:"1px solid #A7F3D0" }}>{generateCleanUsername(form.name)}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Pick Up Stop</label>
-                            <input name="pickupPoint" value={form.pickupPoint||""} onChange={handleChange} placeholder="e.g. Silk Board Junction" style={inp} />
-                          </div>
-                        </>
-                      )}
-                      {mode === "login" && (
-                        <div>
-                          <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Username</label>
-                          <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. prof.nair or AU-FAC-992" style={inp} autoCapitalize="none" autoCorrect="off" />
-                          <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>Enter your university-assigned faculty username</div>
-                        </div>
-                      )}
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Username</label>
+                        <input name="username" value={form.username} onChange={handleChange} placeholder="e.g. prof.nair or AU-FAC-992" style={inp} autoCapitalize="none" autoCorrect="off" />
+                        <div style={{ fontSize:11, color:"#9CA3AF", marginTop:5 }}>Enter your university-assigned faculty username</div>
+                      </div>
                       <div>
                         <label style={{ fontSize:11, fontWeight:600, color:"#374151", letterSpacing:"0.3px", display:"block", marginBottom:6, textTransform:"uppercase" }}>Password</label>
                         <div style={{ position:"relative" }}>
@@ -678,11 +691,11 @@ export default function Login() {
                       {error && <div className="err-shake" style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:8, padding:"10px 14px" }}><p style={{ color:"#DC2626", fontSize:12, margin:0, fontWeight:500 }}>⚠ {error}</p></div>}
                       <button onClick={handleUserLogin} disabled={loading}
                         style={{ width:"100%", background:loading?"#93C5FD":"#1D4ED8", border:"none", borderRadius:10, padding:"14px 0", color:"#fff", fontSize:14, fontWeight:700, cursor:loading?"not-allowed":"pointer", fontFamily:"'Inter',sans-serif" }}>
-                        {loading ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
+                        {loading ? "Please wait..." : "Sign In →"}
                       </button>
                       <div style={{ textAlign:"center", marginTop:10 }}>
-                        <button type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }} style={{ background:"none", border:"none", color:"#1D4ED8", fontSize:13, fontWeight:600, cursor:"pointer", padding:0, fontFamily:"'Inter',sans-serif" }}>
-                          {mode === "login" ? "Don't have an account? Register" : "Already have an account? Sign In"}
+                        <button type="button" onClick={() => { setMode("register"); setScanStep("capture"); setUploadedImgUrl(null); setError(""); }} style={{ background:"none", border:"none", color:"#1D4ED8", fontSize:13, fontWeight:600, cursor:"pointer", padding:0, fontFamily:"'Inter',sans-serif" }}>
+                          Don't have an account? Register by Scanning ID
                         </button>
                       </div>
                     </>
