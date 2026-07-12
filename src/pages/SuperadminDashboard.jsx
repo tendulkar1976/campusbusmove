@@ -331,7 +331,7 @@ export default function SuperadminDashboard() {
           {tab === "overview" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               {/* KPI Cards Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", alignItems: "start" }}>
                 <div style={{ ...S.card, padding: "20px" }}>
                   <div style={{ fontSize: "11px", color: t.textMuted, fontWeight: 800, textTransform: "uppercase" }}>Total platform earnings</div>
                   <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "8px", color: "#10B981" }}>₹{totalRevenue.toLocaleString("en-IN")}</div>
@@ -341,19 +341,54 @@ export default function SuperadminDashboard() {
                 <div style={{ ...S.card, padding: "20px" }}>
                   <div style={{ fontSize: "11px", color: t.textMuted, fontWeight: 800, textTransform: "uppercase" }}>Active Subscriptions</div>
                   <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "8px", color: t.accent }}>{activeCampusesCount}</div>
-                  <div style={{ fontSize: "11px", color: t.textMuted, marginTop: "4px" }}>Campuses with active premium/basic access</div>
+                  <div style={{ fontSize: "11px", color: t.textMuted, marginTop: "4px", marginBottom: 12 }}>Campuses with active premium/basic access</div>
+                  
+                  {campuses.filter(c => (c.expiryDate || 0) > Date.now() && c.status === "active").map(c => {
+                    const days = Math.max(0, Math.ceil((c.expiryDate - Date.now()) / (24 * 60 * 60 * 1000)));
+                    const start = new Date(c.updatedAt || (c.expiryDate - (c.billing === "yearly" ? 365 : 30) * 24 * 60 * 60 * 1000)).toLocaleDateString("en-IN");
+                    const end = new Date(c.expiryDate).toLocaleDateString("en-IN");
+                    return (
+                      <div key={c.id} style={{ marginTop: 10, borderTop: `1.5px solid ${t.border}`, paddingTop: 10, fontSize: 11 }}>
+                        <div style={{ fontWeight: 800, color: t.text }}>🏫 {c.id}</div>
+                        <div style={{ color: t.textSub, marginTop: 2 }}>Period: {start} to {end}</div>
+                        <div style={{ color: days <= 7 ? "#EF4444" : "#10B981", fontWeight: 700, marginTop: 2 }}>⏱️ {days} days remaining</div>
+                      </div>
+                    );
+                  })}
                 </div>
                 
                 <div style={{ ...S.card, padding: "20px" }}>
                   <div style={{ fontSize: "11px", color: t.textMuted, fontWeight: 800, textTransform: "uppercase" }}>Expired campuses</div>
                   <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "8px", color: "#EF4444" }}>{expiredCampusesCount}</div>
-                  <div style={{ fontSize: "11px", color: t.textMuted, marginTop: "4px" }}>Campuses needing billing renew</div>
+                  <div style={{ fontSize: "11px", color: t.textMuted, marginTop: "4px", marginBottom: 12 }}>Campuses needing billing renew</div>
+
+                  {campuses.filter(c => (c.expiryDate || 0) <= Date.now() || c.status === "expired").map(c => (
+                    <div key={c.id} style={{ marginTop: 10, borderTop: `1.5px solid ${t.border}`, paddingTop: 10, fontSize: 11 }}>
+                      <div style={{ fontWeight: 800, color: "#EF4444" }}>🏫 {c.id}</div>
+                      <div style={{ color: t.textSub, marginTop: 2 }}>Expired: {new Date(c.expiryDate || 0).toLocaleDateString("en-IN")}</div>
+                    </div>
+                  ))}
                 </div>
                 
                 <div style={{ ...S.card, padding: "20px" }}>
                   <div style={{ fontSize: "11px", color: t.textMuted, fontWeight: 800, textTransform: "uppercase" }}>Global platform users</div>
                   <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "8px" }}>{globalUsersCount}</div>
-                  <div style={{ fontSize: "11px", color: t.textMuted, marginTop: "4px" }}>Total admins, drivers & students</div>
+                  <div style={{ fontSize: "11px", color: t.textMuted, marginTop: "4px", marginBottom: 12 }}>Total members using this currently</div>
+
+                  <div style={{ marginTop: 10, borderTop: `1.5px solid ${t.border}`, paddingTop: 10, fontSize: 11, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: t.textSub }}>
+                      <span>🎓 Students:</span>
+                      <span style={{ fontWeight: 700 }}>{usersList.filter(u => u.role === "student").length}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: t.textSub }}>
+                      <span>🧑‍🏫 Faculty:</span>
+                      <span style={{ fontWeight: 700 }}>{usersList.filter(u => u.role === "teacher").length}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: t.textSub }}>
+                      <span>🚌 Drivers:</span>
+                      <span style={{ fontWeight: 700 }}>{usersList.filter(u => u.role === "driver").length}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
