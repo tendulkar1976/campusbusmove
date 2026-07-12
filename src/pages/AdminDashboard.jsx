@@ -1558,7 +1558,7 @@ export default function AdminDashboard() {
                   >
                     <option value="all">All Accounts</option>
                     <option value="student">Students</option>
-                    <option value="teacher">Faculty / Teachers</option>
+                    <option value="teacher">Faculty</option>
                     <option value="driver">Drivers</option>
                     <option value="admin">Admins</option>
                     <option value="blocked">Blocked Users</option>
@@ -1589,7 +1589,7 @@ export default function AdminDashboard() {
                           <select value={u.role} onChange={e => changeRole(u.id, e.target.value)}
                             style={{ flex: 1, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "4px 10px", color: t.textSub, fontSize: 11, fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
                             <option value="student">Student</option>
-                            <option value="teacher">Faculty / Teacher</option>
+                            <option value="teacher">Faculty</option>
                             <option value="driver">Driver</option>
                             <option value="admin">Admin</option>
                             {role === "superadmin" && <option value="superadmin">Super Admin</option>}
@@ -1632,7 +1632,7 @@ export default function AdminDashboard() {
                       style={{ ...S.input, height: 46, padding: "0 16px", marginBottom: 0, cursor: "pointer" }}
                     >
                       <option value="student">Student</option>
-                      <option value="teacher">Faculty / Teacher</option>
+                      <option value="teacher">Faculty</option>
                       <option value="driver">Driver</option>
                       <option value="admin">Admin</option>
                       {role === "superadmin" && <option value="superadmin">Super Admin</option>}

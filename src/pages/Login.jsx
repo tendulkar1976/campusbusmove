@@ -316,7 +316,7 @@ export default function Login() {
 
   const ROLES = [
     { id:"student", label:"Student",           sub:"Scan bus pass to register or sign in", icon:"🎓", color:"#3B82F6" },
-    { id:"teacher", label:"Faculty / Teacher", sub:"Username & password sign in",          icon:"🧑‍🏫", color:"#10B981" },
+    { id:"teacher", label:"Faculty",           sub:"Username & password sign in",          icon:"🧑‍🏫", color:"#10B981" },
     { id:"driver",  label:"Driver",            sub:"Phone number & password",              icon:"🚌", color:"#F59E0B" },
     { id:"admin",   label:"Administrator",     sub:"Access administrative console",        icon:"⚙️", color:"#EF4444" },
   ];
