@@ -105,6 +105,8 @@ export default function SuperadminDashboard() {
           setAnnouncementDismissed(false);
         }
       }
+    }, err => {
+      console.warn("Global announcement read permission restricted:", err);
     });
 
     const r = ref(rtdb, "routes");

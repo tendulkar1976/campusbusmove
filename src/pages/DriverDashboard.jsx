@@ -61,6 +61,8 @@ export default function DriverDashboard() {
           setAnnouncementDismissed(false);
         }
       }
+    }, err => {
+      console.warn("Global announcement read permission restricted:", err);
     });
     return () => unsubAnn();
   }, []);
