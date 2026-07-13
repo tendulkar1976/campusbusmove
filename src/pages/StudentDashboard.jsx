@@ -170,7 +170,8 @@ export default function StudentDashboard() {
   const [myRoute, setMyRoute]       = useState(null);
   const [routes, setRoutes]         = useState([]);
   const [selected, setSelected]     = useState(null);
-  const [activeBus, setActiveBus]   = useState(null);
+  const [drivers, setDrivers]       = useState({});
+  const [liveBuses, setLiveBuses]   = useState({});
   const [myLocation, setMyLocation] = useState(null);
   const [eta, setEta]               = useState(null);
   const [distance, setDistance]     = useState(null);
@@ -234,21 +235,31 @@ export default function StudentDashboard() {
     });
   }, [user, routes]);
 
-  // ── RTDB listener — immediate updates, no debounce ──
+  // ── Load drivers for the campus ──
   useEffect(() => {
-    if (!selected?.id) { setActiveBus(null); return; }
-    if (rtdbUnsubRef.current) { rtdbUnsubRef.current(); rtdbUnsubRef.current = null; }
-    const unsub = onValue(ref(rtdb, `routes/${selected.id}/live`), snap => {
-      console.log("RTDB snap:", snap.val());
-      if (snap.exists() && snap.val().active === true) {
-        setActiveBus({ ...snap.val() }); // spread = force re-render
+    if (!campusId) return;
+    getDocs(query(collection(db, "users"), where("campusId", "==", campusId), where("role", "==", "driver")))
+      .then(snap => {
+        const cache = {};
+        snap.docs.forEach(doc => {
+          cache[doc.id] = doc.data();
+        });
+        setDrivers(cache);
+      })
+      .catch(err => console.error("Error loading drivers:", err));
+  }, [campusId]);
+
+  // ── RTDB listener - listen to all active buses in RTDB ──
+  useEffect(() => {
+    const unsub = onValue(ref(rtdb, "routes"), snap => {
+      if (snap.exists()) {
+        setLiveBuses(snap.val());
       } else {
-        setActiveBus(null);
+        setLiveBuses({});
       }
     });
-    rtdbUnsubRef.current = unsub;
-    return () => { unsub(); rtdbUnsubRef.current = null; };
-  }, [selected?.id]);
+    return () => unsub();
+  }, []);
 
   // ── Today's attendance check ──
   useEffect(() => {
@@ -344,6 +355,36 @@ export default function StudentDashboard() {
   }, [user, tab]);
 
   // ── Derived values ──
+  const activeBus = useMemo(() => {
+    if (!selected?.id) return null;
+    const live = liveBuses[selected.id]?.live;
+    return (live && live.active === true) ? live : null;
+  }, [selected?.id, liveBuses]);
+
+  const activeBusesList = useMemo(() => {
+    const list = [];
+    routes.forEach(route => {
+      const live = liveBuses[route.id]?.live;
+      if (live && live.active === true && typeof live.lat === "number" && !isNaN(live.lat) && typeof live.lng === "number" && !isNaN(live.lng)) {
+        const isCurrent = route.id === selected?.id;
+        const driverName = drivers[live.driverUid]?.name || "Unknown Driver";
+        const driverPhone = drivers[live.driverUid]?.phone || "N/A";
+        list.push({
+          routeId: route.id,
+          routeName: route.name,
+          driverName,
+          driverPhone,
+          speed: live.speed || 0,
+          lat: live.lat,
+          lng: live.lng,
+          moving: (live.speed || 0) > 0,
+          isCurrent
+        });
+      }
+    });
+    return list;
+  }, [routes, liveBuses, selected?.id, drivers]);
+
   const isActive     = useMemo(() => activeBus?.active===true, [activeBus]);
   const busMapLoc    = useMemo(() => {
     return (isActive && typeof activeBus.lat === "number" && !isNaN(activeBus.lat) && typeof activeBus.lng === "number" && !isNaN(activeBus.lng)) 
@@ -644,7 +685,7 @@ export default function StudentDashboard() {
 
                 {/* Map View Frame */}
                 <div style={{ background:t.bgCard, border:`1.5px solid ${t.border}`, borderRadius:12, overflow:"hidden", marginBottom:16, boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 8px 30px rgba(0,0,0,0.03)" }}>
-                  <MapView busLocation={busMapLoc} busMoving={isActive&&activeBus.speed>0} routePath={selected?.path?.map(p=>[p.lat,p.lng])} center={busMapLoc ? null : (selected?.center ? [selected.center.lat,selected.center.lng] : null)} myLocation={myLocation} dark={dark}/>
+                  <MapView activeBuses={activeBusesList} routePath={selected?.path?.map(p=>[p.lat,p.lng])} center={busMapLoc ? null : (selected?.center ? [selected.center.lat,selected.center.lng] : null)} myLocation={myLocation} dark={dark}/>
                 </div>
 
                 {/* Vertical Timeline Stops Tracker */}

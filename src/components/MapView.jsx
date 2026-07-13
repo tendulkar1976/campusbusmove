@@ -5,6 +5,82 @@ import "leaflet/dist/leaflet.css";
 // ── Shared Helper ──
 function lerp(a, b, t) { return a + (b - a) * t; }
 
+// ── Offset Overlapping Coordinates (Spiderfying) ──
+function applyOffset(markers) {
+  if (markers.length <= 1) return markers;
+
+  const result = markers.map(m => ({ ...m, originalLat: m.lat, originalLng: m.lng }));
+  const threshold = 0.00015; // ~15 meters
+  const offsetRadius = 0.00008; // ~8 meters
+
+  const groups = [];
+  const visited = new Set();
+
+  for (let i = 0; i < result.length; i++) {
+    if (visited.has(i)) continue;
+    const group = [i];
+    visited.add(i);
+
+    for (let j = i + 1; j < result.length; j++) {
+      if (visited.has(j)) continue;
+      const latDiff = result[i].lat - result[j].lat;
+      const lngDiff = result[i].lng - result[j].lng;
+      const dist = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+      if (dist < threshold) {
+        group.push(j);
+        visited.add(j);
+      }
+    }
+    groups.push(group);
+  }
+
+  groups.forEach(group => {
+    if (group.length <= 1) return;
+
+    let avgLat = 0;
+    let avgLng = 0;
+    group.forEach(idx => {
+      avgLat += result[idx].lat;
+      avgLng += result[idx].lng;
+    });
+    avgLat /= group.length;
+    avgLng /= group.length;
+
+    group.forEach((idx, step) => {
+      const angle = (2 * Math.PI * step) / group.length;
+      result[idx].lat = avgLat + offsetRadius * Math.sin(angle);
+      result[idx].lng = avgLng + offsetRadius * Math.cos(angle);
+    });
+  });
+
+  return result;
+}
+
+// ── Rich CSS Tooltip/Popup Template ──
+function getPopupContent(bus) {
+  const statusColor = bus.moving ? "#DEF7EC" : "#FDE8E8";
+  const statusTextCol = bus.moving ? "#03543F" : "#9B1C1C";
+  const regNo = `KA-03-MM-${bus.routeId.slice(0, 4).toUpperCase()}`;
+  return `
+    <div style="font-family:'Inter',sans-serif;padding:4px;min-width:180px;line-height:1.4;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid #E5E7EB;padding-bottom:6px;">
+        <span style="font-weight:800;font-size:13px;color:#111827;">${bus.routeName}</span>
+        <span style="background:${statusColor};color:${statusTextCol};font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;text-transform:uppercase;">
+          ${bus.moving ? "Live" : "Stopped"}
+        </span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#4B5563;">
+        <div><strong>Driver:</strong> ${bus.driverName}</div>
+        <div><strong>Phone:</strong> <a href="tel:${bus.driverPhone}" style="color:#FF5A1F;text-decoration:none;font-weight:600;">${bus.driverPhone}</a></div>
+        <div><strong>Speed:</strong> ${bus.speed} km/h</div>
+        <div style="margin-top:4px;font-family:monospace;font-size:10px;background:#F3F4F6;color:#374151;padding:2px 6px;border-radius:4px;width:fit-content;letter-spacing:0.5px;">
+          ${regNo}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ── Leaflet Icons Cache ──
 const ICON_CACHE = {};
 function getBusIcon(moving) {
@@ -89,18 +165,17 @@ function loadGoogleMaps(apiKey) {
 }
 
 // ── Leaflet Map Component ──
-const LeafletMapView = memo(function LeafletMapView({ busLocation, busMoving, routePath, center, myLocation, dark }) {
+const LeafletMapView = memo(function LeafletMapView({ activeBuses, busLocation, busMoving, routePath, center, myLocation, dark }) {
   const mapRef        = useRef(null);
   const mapInstance   = useRef(null);
-  const busMarker     = useRef(null);
-  const myMarker      = useRef(null);
   const routeLayer    = useRef(null);
   const tileLayer     = useRef(null);
-  const prevBusPos    = useRef(null);
-  const prevMoving    = useRef(null);
   const animFrameRef  = useRef(null);
-  const targetPosRef  = useRef(null);
-  const currentPosRef = useRef(null);
+
+  const markersRef          = useRef({}); // { [id]: L.marker }
+  const currentPositionsRef = useRef({}); // { [id]: { lat, lng } }
+  const targetPositionsRef  = useRef({});  // { [id]: { lat, lng } }
+  const prevMovingRef       = useRef({});  // { [id]: boolean }
 
   const defaultCenter = center || [12.9716, 77.5946];
 
@@ -128,8 +203,10 @@ const LeafletMapView = memo(function LeafletMapView({ busLocation, busMoving, ro
       cancelAnimationFrame(animFrameRef.current);
       mapInstance.current?.remove();
       mapInstance.current = null;
-      busMarker.current = null;
-      myMarker.current = null;
+      markersRef.current = {};
+      currentPositionsRef.current = {};
+      targetPositionsRef.current = {};
+      prevMovingRef.current = {};
       routeLayer.current = null;
     };
   }, []);
@@ -147,93 +224,130 @@ const LeafletMapView = memo(function LeafletMapView({ busLocation, busMoving, ro
     }).addTo(mapInstance.current);
   }, [routePath]);
 
+  // Main active buses and user location rendering
   useEffect(() => {
     if (!mapInstance.current) return;
-    if (!busLocation || typeof busLocation.lat !== "number" || isNaN(busLocation.lat) || typeof busLocation.lng !== "number" || isNaN(busLocation.lng)) {
-      if (busMarker.current) {
-        busMarker.current.remove();
-        busMarker.current = null;
+
+    const buses = activeBuses || (busLocation ? [{
+      routeId: "default",
+      routeName: "Active Bus",
+      lat: busLocation.lat,
+      lng: busLocation.lng,
+      moving: busMoving,
+      speed: 0,
+      isCurrent: true,
+      driverName: "Driver",
+      driverPhone: "N/A"
+    }] : []);
+
+    const rawMarkers = [];
+    if (myLocation && typeof myLocation.lat === "number" && !isNaN(myLocation.lat) && typeof myLocation.lng === "number" && !isNaN(myLocation.lng)) {
+      rawMarkers.push({ id: "myLocation", lat: myLocation.lat, lng: myLocation.lng, isUser: true });
+    }
+    buses.forEach(b => {
+      rawMarkers.push({ id: b.routeId, lat: b.lat, lng: b.lng, isBus: true, bus: b });
+    });
+
+    const plottedMarkers = applyOffset(rawMarkers);
+    const activeIds = new Set(plottedMarkers.map(m => m.id));
+
+    // Remove inactive markers
+    Object.keys(markersRef.current).forEach(id => {
+      if (!activeIds.has(id)) {
+        markersRef.current[id].remove();
+        delete markersRef.current[id];
+        delete currentPositionsRef.current[id];
+        delete targetPositionsRef.current[id];
+        delete prevMovingRef.current[id];
       }
-      cancelAnimationFrame(animFrameRef.current);
-      prevBusPos.current = null;
-      currentPosRef.current = null;
-      return;
-    }
+    });
 
-    const { lat, lng } = busLocation;
-    let actuallyMoving = busMoving;
-    if (prevBusPos.current) {
-      const dlat = Math.abs(lat - prevBusPos.current.lat);
-      const dlng = Math.abs(lng - prevBusPos.current.lng);
-      actuallyMoving = dlat > 0.00003 || dlng > 0.00003;
-    }
-    prevBusPos.current = { lat, lng };
-    targetPosRef.current = { lat, lng };
-    if (!currentPosRef.current) currentPosRef.current = { lat, lng };
+    // Add or update active markers
+    plottedMarkers.forEach(m => {
+      const targetLat = m.lat;
+      const targetLng = m.lng;
+      targetPositionsRef.current[m.id] = { lat: targetLat, lng: targetLng };
 
-    const iconChanged = prevMoving.current !== actuallyMoving;
-    prevMoving.current = actuallyMoving;
-    const icon = getBusIcon(actuallyMoving);
+      if (!markersRef.current[m.id]) {
+        let marker;
+        if (m.isUser) {
+          marker = L.marker([targetLat, targetLng], { icon: MY_ICON, zIndexOffset: 50 });
+        } else {
+          marker = L.marker([targetLat, targetLng], { icon: getBusIcon(m.bus.moving), zIndexOffset: 100 });
+          marker.bindPopup(getPopupContent(m.bus), { closeButton: false, offset: L.point(0, -6) });
+          prevMovingRef.current[m.id] = m.bus.moving;
+        }
+        marker.addTo(mapInstance.current);
+        markersRef.current[m.id] = marker;
+        currentPositionsRef.current[m.id] = { lat: targetLat, lng: targetLng };
+      } else {
+        const marker = markersRef.current[m.id];
+        if (m.isBus) {
+          marker.setPopupContent(getPopupContent(m.bus));
+          if (prevMovingRef.current[m.id] !== m.bus.moving) {
+            marker.setIcon(getBusIcon(m.bus.moving));
+            prevMovingRef.current[m.id] = m.bus.moving;
+          }
+        }
+      }
+    });
 
-    if (!busMarker.current) {
-      busMarker.current = L.marker([lat, lng], { icon, zIndexOffset: 100 }).addTo(mapInstance.current);
-      currentPosRef.current = { lat, lng };
-    } else if (iconChanged) {
-      busMarker.current.setIcon(icon);
-    }
-
+    // Smooth movement animations (interpolate position)
     cancelAnimationFrame(animFrameRef.current);
     const duration = 600;
     const startTime = performance.now();
-    const startPos = { ...currentPosRef.current };
+    const startPositions = {};
+    Object.keys(markersRef.current).forEach(id => {
+      startPositions[id] = { ...(currentPositionsRef.current[id] || targetPositionsRef.current[id]) };
+    });
 
     function animate(now) {
       const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3);
-      const iLat = lerp(startPos.lat, targetPosRef.current.lat, eased);
-      const iLng = lerp(startPos.lng, targetPosRef.current.lng, eased);
-      currentPosRef.current = { lat: iLat, lng: iLng };
-      busMarker.current?.setLatLng([iLat, iLng]);
-      if (t < 1) animFrameRef.current = requestAnimationFrame(animate);
+
+      Object.keys(markersRef.current).forEach(id => {
+        const start = startPositions[id];
+        const target = targetPositionsRef.current[id];
+        const marker = markersRef.current[id];
+        if (!start || !target || !marker) return;
+
+        const iLat = lerp(start.lat, target.lat, eased);
+        const iLng = lerp(start.lng, target.lng, eased);
+        currentPositionsRef.current[id] = { lat: iLat, lng: iLng };
+        marker.setLatLng([iLat, iLng]);
+      });
+
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      }
     }
     animFrameRef.current = requestAnimationFrame(animate);
 
-    mapInstance.current.panTo([lat, lng], { animate: true, duration: 0.7, easeLinearity: 0.5 });
-  }, [busLocation, busMoving]);
-
-  useEffect(() => {
-    if (!mapInstance.current) return;
-    if (!myLocation || typeof myLocation.lat !== "number" || isNaN(myLocation.lat) || typeof myLocation.lng !== "number" || isNaN(myLocation.lng)) {
-      if (myMarker.current) {
-        myMarker.current.remove();
-        myMarker.current = null;
-      }
-      return;
+    // Pan map to selected bus or student location
+    const currentBus = buses.find(b => b.isCurrent);
+    if (currentBus) {
+      mapInstance.current.panTo([currentBus.lat, currentBus.lng], { animate: true, duration: 0.7 });
+    } else if (myLocation) {
+      mapInstance.current.panTo([myLocation.lat, myLocation.lng], { animate: true, duration: 0.7 });
     }
-    const { lat, lng } = myLocation;
-    if (!myMarker.current) {
-      myMarker.current = L.marker([lat, lng], { icon: MY_ICON, zIndexOffset: 50 }).addTo(mapInstance.current);
-    } else {
-      myMarker.current.setLatLng([lat, lng]);
-    }
-  }, [myLocation]);
+  }, [activeBuses, busLocation, busMoving, myLocation]);
 
   return <div ref={mapRef} style={{ width: "100%", height: "100%", borderRadius: 14 }} />;
 });
 
 // ── Google Map Component ──
-const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, routePath, center, myLocation, dark }) {
+const GoogleMapView = memo(function GoogleMapView({ activeBuses, busLocation, busMoving, routePath, center, myLocation, dark }) {
   const mapRef        = useRef(null);
   const mapInstance   = useRef(null);
-  const busMarker     = useRef(null);
-  const myMarker      = useRef(null);
   const routePolyline = useRef(null);
-  const prevBusPos    = useRef(null);
-  const prevMoving    = useRef(null);
   const animFrameRef  = useRef(null);
-  const targetPosRef  = useRef(null);
-  const currentPosRef = useRef(null);
+
+  const markersRef          = useRef({}); // { [id]: google.maps.Marker }
+  const currentPositionsRef = useRef({}); // { [id]: { lat, lng } }
+  const targetPositionsRef  = useRef({});  // { [id]: { lat, lng } }
+  const prevMovingRef       = useRef({});  // { [id]: boolean }
+  const infoWindowRef       = useRef(null);
 
   const defaultCenter = center || [12.9716, 77.5946];
 
@@ -250,16 +364,21 @@ const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, rout
       styles: dark ? GOOGLE_MAPS_STYLES.dark : GOOGLE_MAPS_STYLES.light,
     });
 
+    infoWindowRef.current = new window.google.maps.InfoWindow();
+
     return () => {
       cancelAnimationFrame(animFrameRef.current);
-      busMarker.current?.setMap(null);
-      myMarker.current?.setMap(null);
+      Object.values(markersRef.current).forEach(m => m.setMap(null));
+      markersRef.current = {};
+      currentPositionsRef.current = {};
+      targetPositionsRef.current = {};
+      prevMovingRef.current = {};
       routePolyline.current?.setMap(null);
       mapInstance.current = null;
+      infoWindowRef.current = null;
     };
   }, []);
 
-  // Update styles on theme change
   useEffect(() => {
     if (!mapInstance.current) return;
     mapInstance.current.setOptions({
@@ -267,7 +386,6 @@ const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, rout
     });
   }, [dark]);
 
-  // Route Polyline
   useEffect(() => {
     if (!mapInstance.current) return;
     if (routePolyline.current) {
@@ -278,7 +396,6 @@ const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, rout
 
     const pathCoords = routePath.map(coord => ({ lat: coord[0], lng: coord[1] }));
     
-    // Dashed line in Google Maps
     routePolyline.current = new window.google.maps.Polyline({
       path: pathCoords,
       geodesic: true,
@@ -299,113 +416,158 @@ const GoogleMapView = memo(function GoogleMapView({ busLocation, busMoving, rout
     routePolyline.current.setMap(mapInstance.current);
   }, [routePath]);
 
-  // Bus Marker and smooth tracking
+  // Main active buses and user location rendering
   useEffect(() => {
     if (!mapInstance.current) return;
-    if (!busLocation || typeof busLocation.lat !== "number" || isNaN(busLocation.lat) || typeof busLocation.lng !== "number" || isNaN(busLocation.lng)) {
-      if (busMarker.current) {
-        busMarker.current.setMap(null);
-        busMarker.current = null;
+
+    const buses = activeBuses || (busLocation ? [{
+      routeId: "default",
+      routeName: "Active Bus",
+      lat: busLocation.lat,
+      lng: busLocation.lng,
+      moving: busMoving,
+      speed: 0,
+      isCurrent: true,
+      driverName: "Driver",
+      driverPhone: "N/A"
+    }] : []);
+
+    const rawMarkers = [];
+    if (myLocation && typeof myLocation.lat === "number" && !isNaN(myLocation.lat) && typeof myLocation.lng === "number" && !isNaN(myLocation.lng)) {
+      rawMarkers.push({ id: "myLocation", lat: myLocation.lat, lng: myLocation.lng, isUser: true });
+    }
+    buses.forEach(b => {
+      rawMarkers.push({ id: b.routeId, lat: b.lat, lng: b.lng, isBus: true, bus: b });
+    });
+
+    const plottedMarkers = applyOffset(rawMarkers);
+    const activeIds = new Set(plottedMarkers.map(m => m.id));
+
+    // Remove inactive markers
+    Object.keys(markersRef.current).forEach(id => {
+      if (!activeIds.has(id)) {
+        markersRef.current[id].setMap(null);
+        delete markersRef.current[id];
+        delete currentPositionsRef.current[id];
+        delete targetPositionsRef.current[id];
+        delete prevMovingRef.current[id];
       }
-      cancelAnimationFrame(animFrameRef.current);
-      prevBusPos.current = null;
-      currentPosRef.current = null;
-      return;
-    }
+    });
 
-    const { lat, lng } = busLocation;
-    let actuallyMoving = busMoving;
-    if (prevBusPos.current) {
-      const dlat = Math.abs(lat - prevBusPos.current.lat);
-      const dlng = Math.abs(lng - prevBusPos.current.lng);
-      actuallyMoving = dlat > 0.00003 || dlng > 0.00003;
-    }
-    prevBusPos.current = { lat, lng };
-    targetPosRef.current = { lat, lng };
-    if (!currentPosRef.current) currentPosRef.current = { lat, lng };
+    // Add or update active markers
+    plottedMarkers.forEach(m => {
+      const targetLat = m.lat;
+      const targetLng = m.lng;
+      targetPositionsRef.current[m.id] = { lat: targetLat, lng: targetLng };
 
-    prevMoving.current = actuallyMoving;
-    const color = actuallyMoving ? "#4ADE80" : "#F87171";
+      if (!markersRef.current[m.id]) {
+        let icon;
+        if (m.isUser) {
+          icon = {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            fillColor: "#60A5FA",
+            fillOpacity: 1.0,
+            strokeColor: "#FFFFFF",
+            strokeWeight: 2.5,
+            scale: 7,
+          };
+        } else {
+          const color = m.bus.moving ? "#4ADE80" : "#F87171";
+          icon = {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            fillColor: color,
+            fillOpacity: 1.0,
+            strokeColor: "#FFFFFF",
+            strokeWeight: 3.5,
+            scale: 9,
+          };
+        }
 
-    const busIcon = {
-      path: window.google.maps.SymbolPath.CIRCLE,
-      fillColor: color,
-      fillOpacity: 1.0,
-      strokeColor: "#FFFFFF",
-      strokeWeight: 3.5,
-      scale: 9,
-    };
+        const marker = new window.google.maps.Marker({
+          position: { lat: targetLat, lng: targetLng },
+          map: mapInstance.current,
+          icon,
+          zIndex: m.isUser ? 50 : 100,
+        });
 
-    if (!busMarker.current) {
-      busMarker.current = new window.google.maps.Marker({
-        position: { lat, lng },
-        map: mapInstance.current,
-        icon: busIcon,
-        zIndex: 100,
-      });
-      currentPosRef.current = { lat, lng };
-    } else {
-      busMarker.current.setIcon(busIcon);
-    }
+        if (m.isBus) {
+          marker.addListener("click", () => {
+            if (!infoWindowRef.current) {
+              infoWindowRef.current = new window.google.maps.InfoWindow();
+            }
+            infoWindowRef.current.setContent(getPopupContent(m.bus));
+            infoWindowRef.current.open(mapInstance.current, marker);
+          });
+          prevMovingRef.current[m.id] = m.bus.moving;
+        }
 
+        markersRef.current[m.id] = marker;
+        currentPositionsRef.current[m.id] = { lat: targetLat, lng: targetLng };
+      } else {
+        const marker = markersRef.current[m.id];
+        if (m.isBus) {
+          if (prevMovingRef.current[m.id] !== m.bus.moving) {
+            const color = m.bus.moving ? "#4ADE80" : "#F87171";
+            marker.setIcon({
+              path: window.google.maps.SymbolPath.CIRCLE,
+              fillColor: color,
+              fillOpacity: 1.0,
+              strokeColor: "#FFFFFF",
+              strokeWeight: 3.5,
+              scale: 9,
+            });
+            prevMovingRef.current[m.id] = m.bus.moving;
+          }
+        }
+      }
+    });
+
+    // Smooth movement animations (interpolate position)
     cancelAnimationFrame(animFrameRef.current);
     const duration = 600;
     const startTime = performance.now();
-    const startPos = { ...currentPosRef.current };
+    const startPositions = {};
+    Object.keys(markersRef.current).forEach(id => {
+      startPositions[id] = { ...(currentPositionsRef.current[id] || targetPositionsRef.current[id]) };
+    });
 
     function animate(now) {
       const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3);
-      const iLat = lerp(startPos.lat, targetPosRef.current.lat, eased);
-      const iLng = lerp(startPos.lng, targetPosRef.current.lng, eased);
-      currentPosRef.current = { lat: iLat, lng: iLng };
-      busMarker.current?.setPosition({ lat: iLat, lng: iLng });
-      if (t < 1) animFrameRef.current = requestAnimationFrame(animate);
+
+      Object.keys(markersRef.current).forEach(id => {
+        const start = startPositions[id];
+        const target = targetPositionsRef.current[id];
+        const marker = markersRef.current[id];
+        if (!start || !target || !marker) return;
+
+        const iLat = lerp(start.lat, target.lat, eased);
+        const iLng = lerp(start.lng, target.lng, eased);
+        currentPositionsRef.current[id] = { lat: iLat, lng: iLng };
+        marker.setPosition({ lat: iLat, lng: iLng });
+      });
+
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      }
     }
     animFrameRef.current = requestAnimationFrame(animate);
 
-    mapInstance.current.panTo({ lat, lng });
-  }, [busLocation, busMoving]);
-
-  // My location marker
-  useEffect(() => {
-    if (!mapInstance.current) return;
-    if (!myLocation || typeof myLocation.lat !== "number" || isNaN(myLocation.lat) || typeof myLocation.lng !== "number" || isNaN(myLocation.lng)) {
-      if (myMarker.current) {
-        myMarker.current.setMap(null);
-        myMarker.current = null;
-      }
-      return;
+    // Pan map to selected bus or student location
+    const currentBus = buses.find(b => b.isCurrent);
+    if (currentBus) {
+      mapInstance.current.panTo({ lat: currentBus.lat, lng: currentBus.lng });
+    } else if (myLocation) {
+      mapInstance.current.panTo({ lat: myLocation.lat, lng: myLocation.lng });
     }
-    const { lat, lng } = myLocation;
-
-    const myIcon = {
-      path: window.google.maps.SymbolPath.CIRCLE,
-      fillColor: "#60A5FA",
-      fillOpacity: 1.0,
-      strokeColor: "#FFFFFF",
-      strokeWeight: 2.5,
-      scale: 7,
-    };
-
-    if (!myMarker.current) {
-      myMarker.current = new window.google.maps.Marker({
-        position: { lat, lng },
-        map: mapInstance.current,
-        icon: myIcon,
-        zIndex: 50,
-      });
-    } else {
-      myMarker.current.setPosition({ lat, lng });
-    }
-  }, [myLocation]);
+  }, [activeBuses, busLocation, busMoving, myLocation]);
 
   return <div ref={mapRef} style={{ width: "100%", height: "100%", borderRadius: 14 }} />;
 });
 
 // ── Main MapView Wrapper ──
-const MapView = memo(function MapView({ busLocation, busMoving, routePath, center, myLocation, dark = true }) {
+const MapView = memo(function MapView({ activeBuses, busLocation, busMoving, routePath, center, myLocation, dark = true }) {
   const [useGoogleMaps, setUseGoogleMaps] = useState(false);
   const [sdkLoading, setSdkLoading] = useState(false);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -438,6 +600,7 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
         </div>
       ) : useGoogleMaps ? (
         <GoogleMapView
+          activeBuses={activeBuses}
           busLocation={busLocation}
           busMoving={busMoving}
           routePath={routePath}
@@ -447,6 +610,7 @@ const MapView = memo(function MapView({ busLocation, busMoving, routePath, cente
         />
       ) : (
         <LeafletMapView
+          activeBuses={activeBuses}
           busLocation={busLocation}
           busMoving={busMoving}
           routePath={routePath}
