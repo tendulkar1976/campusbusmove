@@ -21,6 +21,22 @@ export default function DriverDashboard() {
 
   const [subExpired, setSubExpired] = useState(false);
   const [checkingSub, setCheckingSub] = useState(true);
+  const [tab, setTab]                         = useState("live");
+  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+  const [routes, setRoutes]                   = useState([]);
+  const [selectedRouteId, setSelectedRouteId] = useState(null);
+  const [tracking, setTracking]               = useState(false);
+  const [myLocation, setMyLocation]           = useState(null);
+  const [speed, setSpeed]                     = useState(0);
+  const [heading, setHeading]                 = useState(0);
+  const [accuracy, setAccuracy]               = useState(null);
+  const [gpsStatus, setGpsStatus]             = useState("idle"); // idle | waiting | active | error
+  const [error, setError]                     = useState("");
+  const [tripStart, setTripStart]             = useState(null);
+  const [elapsed, setElapsed]                 = useState(0);
+  const [trips, setTrips]                     = useState([]);
+  const [loading, setLoading]                 = useState(true);
 
   // ── Verify subscription status ──
   useEffect(() => {
@@ -66,23 +82,6 @@ export default function DriverDashboard() {
     });
     return () => unsubAnn();
   }, []);
-
-  const [tab, setTab]                         = useState("live");
-  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
-  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
-  const [routes, setRoutes]                   = useState([]);
-  const [selectedRouteId, setSelectedRouteId] = useState(null);
-  const [tracking, setTracking]               = useState(false);
-  const [myLocation, setMyLocation]           = useState(null);
-  const [speed, setSpeed]                     = useState(0);
-  const [heading, setHeading]                 = useState(0);
-  const [accuracy, setAccuracy]               = useState(null);
-  const [gpsStatus, setGpsStatus]             = useState("idle"); // idle | waiting | active | error
-  const [error, setError]                     = useState("");
-  const [tripStart, setTripStart]             = useState(null);
-  const [elapsed, setElapsed]                 = useState(0);
-  const [trips, setTrips]                     = useState([]);
-  const [loading, setLoading]                 = useState(true);
   const [gpsAlert, setGpsAlert]               = useState(null); // null | 'blocked' | 'off'
 
   const watchIdRef         = useRef(null);

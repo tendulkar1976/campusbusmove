@@ -120,6 +120,24 @@ export default function StudentDashboard() {
 
   const [subExpired, setSubExpired] = useState(false);
   const [checkingSub, setCheckingSub] = useState(true);
+  const [tab, setTab]               = useState("track");
+  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+  const [myRoute, setMyRoute]       = useState(null);
+  const [routes, setRoutes]         = useState([]);
+  const [selected, setSelected]     = useState(null);
+  const [drivers, setDrivers]       = useState({});
+  const [liveBuses, setLiveBuses]   = useState({});
+  const [myLocation, setMyLocation] = useState(null);
+  const [eta, setEta]               = useState(null);
+  const [distance, setDistance]     = useState(null);
+  const [attendanceLog, setAttendanceLog]       = useState({});
+  const [attendanceStatus, setAttendanceStatus] = useState(null);
+  const [inGeofence, setInGeofence] = useState(false);
+  const [calMonth, setCalMonth]     = useState(new Date().getMonth());
+  const [calYear, setCalYear]       = useState(new Date().getFullYear());
+  const [loading, setLoading]       = useState(!routeCache);
+  const [activeAlert, setActiveAlert] = useState(null);
 
   // ── Verify subscription status ──
   useEffect(() => {
@@ -165,25 +183,6 @@ export default function StudentDashboard() {
     });
     return () => unsubAnn();
   }, []);
-
-  const [tab, setTab]               = useState("track");
-  const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
-  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
-  const [myRoute, setMyRoute]       = useState(null);
-  const [routes, setRoutes]         = useState([]);
-  const [selected, setSelected]     = useState(null);
-  const [drivers, setDrivers]       = useState({});
-  const [liveBuses, setLiveBuses]   = useState({});
-  const [myLocation, setMyLocation] = useState(null);
-  const [eta, setEta]               = useState(null);
-  const [distance, setDistance]     = useState(null);
-  const [attendanceLog, setAttendanceLog]       = useState({});
-  const [attendanceStatus, setAttendanceStatus] = useState(null);
-  const [inGeofence, setInGeofence] = useState(false);
-  const [calMonth, setCalMonth]     = useState(new Date().getMonth());
-  const [calYear, setCalYear]       = useState(new Date().getFullYear());
-  const [loading, setLoading]       = useState(!routeCache);
-  const [activeAlert, setActiveAlert] = useState(null);
 
   const geofenceTimerRef = useRef(null);
   const markedDateRef    = useRef(null);
