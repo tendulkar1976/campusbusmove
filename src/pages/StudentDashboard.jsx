@@ -139,6 +139,83 @@ export default function StudentDashboard() {
   const [loading, setLoading]       = useState(!routeCache);
   const [activeAlert, setActiveAlert] = useState(null);
 
+  const geofenceTimerRef = useRef(null);
+  const markedDateRef    = useRef(null);
+  const gpsWatchRef      = useRef(null);
+  const rtdbUnsubRef     = useRef(null);
+
+  const activeBus = useMemo(() => {
+    if (!selected?.id) return null;
+    const live = liveBuses[selected.id]?.live;
+    return (live && live.active === true) ? live : null;
+  }, [selected?.id, liveBuses]);
+
+  const activeBusesList = useMemo(() => {
+    const list = [];
+    routes.forEach(route => {
+      const live = liveBuses[route.id]?.live;
+      if (live && live.active === true && typeof live.lat === "number" && !isNaN(live.lat) && typeof live.lng === "number" && !isNaN(live.lng)) {
+        const isCurrent = route.id === selected?.id;
+        const driverName = drivers[live.driverUid]?.name || "Unknown Driver";
+        const driverPhone = drivers[live.driverUid]?.phone || "N/A";
+        list.push({
+          routeId: route.id,
+          routeName: route.name,
+          driverName,
+          driverPhone,
+          speed: live.speed || 0,
+          lat: live.lat,
+          lng: live.lng,
+          moving: (live.speed || 0) > 0,
+          isCurrent
+        });
+      }
+    });
+    return list;
+  }, [routes, liveBuses, selected?.id, drivers]);
+
+  const isActive     = useMemo(() => activeBus?.active===true, [activeBus]);
+  const busMapLoc    = useMemo(() => {
+    return (isActive && typeof activeBus.lat === "number" && !isNaN(activeBus.lat) && typeof activeBus.lng === "number" && !isNaN(activeBus.lng)) 
+      ? { lat: activeBus.lat, lng: activeBus.lng } 
+      : null;
+  }, [isActive, activeBus]);
+  const presentCount = useMemo(() => Object.values(attendanceLog).filter(v=>v==="present").length, [attendanceLog]);
+  const totalCount   = useMemo(() => Object.values(attendanceLog).length, [attendanceLog]);
+  const pct          = useMemo(() => totalCount>0?Math.round(presentCount/totalCount*100):0, [presentCount, totalCount]);
+
+  const handleTabChange = useCallback(v => setTab(v), []);
+  const handleRouteSelect = useCallback(r => setSelected(r), []);
+
+  const onGpsSuccess = useCallback(pos => {
+    setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+  }, []);
+
+  const markAttendance = useCallback(async status => {
+    const today = getTodayStr();
+    if (markedDateRef.current===today) return;
+    markedDateRef.current=today;
+    clearTimeout(geofenceTimerRef.current); geofenceTimerRef.current=null;
+    
+    try {
+      // Double check Firestore to guarantee no duplicate records are created for today
+      const q = query(collection(db, "attendance"), where("studentId", "==", user.uid), where("date", "==", today));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const d = snap.docs[0].data();
+        setAttendanceStatus(d.status);
+        setAttendanceLog(p => ({ ...p, [today]: d.status }));
+        return;
+      }
+      setAttendanceStatus(status);
+      await addDoc(collection(db,"attendance"),{studentId:user.uid,routeId:selected?.id,date:today,status,timestamp:Date.now(),campusId});
+      setAttendanceLog(p=>({...p,[today]:status}));
+    } catch (err) {
+      console.error("Error checking or saving attendance: ", err);
+      markedDateRef.current = null; // reset to allow retry
+    }
+  }, [user, selected, campusId]);
+
   // ── Verify subscription status ──
   useEffect(() => {
     if (!campusId) {
@@ -183,36 +260,6 @@ export default function StudentDashboard() {
     });
     return () => unsubAnn();
   }, []);
-
-  const geofenceTimerRef = useRef(null);
-  const markedDateRef    = useRef(null);
-  const gpsWatchRef      = useRef(null);
-  const rtdbUnsubRef     = useRef(null);
-
-  const markAttendance = useCallback(async status => {
-    const today = getTodayStr();
-    if (markedDateRef.current===today) return;
-    markedDateRef.current=today;
-    clearTimeout(geofenceTimerRef.current); geofenceTimerRef.current=null;
-    
-    try {
-      // Double check Firestore to guarantee no duplicate records are created for today
-      const q = query(collection(db, "attendance"), where("studentId", "==", user.uid), where("date", "==", today));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const d = snap.docs[0].data();
-        setAttendanceStatus(d.status);
-        setAttendanceLog(p => ({ ...p, [today]: d.status }));
-        return;
-      }
-      setAttendanceStatus(status);
-      await addDoc(collection(db,"attendance"),{studentId:user.uid,routeId:selected?.id,date:today,status,timestamp:Date.now(),campusId});
-      setAttendanceLog(p=>({...p,[today]:status}));
-    } catch (err) {
-      console.error("Error checking or saving attendance: ", err);
-      markedDateRef.current = null; // reset to allow retry
-    }
-  }, [user, selected, campusId]);
 
   // ── Load routes ──
   useEffect(() => {
@@ -293,10 +340,6 @@ export default function StudentDashboard() {
   }, [user]);
 
   // ── GPS watch ──
-  const onGpsSuccess = useCallback(pos => {
-    setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-  }, []);
-
   useEffect(() => {
     if (!navigator.geolocation) return;
     gpsWatchRef.current = navigator.geolocation.watchPosition(onGpsSuccess, ()=>{}, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
@@ -354,50 +397,6 @@ export default function StudentDashboard() {
       const log={}; snap.docs.forEach(d=>{const x=d.data();log[x.date]=x.status;}); setAttendanceLog(log);
     });
   }, [user, tab]);
-
-  // ── Derived values ──
-  const activeBus = useMemo(() => {
-    if (!selected?.id) return null;
-    const live = liveBuses[selected.id]?.live;
-    return (live && live.active === true) ? live : null;
-  }, [selected?.id, liveBuses]);
-
-  const activeBusesList = useMemo(() => {
-    const list = [];
-    routes.forEach(route => {
-      const live = liveBuses[route.id]?.live;
-      if (live && live.active === true && typeof live.lat === "number" && !isNaN(live.lat) && typeof live.lng === "number" && !isNaN(live.lng)) {
-        const isCurrent = route.id === selected?.id;
-        const driverName = drivers[live.driverUid]?.name || "Unknown Driver";
-        const driverPhone = drivers[live.driverUid]?.phone || "N/A";
-        list.push({
-          routeId: route.id,
-          routeName: route.name,
-          driverName,
-          driverPhone,
-          speed: live.speed || 0,
-          lat: live.lat,
-          lng: live.lng,
-          moving: (live.speed || 0) > 0,
-          isCurrent
-        });
-      }
-    });
-    return list;
-  }, [routes, liveBuses, selected?.id, drivers]);
-
-  const isActive     = useMemo(() => activeBus?.active===true, [activeBus]);
-  const busMapLoc    = useMemo(() => {
-    return (isActive && typeof activeBus.lat === "number" && !isNaN(activeBus.lat) && typeof activeBus.lng === "number" && !isNaN(activeBus.lng)) 
-      ? { lat: activeBus.lat, lng: activeBus.lng } 
-      : null;
-  }, [isActive, activeBus]);
-  const presentCount = useMemo(() => Object.values(attendanceLog).filter(v=>v==="present").length, [attendanceLog]);
-  const totalCount   = useMemo(() => Object.values(attendanceLog).length, [attendanceLog]);
-  const pct          = useMemo(() => totalCount>0?Math.round(presentCount/totalCount*100):0, [presentCount, totalCount]);
-
-  const handleTabChange = useCallback(v => setTab(v), []);
-  const handleRouteSelect = useCallback(r => setSelected(r), []);
 
   if (checkingSub) {
     return (
