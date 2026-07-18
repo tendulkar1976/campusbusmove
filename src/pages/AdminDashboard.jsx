@@ -545,11 +545,11 @@ export default function AdminDashboard() {
   }, []);
 
   function loadRoutes() {
-    getDocs(collection(db, "routes")).then(snap => setRoutes(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    getDocs(collection(db, "routes")).then(snap => setRoutes(snap.docs.map(d => ({ id: d.id, ...d.data() })))).catch(err => console.warn("Failed to load routes:", err));
   }
 
   function loadUsers() {
-    getDocs(collection(db, "users")).then(snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    getDocs(collection(db, "users")).then(snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })))).catch(err => console.warn("Failed to load users:", err));
   }
 
   useEffect(() => {

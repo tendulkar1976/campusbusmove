@@ -280,7 +280,7 @@ export default function StudentDashboard() {
         const r = routes.find(x => x.id === snap.data().routeId);
         if (r) { setMyRoute(r); setSelected(r); }
       }
-    });
+    }).catch(err => console.warn("Failed to fetch assigned route:", err));
   }, [user, routes]);
 
   // ── Load drivers for the campus ──
@@ -315,7 +315,7 @@ export default function StudentDashboard() {
     const today = getTodayStr();
     getDocs(query(collection(db,"attendance"), where("studentId","==",user.uid), where("date","==",today))).then(snap => {
       if (!snap.empty) { const d=snap.docs[0].data(); markedDateRef.current=today; setAttendanceStatus(d.status); setAttendanceLog(p=>({...p,[today]:d.status})); }
-    });
+    }).catch(err => console.warn("Failed to check today's attendance:", err));
   }, [user]);
 
   // ── Listen for Driver Change alerts ──
@@ -395,7 +395,7 @@ export default function StudentDashboard() {
     if (!user||tab!=="attendance") return;
     getDocs(query(collection(db,"attendance"),where("studentId","==",user.uid))).then(snap=>{
       const log={}; snap.docs.forEach(d=>{const x=d.data();log[x.date]=x.status;}); setAttendanceLog(log);
-    });
+    }).catch(err => console.warn("Failed to load attendance logs:", err));
   }, [user, tab]);
 
   if (checkingSub) {
