@@ -23,7 +23,7 @@ const PLANS = {
     color: "#FF5A1F",
     monthly: 5000,
     yearly: 54000,
-    limits: { routes: 5, students: 200 }
+    limits: { routes: 3, students: 100 }
   },
   premium: {
     id: "premium",

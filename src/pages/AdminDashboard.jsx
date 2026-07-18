@@ -25,10 +25,10 @@ const PLANS = {
       "Live GPS tracking",
       "Student dashboard",
       "3 routes max",
-      "50 students max",
+      "100 students max",
       "Basic admin panel",
     ],
-    limits: { routes: 3, students: 50 },
+    limits: { routes: 3, students: 100 },
   },
   premium: {
     id: "premium",
