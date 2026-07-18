@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
@@ -18,7 +18,14 @@ const secondaryApp = initializeApp(firebaseConfig, "secondary");
 
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
-export const db = getFirestore(app);
+
+// Enable persistent local IndexedDB cache for instant data loads
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
+
 export const rtdb = getDatabase(app);
 
 import { collection, addDoc } from "firebase/firestore";

@@ -1,16 +1,14 @@
-import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PermissionsGate from "./components/PermissionsGate";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Lazy load every dashboard — login renders instantly, dashboards load in parallel
-const Login           = lazy(() => import("./pages/Login"));
-const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
-const DriverDashboard  = lazy(() => import("./pages/DriverDashboard"));
-const AdminDashboard   = lazy(() => import("./pages/AdminDashboard"));
-const SuperadminDashboard = lazy(() => import("./pages/SuperadminDashboard"));
+import Login from "./pages/Login";
+import StudentDashboard from "./pages/StudentDashboard";
+import DriverDashboard from "./pages/DriverDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import SuperadminDashboard from "./pages/SuperadminDashboard";
 
 function Spinner() {
   const { t } = useTheme();
@@ -40,37 +38,35 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Suspense fallback={<Spinner />}>
-            <Routes>
-              <Route path="/login"   element={<Login />} />
-              <Route path="/"        element={<RoleRedirect />} />
-              <Route path="/student" element={
-                <ProtectedRoute allowedRoles={["student", "teacher"]}>
-                  <PermissionsGate>
-                    <StudentDashboard />
-                  </PermissionsGate>
-                </ProtectedRoute>
-              }/>
-              <Route path="/driver"  element={
-                <ProtectedRoute allowedRoles={["driver"]}>
-                  <PermissionsGate>
-                    <DriverDashboard />
-                  </PermissionsGate>
-                </ProtectedRoute>
-              }/>
-              <Route path="/admin"   element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }/>
-              <Route path="/superadmin" element={
-                <ProtectedRoute allowedRoles={["superadmin"]}>
-                  <SuperadminDashboard />
-                </ProtectedRoute>
-              }/>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+          <Routes>
+            <Route path="/login"   element={<Login />} />
+            <Route path="/"        element={<RoleRedirect />} />
+            <Route path="/student" element={
+              <ProtectedRoute allowedRoles={["student", "teacher"]}>
+                <PermissionsGate>
+                  <StudentDashboard />
+                </PermissionsGate>
+              </ProtectedRoute>
+            }/>
+            <Route path="/driver"  element={
+              <ProtectedRoute allowedRoles={["driver"]}>
+                <PermissionsGate>
+                  <DriverDashboard />
+                </PermissionsGate>
+              </ProtectedRoute>
+            }/>
+            <Route path="/admin"   element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }/>
+            <Route path="/superadmin" element={
+              <ProtectedRoute allowedRoles={["superadmin"]}>
+                <SuperadminDashboard />
+              </ProtectedRoute>
+            }/>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
