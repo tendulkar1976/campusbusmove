@@ -181,6 +181,9 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
   const [routeSearch, setRouteSearch] = useState("");
+  const [editingPassId, setEditingPassId] = useState(null);
+  const [editMonth, setEditMonth] = useState("December");
+  const [editYear, setEditYear] = useState(new Date().getFullYear());
 
   // Override control refs & states
   const overrideIntervalsRef = useRef({});
@@ -743,6 +746,19 @@ export default function AdminDashboard() {
   async function changeRole(uid, role) {
     await updateDoc(doc(db, "users", uid), { role });
     setUsers(u => u.map(x => x.id === uid ? { ...x, role } : x));
+  }
+
+  async function savePassValidity(uid) {
+    try {
+      await updateDoc(doc(db, "users", uid), {
+        validityMonth: editMonth,
+        validityYear: parseInt(editYear) || new Date().getFullYear()
+      });
+      setUsers(prev => prev.map(usr => usr.id === uid ? { ...usr, validityMonth: editMonth, validityYear: parseInt(editYear) || new Date().getFullYear() } : usr));
+      setEditingPassId(null);
+    } catch (err) {
+      alert("Failed to update validity: " + err.message);
+    }
   }
 
   async function selectPlan(planId) {
@@ -1664,17 +1680,44 @@ export default function AdminDashboard() {
                           <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4, fontFamily: "monospace" }}>
                             {u.username ? `username: ${u.username}` : u.phone ? `phone: ${u.phone}` : u.email}
                           </div>
+                          {u.role === "student" && (
+                            <div style={{ fontSize: 11, color: t.textSub, fontWeight: 600, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                              🗓 Pass Validity: <span style={{ color: t.accent, fontWeight: 700 }}>{u.validityMonth || "December"} {u.validityYear || 2026}</span>
+                            </div>
+                          )}
                         </div>
                         <span style={S.rolePill(u.role)}>{u.role}</span>
                       </div>
 
                       {u.id !== user?.uid && (
-                        <div style={{ display: "flex", gap: 8, width: "100%", borderTop: `1.5px solid ${t.border}`, paddingTop: 10 }}>
+                        <div style={{ display: "flex", gap: 8, width: "100%", borderTop: `1.5px solid ${t.border}`, paddingTop: 10, flexWrap: "wrap" }}>
                           <button onClick={() => u.blocked ? unblockUser(u.id) : setConfirmId({ id: u.id, action: "block" })} style={S.blockBtn(u.blocked)}>
                             {u.blocked ? "✓ Unblock" : "⊘ Block User"}
                           </button>
+                          {u.role === "student" && (
+                            <button
+                              onClick={() => {
+                                setEditingPassId(u.id);
+                                setEditMonth(u.validityMonth || "December");
+                                setEditYear(u.validityYear || new Date().getFullYear());
+                              }}
+                              style={{
+                                background: "none",
+                                border: `1.5px solid ${t.border}`,
+                                borderRadius: 8,
+                                padding: "4px 10px",
+                                color: t.accent,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                fontFamily: "'Inter', sans-serif"
+                              }}
+                            >
+                              ✏ Edit Pass
+                            </button>
+                          )}
                           <select value={u.role} onChange={e => changeRole(u.id, e.target.value)}
-                            style={{ flex: 1, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "4px 10px", color: t.textSub, fontSize: 11, fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
+                            style={{ flex: 1, background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "4px 10px", color: t.textSub, fontSize: 11, fontFamily: "'Inter', sans-serif", cursor: "pointer", minWidth: 80 }}>
                             <option value="student">Student</option>
                             <option value="teacher">Faculty</option>
                             <option value="driver">Driver</option>
@@ -1682,6 +1725,30 @@ export default function AdminDashboard() {
                             {role === "superadmin" && <option value="superadmin">Super Admin</option>}
                           </select>
                           <button onClick={() => setConfirmId({ id: u.id, action: "delete" })} style={S.delBtn}>🗑 Delete</button>
+                        </div>
+                      )}
+
+                      {editingPassId === u.id && (
+                        <div style={{ width: "100%", background: dark ? t.inputBg : t.bgCard2, border: `1.5px solid ${t.border}`, borderRadius: 12, padding: "14px", marginTop: 4 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: t.text, marginBottom: 10 }}>Update Student Pass Expiry</div>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+                            <select value={editMonth} onChange={e => setEditMonth(e.target.value)} style={{ flex: 1, height: 38, background: dark ? "#111827" : "#fff", border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "0 10px", color: t.textSub, fontSize: 12, fontFamily: "'Inter', sans-serif" }}>
+                              {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                            </select>
+                            <input type="number" value={editYear} onChange={e => setEditYear(e.target.value)} style={{ width: 90, height: 38, background: dark ? "#111827" : "#fff", border: `1.5px solid ${t.border}`, borderRadius: 8, padding: "0 10px", color: t.textSub, fontSize: 12, fontFamily: "'Inter', sans-serif" }} placeholder="Year" />
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => savePassValidity(u.id)}
+                              style={{ flex: 1, background: t.accent, border: "none", borderRadius: 10, padding: "10px 0", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                              Save Expiry
+                            </button>
+                            <button onClick={() => setEditingPassId(null)}
+                              style={{ flex: 1, background: "none", border: `1.5px solid ${t.border}`, borderRadius: 10, padding: "10px 0", color: t.textSub, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       )}
 
