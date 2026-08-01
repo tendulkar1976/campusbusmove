@@ -118,14 +118,34 @@ export default function StudentDashboard() {
   const { user, campusId, logout } = useAuth();
   const { dark, toggle, t } = useTheme();
 
-  const [subExpired, setSubExpired] = useState(false);
-  const [checkingSub, setCheckingSub] = useState(true);
+  const [subExpired, setSubExpired] = useState(() => {
+    return localStorage.getItem("cm_sub_expired") === "true";
+  });
+  const [checkingSub, setCheckingSub] = useState(() => {
+    const cached = localStorage.getItem("cm_routes_cache");
+    return !cached;
+  });
   const [tab, setTab]               = useState("track");
   const [globalAnnouncement, setGlobalAnnouncement] = useState(null);
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [myRoute, setMyRoute]       = useState(null);
-  const [routes, setRoutes]         = useState([]);
-  const [selected, setSelected]     = useState(null);
+  const [routes, setRoutes]         = useState(() => {
+    try {
+      const cached = localStorage.getItem("cm_routes_cache");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [selected, setSelected]     = useState(() => {
+    try {
+      const cached = localStorage.getItem("cm_routes_cache");
+      const list = cached ? JSON.parse(cached) : [];
+      return list.length ? list[0] : null;
+    } catch {
+      return null;
+    }
+  });
   const [drivers, setDrivers]       = useState({});
   const [liveBuses, setLiveBuses]   = useState({});
   const [myLocation, setMyLocation] = useState(null);
@@ -136,7 +156,10 @@ export default function StudentDashboard() {
   const [inGeofence, setInGeofence] = useState(false);
   const [calMonth, setCalMonth]     = useState(new Date().getMonth());
   const [calYear, setCalYear]       = useState(new Date().getFullYear());
-  const [loading, setLoading]       = useState(!routeCache);
+  const [loading, setLoading]       = useState(() => {
+    const cached = localStorage.getItem("cm_routes_cache");
+    return !cached;
+  });
   const [activeAlert, setActiveAlert] = useState(null);
 
   const geofenceTimerRef = useRef(null);
@@ -222,23 +245,26 @@ export default function StudentDashboard() {
       setCheckingSub(false);
       return;
     }
-    setCheckingSub(true);
+    const cachedRoutes = localStorage.getItem("cm_routes_cache");
+    if (!cachedRoutes) {
+      setCheckingSub(true);
+    }
     getDoc(doc(db, "subscriptions", campusId)).then(snap => {
       if (snap.exists()) {
         const data = snap.data();
         const expiry = data.expiryDate || 0;
         const daysLeft = Math.max(0, Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24)));
-        if (daysLeft === 0) {
-          setSubExpired(true);
-        } else {
-          setSubExpired(false);
-        }
+        const expired = daysLeft === 0;
+        setSubExpired(expired);
+        localStorage.setItem("cm_sub_expired", expired ? "true" : "false");
       } else {
         setSubExpired(true);
+        localStorage.setItem("cm_sub_expired", "true");
       }
       setCheckingSub(false);
     }).catch(() => {
-      setSubExpired(true);
+      const cachedExpired = localStorage.getItem("cm_sub_expired") === "true";
+      setSubExpired(cachedExpired);
       setCheckingSub(false);
     });
   }, [campusId]);
@@ -263,13 +289,30 @@ export default function StudentDashboard() {
 
   // ── Load routes ──
   useEffect(() => {
-    if (routeCache) { setRoutes(routeCache); setSelected(routeCache[0]); setLoading(false); return; }
+    if (routeCache) { 
+      setRoutes(routeCache); 
+      if (routeCache.length) setSelected(routeCache[0]); 
+      setLoading(false); 
+      return; 
+    }
     getDocs(collection(db, "routes")).then(snap => {
       const r = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       routeCache = r;
-      setRoutes(r); if (r.length) setSelected(r[0]);
+      setRoutes(r);
+      if (r.length) setSelected(r[0]);
+      localStorage.setItem("cm_routes_cache", JSON.stringify(r));
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      try {
+        const cached = localStorage.getItem("cm_routes_cache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setRoutes(parsed);
+          if (parsed.length) setSelected(parsed[0]);
+        }
+      } catch {}
+      setLoading(false);
+    });
   }, []);
 
   // ── Assigned route ──
