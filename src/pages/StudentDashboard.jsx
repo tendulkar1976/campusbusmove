@@ -1125,8 +1125,6 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
       if (profile.role === "student") {
         updates.program = form.program.trim();
         updates.pickupPoint = form.pickupPoint.trim();
-        updates.validityMonth = form.validityMonth;
-        updates.validityYear = parseInt(form.validityYear) || new Date().getFullYear();
         updates.routeId = form.routeId;
       } else if (profile.role === "teacher") {
         updates.department = form.department.trim();
@@ -1408,16 +1406,16 @@ const ProfileView = memo(function ProfileView({ user, routes, t, dark }) {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Validity Month</label>
-                  <select name="validityMonth" value={form.validityMonth} onChange={handleChange} style={{ ...inputStyle, height: 46, padding: "0 16px" }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Validity Month (Locked)</label>
+                  <select name="validityMonth" value={form.validityMonth} disabled style={{ ...inputStyle, height: 46, padding: "0 16px", opacity: 0.65, cursor: "not-allowed", background: dark ? "#111827" : "#F3F4F6" }}>
                     {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Validity Year</label>
-                  <input type="number" name="validityYear" value={form.validityYear} onChange={handleChange} style={inputStyle} placeholder="Year" />
+                  <label style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase" }}>Validity Year (Locked)</label>
+                  <input type="number" name="validityYear" value={form.validityYear} disabled style={{ ...inputStyle, opacity: 0.65, cursor: "not-allowed", background: dark ? "#111827" : "#F3F4F6" }} placeholder="Year" />
                 </div>
               </div>
 
