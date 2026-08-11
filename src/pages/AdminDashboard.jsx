@@ -204,20 +204,23 @@ export default function AdminDashboard() {
     const list = [];
     routes.forEach(route => {
       const live = liveBuses[route.id]?.live;
-      if (live && live.active === true) {
+      if (live && live.active === true && typeof live.lat === "number" && !isNaN(live.lat) && typeof live.lng === "number" && !isNaN(live.lng)) {
+        const isCurrent = route.id === selectedLiveRoute?.id;
         list.push({
           routeId: route.id,
           routeName: route.name,
           lat: live.lat,
           lng: live.lng,
-          speed: live.speed,
-          heading: live.heading,
-          lastUpdate: live.lastUpdate
+          speed: live.speed || 0,
+          heading: live.heading || 0,
+          moving: (live.speed || 0) > 0,
+          lastUpdate: live.lastUpdate,
+          isCurrent
         });
       }
     });
     return list;
-  }, [routes, liveBuses]);
+  }, [routes, liveBuses, selectedLiveRoute?.id]);
 
   // Override control refs & states
   const overrideIntervalsRef = useRef({});

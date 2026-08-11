@@ -224,6 +224,12 @@ const LeafletMapView = memo(function LeafletMapView({ activeBuses, busLocation, 
     }).addTo(mapInstance.current);
   }, [routePath]);
 
+  useEffect(() => {
+    if (mapInstance.current && center && center.length === 2 && typeof center[0] === "number" && !isNaN(center[0]) && typeof center[1] === "number" && !isNaN(center[1])) {
+      mapInstance.current.setView(center, 15);
+    }
+  }, [center]);
+
   // Main active buses and user location rendering
   useEffect(() => {
     if (!mapInstance.current) return;
@@ -415,6 +421,13 @@ const GoogleMapView = memo(function GoogleMapView({ activeBuses, busLocation, bu
     });
     routePolyline.current.setMap(mapInstance.current);
   }, [routePath]);
+
+  useEffect(() => {
+    if (mapInstance.current && center && center.length === 2 && typeof center[0] === "number" && !isNaN(center[0]) && typeof center[1] === "number" && !isNaN(center[1])) {
+      mapInstance.current.setCenter({ lat: center[0], lng: center[1] });
+      mapInstance.current.setZoom(15);
+    }
+  }, [center]);
 
   // Main active buses and user location rendering
   useEffect(() => {
