@@ -5,6 +5,7 @@ import { db, rtdb, secondaryAuth, logActivity } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword } from "firebase/auth";
+import MapView from "../components/MapView";
 
 const PRESET_ROUTES = [
   { id: "route-1", name: "Route 1", label: "North Gate Loop" },
@@ -184,6 +185,39 @@ export default function AdminDashboard() {
   const [editingPassId, setEditingPassId] = useState(null);
   const [editMonth, setEditMonth] = useState("December");
   const [editYear, setEditYear] = useState(new Date().getFullYear());
+
+  const [liveBuses, setLiveBuses] = useState({});
+  const [selectedLiveRoute, setSelectedLiveRoute] = useState(null);
+
+  useEffect(() => {
+    const unsub = onValue(ref(rtdb, "routes"), snap => {
+      if (snap.exists()) {
+        setLiveBuses(snap.val());
+      } else {
+        setLiveBuses({});
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const activeBusesList = useMemo(() => {
+    const list = [];
+    routes.forEach(route => {
+      const live = liveBuses[route.id]?.live;
+      if (live && live.active === true) {
+        list.push({
+          routeId: route.id,
+          routeName: route.name,
+          lat: live.lat,
+          lng: live.lng,
+          speed: live.speed,
+          heading: live.heading,
+          lastUpdate: live.lastUpdate
+        });
+      }
+    });
+    return list;
+  }, [routes, liveBuses]);
 
   // Override control refs & states
   const overrideIntervalsRef = useRef({});
@@ -1030,6 +1064,16 @@ export default function AdminDashboard() {
       )
     },
     {
+      id: "live",
+      label: "Live Tracking",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <circle cx="12" cy="12" r="10" />
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+        </svg>
+      )
+    },
+    {
       id: "routes",
       label: "Routes",
       icon: (color) => (
@@ -1412,6 +1456,129 @@ export default function AdminDashboard() {
               >
                 ✕
               </button>
+            </div>
+          )}
+
+          {/* ══════════════ LIVE TRACKING TAB ══════════════ */}
+          {tab === "live" && (
+            <div style={{ display: "flex", flexDirection: window.innerWidth < 768 ? "column" : "row", gap: 20, minHeight: "calc(100vh - 120px)" }}>
+              {/* Sidebar - Route List */}
+              <div style={{ flex: "0 0 320px", display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={S.card}>
+                  <div style={S.cardHead}>
+                    <span style={S.cardLabel}>All Bus Routes ({routes.length})</span>
+                  </div>
+                  <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10, maxHeight: "60vh", overflowY: "auto" }}>
+                    {routes.length === 0 ? (
+                      <div style={{ padding: 20, color: t.textMuted, fontSize: 13, textAlign: "center" }}>No routes available</div>
+                    ) : (
+                      routes.map(r => {
+                        const live = liveBuses[r.id]?.live;
+                        const isActive = live && live.active === true;
+                        const isSelected = selectedLiveRoute?.id === r.id;
+
+                        return (
+                          <div 
+                            key={r.id} 
+                            onClick={() => setSelectedLiveRoute(r)}
+                            style={{
+                              padding: 12,
+                              borderRadius: 10,
+                              background: isSelected ? (dark ? "#1F2937" : "#F3F4F6") : "transparent",
+                              border: `1.5px solid ${isSelected ? t.accent : (dark ? "#374151" : "#E5E7EB")}`,
+                              cursor: "pointer",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{r.name}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ 
+                                  width: 8, 
+                                  height: 8, 
+                                  borderRadius: "50%", 
+                                  background: isActive ? "#10B981" : "#9CA3AF",
+                                  boxShadow: isActive ? "0 0 8px #10B981" : "none"
+                                }} />
+                                <span style={{ fontSize: 11, fontWeight: 600, color: isActive ? "#10B981" : t.textMuted }}>
+                                  {isActive ? "LIVE" : "Offline"}
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 12, color: t.textMuted, marginTop: 4 }}>{r.description || "No description loop"}</div>
+                            {isActive && (
+                              <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: t.textSub, background: dark ? "#111827" : "#fff", padding: "6px 10px", borderRadius: 6 }}>
+                                <span>Speed: <strong>{live.speed || 0} km/h</strong></span>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedLiveRoute(r);
+                                  }}
+                                  style={{
+                                    background: t.accent,
+                                    border: "none",
+                                    borderRadius: 4,
+                                    padding: "2px 6px",
+                                    color: "#fff",
+                                    fontWeight: 700,
+                                    fontSize: 10,
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  🎯 Center
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Content - Map View */}
+              <div style={{ flex: 1, minHeight: 450, display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ ...S.card, flex: 1, position: "relative", minHeight: 450, display: "flex", flexDirection: "column" }}>
+                  <div style={{ ...S.cardHead, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={S.cardLabel}>
+                      {selectedLiveRoute ? `Route: ${selectedLiveRoute.name}` : "System Live Traffic"}
+                    </span>
+                    {selectedLiveRoute && (
+                      <button 
+                        onClick={() => setSelectedLiveRoute(null)}
+                        style={{
+                          background: "none",
+                          border: `1.5px solid ${t.border}`,
+                          borderRadius: 8,
+                          padding: "4px 10px",
+                          color: t.textSub,
+                          fontSize: 11,
+                          cursor: "pointer",
+                          fontFamily: "'Inter', sans-serif"
+                        }}
+                      >
+                        Reset Map View
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, position: "relative", background: dark ? "#111827" : "#F3F4F6", borderRadius: "0 0 16px 16px", overflow: "hidden", minHeight: 400 }}>
+                    <MapView 
+                      activeBuses={activeBusesList} 
+                      routePath={selectedLiveRoute?.path?.map(p=>[p.lat,p.lng])} 
+                      center={
+                        selectedLiveRoute 
+                          ? (liveBuses[selectedLiveRoute.id]?.live?.active 
+                              ? [liveBuses[selectedLiveRoute.id].live.lat, liveBuses[selectedLiveRoute.id].live.lng]
+                              : (selectedLiveRoute.center ? [selectedLiveRoute.center.lat, selectedLiveRoute.center.lng] : null))
+                          : null
+                      }
+                      myLocation={null} 
+                      dark={dark} 
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
