@@ -1538,49 +1538,54 @@ export default function AdminDashboard() {
               </div>
 
               {/* Main Content - Map View */}
-              <div style={{ flex: 1, minHeight: 450, display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ ...S.card, flex: 1, position: "relative", minHeight: 450, display: "flex", flexDirection: "column" }}>
-                  <div style={{ ...S.cardHead, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={S.cardLabel}>
-                      {selectedLiveRoute ? `Route: ${selectedLiveRoute.name}` : "System Live Traffic"}
-                    </span>
-                    {selectedLiveRoute && (
-                      <button 
-                        onClick={() => setSelectedLiveRoute(null)}
-                        style={{
-                          background: "none",
-                          border: `1.5px solid ${t.border}`,
-                          borderRadius: 8,
-                          padding: "4px 10px",
-                          color: t.textSub,
-                          fontSize: 11,
-                          cursor: "pointer",
-                          fontFamily: "'Inter', sans-serif"
-                        }}
-                      >
-                        Reset Map View
-                      </button>
-                    )}
+              {(() => {
+                const mapHeight = window.innerWidth < 768 ? 350 : 450;
+                return (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div style={{ ...S.card, flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
+                      <div style={{ ...S.cardHead, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={S.cardLabel}>
+                          {selectedLiveRoute ? `Route: ${selectedLiveRoute.name}` : "System Live Traffic"}
+                        </span>
+                        {selectedLiveRoute && (
+                          <button 
+                            onClick={() => setSelectedLiveRoute(null)}
+                            style={{
+                              background: "none",
+                              border: `1.5px solid ${t.border}`,
+                              borderRadius: 8,
+                              padding: "4px 10px",
+                              color: t.textSub,
+                              fontSize: 11,
+                              cursor: "pointer",
+                              fontFamily: "'Inter', sans-serif"
+                            }}
+                          >
+                            Reset Map View
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ position: "relative", background: dark ? "#111827" : "#F3F4F6", borderRadius: "0 0 16px 16px", overflow: "hidden", height: mapHeight }}>
+                        <MapView 
+                          activeBuses={activeBusesList} 
+                          routePath={selectedLiveRoute?.path?.map(p=>[p.lat,p.lng])} 
+                          center={
+                            selectedLiveRoute 
+                              ? (liveBuses[selectedLiveRoute.id]?.live?.active 
+                                  ? [liveBuses[selectedLiveRoute.id].live.lat, liveBuses[selectedLiveRoute.id].live.lng]
+                                  : (selectedLiveRoute.center ? [selectedLiveRoute.center.lat, selectedLiveRoute.center.lng] : null))
+                              : null
+                          }
+                          myLocation={null} 
+                          dark={dark} 
+                          height={mapHeight}
+                          borderRadius={0}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ flex: 1, position: "relative", background: dark ? "#111827" : "#F3F4F6", borderRadius: "0 0 16px 16px", overflow: "hidden", minHeight: 400 }}>
-                    <MapView 
-                      activeBuses={activeBusesList} 
-                      routePath={selectedLiveRoute?.path?.map(p=>[p.lat,p.lng])} 
-                      center={
-                        selectedLiveRoute 
-                          ? (liveBuses[selectedLiveRoute.id]?.live?.active 
-                              ? [liveBuses[selectedLiveRoute.id].live.lat, liveBuses[selectedLiveRoute.id].live.lng]
-                              : (selectedLiveRoute.center ? [selectedLiveRoute.center.lat, selectedLiveRoute.center.lng] : null))
-                          : null
-                      }
-                      myLocation={null} 
-                      dark={dark} 
-                      height="100%"
-                      borderRadius={0}
-                    />
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           )}
 
