@@ -567,7 +567,7 @@ const GoogleMapView = memo(function GoogleMapView({ activeBuses, busLocation, bu
 });
 
 // ── Main MapView Wrapper ──
-const MapView = memo(function MapView({ activeBuses, busLocation, busMoving, routePath, center, myLocation, dark = true }) {
+const MapView = memo(function MapView({ activeBuses, busLocation, busMoving, routePath, center, myLocation, dark = true, height = 300, borderRadius = 14 }) {
   const [useGoogleMaps, setUseGoogleMaps] = useState(false);
   const [sdkLoading, setSdkLoading] = useState(false);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -592,7 +592,7 @@ const MapView = memo(function MapView({ activeBuses, busLocation, busMoving, rou
   }, [apiKey]);
 
   return (
-    <div style={{ width: "100%", height: 300, zIndex: 0, borderRadius: 14, contain: "strict", background: dark ? "#0B0F19" : "#F1F5F9" }}>
+    <div style={{ width: "100%", height, zIndex: 0, borderRadius, contain: "strict", background: dark ? "#0B0F19" : "#F1F5F9" }}>
       {sdkLoading ? (
         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: dark ? "#4B5563" : "#9CA3AF" }}>
           <div style={{ width: 24, height: 24, border: `2.5px solid ${dark ? "#1F2937" : "#E5E7EB"}`, borderTopColor: "#FF5A1F", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />

@@ -1575,6 +1575,8 @@ export default function AdminDashboard() {
                       }
                       myLocation={null} 
                       dark={dark} 
+                      height="100%"
+                      borderRadius={0}
                     />
                   </div>
                 </div>
