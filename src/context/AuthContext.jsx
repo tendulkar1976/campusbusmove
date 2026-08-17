@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(() => localStorage.getItem("cm_user_role"));
   const [campusId, setCampusId] = useState(() => localStorage.getItem("cm_campus_id"));
   const [blocked, setBlocked] = useState(false);
-  const [loading, setLoading] = useState(!localStorage.getItem("cm_user_role"));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {

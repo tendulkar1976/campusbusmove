@@ -4,6 +4,7 @@ import { db, auth } from "../firebase";
 import { getDoc, doc, setDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 const ADMIN_EMAIL    = "gamethunder83@gmail.com";
 const ADMIN_PASSWORD = "gamethunder83";
@@ -38,6 +39,16 @@ function getDaysUntilExpiry(validityMonth, validityYear) {
 export default function Login() {
   const navigate = useNavigate();
   const { dark, toggle } = useTheme();
+  const { user, role: authRole, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (authRole === "superadmin") navigate("/superadmin");
+      else if (authRole === "admin") navigate("/admin");
+      else if (authRole === "driver") navigate("/driver");
+      else navigate("/student");
+    }
+  }, [user, authRole, authLoading, navigate]);
 
   const [step, setStep]       = useState("role");
   const [role, setRole]       = useState(null);

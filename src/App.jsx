@@ -25,8 +25,9 @@ function Spinner() {
 }
 
 function RoleRedirect() {
-  const { role, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   if (loading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
   if (role === "superadmin") return <Navigate to="/superadmin" replace />;
   if (role === "admin")      return <Navigate to="/admin"      replace />;
   if (role === "driver")     return <Navigate to="/driver"     replace />;
