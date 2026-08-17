@@ -91,6 +91,72 @@ export default function SuperadminDashboard() {
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [liveRoutes, setLiveRoutes] = useState({});
   const [routesList, setRoutesList] = useState([]);
+  const [clearing, setClearing] = useState({});
+
+  const clearHistory = async (type) => {
+    let msg = "";
+    if (type === "billing") msg = "ALL SaaS billing and payment transaction history";
+    else if (type === "trips") msg = "ALL driver trip and route dispatch history";
+    else if (type === "faculty_attendance") msg = "ALL faculty/teacher auto-attendance history logs";
+    else if (type === "student_attendance") msg = "ALL student boarding & attendance history logs";
+
+    if (!window.confirm(`⚠️ WARNING: Are you absolutely sure you want to permanently clear ${msg}? This will delete all records from Firestore and cannot be undone.`)) {
+      return;
+    }
+
+    setClearing(prev => ({ ...prev, [type]: true }));
+    try {
+      if (type === "billing") {
+        const snap = await getDocs(collection(db, "payments"));
+        const batchSize = 100;
+        for (let i = 0; i < snap.docs.length; i += batchSize) {
+          const batch = snap.docs.slice(i, i + batchSize);
+          await Promise.all(batch.map(d => deleteDoc(doc(db, "payments", d.id))));
+        }
+        setPaymentsList([]);
+        await logActivity("Database Cleared", "Superadmin cleared payments and billing transactions history.", "global");
+        alert("Billing transaction history cleared successfully!");
+      } else if (type === "trips") {
+        const snap = await getDocs(collection(db, "trips"));
+        const batchSize = 100;
+        for (let i = 0; i < snap.docs.length; i += batchSize) {
+          const batch = snap.docs.slice(i, i + batchSize);
+          await Promise.all(batch.map(d => deleteDoc(doc(db, "trips", d.id))));
+        }
+        await logActivity("Database Cleared", "Superadmin cleared driver trip history logs.", "global");
+        alert("Driver trip history cleared successfully!");
+      } else if (type === "student_attendance" || type === "faculty_attendance") {
+        const snap = await getDocs(collection(db, "attendance"));
+        
+        // Map user IDs to roles for fast checks
+        const userRoles = {};
+        usersList.forEach(u => {
+          userRoles[u.id] = u.role;
+        });
+
+        const targetRole = type === "student_attendance" ? "student" : "teacher";
+        const matchingDocs = snap.docs.filter(d => {
+          const userId = d.data().studentId;
+          const role = userRoles[userId];
+          return role === targetRole || (targetRole === "student" && !role);
+        });
+
+        const batchSize = 100;
+        for (let i = 0; i < matchingDocs.length; i += batchSize) {
+          const batch = matchingDocs.slice(i, i + batchSize);
+          await Promise.all(batch.map(d => deleteDoc(doc(db, "attendance", d.id))));
+        }
+
+        await logActivity("Database Cleared", `Superadmin cleared ${targetRole} auto-attendance history logs.`, "global");
+        alert(`${targetRole === "student" ? "Student" : "Faculty"} auto-attendance history cleared successfully!`);
+      }
+    } catch (err) {
+      console.error(`Failed to clear ${type} logs:`, err);
+      alert(`Failed to clear logs: ${err.message}`);
+    } finally {
+      setClearing(prev => ({ ...prev, [type]: false }));
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -523,6 +589,17 @@ export default function SuperadminDashboard() {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
           <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+      )
+    },
+    {
+      id: "database",
+      label: "Database Cleanup",
+      icon: (color) => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 0.2s" }}>
+          <path d="M12 2c-5.523 0-10 1.79-10 4v12c0 2.21 4.477 4 10 4s10-1.79 10-4v-12c0-2.21-4.477-4-10-4z" />
+          <path d="M22 6c0 2.21-4.477 4-10 4s-10-1.79-10-4" />
+          <path d="M2 12c0 2.21 4.477 4 10 4s10-1.79 10-4" />
         </svg>
       )
     }
@@ -1957,6 +2034,154 @@ export default function SuperadminDashboard() {
                     </tbody>
                   </table>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DATABASE CLEANUP */}
+          {tab === "database" && (
+            <div className="animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={S.card}>
+                <div style={{ padding: "18px 24px", borderBottom: `1.5px solid ${t.border}` }}>
+                  <span style={{ fontSize: "13px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px" }}>🧹 Database Management & Cleanup</span>
+                  <p style={{ margin: "6px 0 0 0", fontSize: "12px", color: t.textMuted }}>Permanently delete application logs and transactional histories from Firestore. Use with extreme caution.</p>
+                </div>
+                
+                <div style={{ padding: "24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+                  
+                  {/* SaaS Billing History Card */}
+                  <div style={{ padding: "20px", border: `1.5px solid ${t.border}`, borderRadius: "16px", background: dark ? "#1F2937" : "#F9FAFB", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: 800, color: t.text }}>
+                        <span>💳</span> SaaS Billing & Invoices
+                      </div>
+                      <p style={{ fontSize: "12px", color: t.textMuted, marginTop: "8px", lineHeight: "1.5" }}>
+                        Deletes all logs inside the <code>payments</code> collection. This clears the billing transaction history list shown on both the Admin and Superadmin dashboards.
+                      </p>
+                      <div style={{ marginTop: "10px", padding: "6px 10px", background: "#FEF2F2", border: "1px solid #FEE2E2", borderRadius: "8px", fontSize: "10px", fontWeight: 600, color: "#DC2626" }}>
+                        ⚠️ Affects Billing history lists.
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => clearHistory("billing")}
+                      disabled={clearing["billing"]}
+                      style={{
+                        width: "100%",
+                        background: clearing["billing"] ? "#FDA4AF" : "rgba(239, 68, 68, 0.15)",
+                        border: `1.5px solid ${clearing["billing"] ? "transparent" : "#EF4444"}`,
+                        borderRadius: "10px",
+                        padding: "10px",
+                        color: "#EF4444",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: clearing["billing"] ? "not-allowed" : "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      {clearing["billing"] ? "Clearing..." : "Clear SaaS Billing History"}
+                    </button>
+                  </div>
+
+                  {/* Driver Trip History Card */}
+                  <div style={{ padding: "20px", border: `1.5px solid ${t.border}`, borderRadius: "16px", background: dark ? "#1F2937" : "#F9FAFB", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: 800, color: t.text }}>
+                        <span>🚌</span> Driver Trip History
+                      </div>
+                      <p style={{ fontSize: "12px", color: t.textMuted, marginTop: "8px", lineHeight: "1.5" }}>
+                        Deletes all completed dispatcher logs inside the <code>trips</code> collection. This resets the Completed Trips History lists shown on the Driver dashboards.
+                      </p>
+                      <div style={{ marginTop: "10px", padding: "6px 10px", background: "#FEF2F2", border: "1px solid #FEE2E2", borderRadius: "8px", fontSize: "10px", fontWeight: 600, color: "#DC2626" }}>
+                        ⚠️ Affects Driver dashboards.
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => clearHistory("trips")}
+                      disabled={clearing["trips"]}
+                      style={{
+                        width: "100%",
+                        background: clearing["trips"] ? "#FDA4AF" : "rgba(239, 68, 68, 0.15)",
+                        border: `1.5px solid ${clearing["trips"] ? "transparent" : "#EF4444"}`,
+                        borderRadius: "10px",
+                        padding: "10px",
+                        color: "#EF4444",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: clearing["trips"] ? "not-allowed" : "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      {clearing["trips"] ? "Clearing..." : "Clear Driver Trip History"}
+                    </button>
+                  </div>
+
+                  {/* Faculty Attendance Card */}
+                  <div style={{ padding: "20px", border: `1.5px solid ${t.border}`, borderRadius: "16px", background: dark ? "#1F2937" : "#F9FAFB", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: 800, color: t.text }}>
+                        <span>👔</span> Faculty Attendance History
+                      </div>
+                      <p style={{ fontSize: "12px", color: t.textMuted, marginTop: "8px", lineHeight: "1.5" }}>
+                        Deletes attendance logs inside the <code>attendance</code> collection for users with the <strong>teacher/faculty</strong> role. This resets faculty monthly calendars.
+                      </p>
+                      <div style={{ marginTop: "10px", padding: "6px 10px", background: "#FEF2F2", border: "1px solid #FEE2E2", borderRadius: "8px", fontSize: "10px", fontWeight: 600, color: "#DC2626" }}>
+                        ⚠️ Affects Faculty users.
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => clearHistory("faculty_attendance")}
+                      disabled={clearing["faculty_attendance"]}
+                      style={{
+                        width: "100%",
+                        background: clearing["faculty_attendance"] ? "#FDA4AF" : "rgba(239, 68, 68, 0.15)",
+                        border: `1.5px solid ${clearing["faculty_attendance"] ? "transparent" : "#EF4444"}`,
+                        borderRadius: "10px",
+                        padding: "10px",
+                        color: "#EF4444",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: clearing["faculty_attendance"] ? "not-allowed" : "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      {clearing["faculty_attendance"] ? "Clearing..." : "Clear Faculty Attendance"}
+                    </button>
+                  </div>
+
+                  {/* Student Attendance Card */}
+                  <div style={{ padding: "20px", border: `1.5px solid ${t.border}`, borderRadius: "16px", background: dark ? "#1F2937" : "#F9FAFB", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: 800, color: t.text }}>
+                        <span>🎒</span> Student Attendance History
+                      </div>
+                      <p style={{ fontSize: "12px", color: t.textMuted, marginTop: "8px", lineHeight: "1.5" }}>
+                        Deletes attendance logs inside the <code>attendance</code> collection for users with the <strong>student</strong> role. This resets student monthly calendars.
+                      </p>
+                      <div style={{ marginTop: "10px", padding: "6px 10px", background: "#FEF2F2", border: "1px solid #FEE2E2", borderRadius: "8px", fontSize: "10px", fontWeight: 600, color: "#DC2626" }}>
+                        ⚠️ Affects Student users.
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => clearHistory("student_attendance")}
+                      disabled={clearing["student_attendance"]}
+                      style={{
+                        width: "100%",
+                        background: clearing["student_attendance"] ? "#FDA4AF" : "rgba(239, 68, 68, 0.15)",
+                        border: `1.5px solid ${clearing["student_attendance"] ? "transparent" : "#EF4444"}`,
+                        borderRadius: "10px",
+                        padding: "10px",
+                        color: "#EF4444",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: clearing["student_attendance"] ? "not-allowed" : "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      {clearing["student_attendance"] ? "Clearing..." : "Clear Student Attendance"}
+                    </button>
+                  </div>
+
+                </div>
               </div>
             </div>
           )}
