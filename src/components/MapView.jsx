@@ -111,8 +111,8 @@ const MY_ICON = L.divIcon({
 });
 
 const TILES = {
-  dark:  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+  dark:  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  light: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
 };
 
 // ── Google Maps Themes ──
@@ -190,7 +190,7 @@ const LeafletMapView = memo(function LeafletMapView({ activeBuses, busLocation, 
     });
 
     tileLayer.current = L.tileLayer(dark ? TILES.dark : TILES.light, {
-      subdomains: "abcd",
+      subdomains: "abc",
       maxZoom: 19,
       keepBuffer: 4,
       updateWhenIdle: false,
