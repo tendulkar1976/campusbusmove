@@ -300,7 +300,21 @@ export default function DriverDashboard() {
   useEffect(() => {
     if (!user || tab !== "trips") return;
     getDocs(query(collection(db,"trips"), where("driverUid","==",user.uid))).then(snap => {
-      setTrips(snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.startTime-a.startTime));
+      const now = Date.now();
+      const list = snap.docs.map(d => {
+        const data = d.data();
+        // If trip is marked active in Firestore, but driver is not actively tracking it right now, auto-complete it
+        if (data.status === "active" && (!trackingRef.current || d.id !== tripDocRef.current)) {
+          const calculatedEnd = data.endTime || (data.startTime ? Math.min(now, data.startTime + 15 * 60 * 1000) : now);
+          updateDoc(doc(db, "trips", d.id), {
+            status: "completed",
+            endTime: calculatedEnd
+          }).catch(e => console.warn("Auto-closing orphaned trip:", e));
+          return { id: d.id, ...data, status: "completed", endTime: calculatedEnd };
+        }
+        return { id: d.id, ...data };
+      });
+      setTrips(list.sort((a,b) => b.startTime - a.startTime));
     }).catch(() => setTrips([]));
   }, [user, tab]);
 
@@ -548,6 +562,22 @@ export default function DriverDashboard() {
       } catch (err) {
         console.error("Failed to update Firestore trip status:", err);
       }
+    }
+    // Also sweep any orphaned active trips for this driver
+    try {
+      const snap = await getDocs(query(
+        collection(db, "trips"),
+        where("driverUid", "==", user.uid),
+        where("status", "==", "active")
+      ));
+      snap.forEach(d => {
+        updateDoc(doc(db, "trips", d.id), {
+          endTime: Date.now(),
+          status: "completed"
+        }).catch(() => {});
+      });
+    } catch (e) {
+      console.warn("Orphaned trip cleanup error:", e);
     }
 
     writeToRTDB(lastLat, lastLng, 0, 0, false);

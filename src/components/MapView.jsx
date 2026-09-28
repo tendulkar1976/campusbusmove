@@ -339,7 +339,7 @@ const LeafletMapView = memo(function LeafletMapView({ activeBuses, busLocation, 
     }
   }, [activeBuses, busLocation, busMoving, myLocation]);
 
-  return <div ref={mapRef} style={{ width: "100%", height: "100%", borderRadius: 14 }} />;
+  return <div ref={mapRef} className={dark ? "leaflet-dark-tiles" : ""} style={{ width: "100%", height: "100%", borderRadius: 14 }} />;
 });
 
 // ── Google Map Component ──

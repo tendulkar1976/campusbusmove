@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, onSnapshot, query, where } from "firebase/firestore";
 import { ref, onValue, set } from "firebase/database";
 import { db, rtdb, secondaryAuth, logActivity } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -511,7 +511,7 @@ export default function AdminDashboard() {
     }
   }
 
-  function stopOverride(routeId) {
+  async function stopOverride(routeId) {
     if (overrideIntervalsRef.current[routeId]) {
       clearInterval(overrideIntervalsRef.current[routeId]);
       delete overrideIntervalsRef.current[routeId];
@@ -523,6 +523,23 @@ export default function AdminDashboard() {
       `Admin stopped override/trip for route: ${routeId}`,
       campusId
     );
+
+    // Also close any active Firestore trip document for this route
+    try {
+      const activeTripsSnap = await getDocs(query(
+        collection(db, "trips"),
+        where("routeId", "==", routeId),
+        where("status", "==", "active")
+      ));
+      activeTripsSnap.forEach(d => {
+        updateDoc(doc(db, "trips", d.id), {
+          endTime: Date.now(),
+          status: "completed"
+        }).catch(() => {});
+      });
+    } catch (err) {
+      console.error("Admin Firestore trip completion failed:", err);
+    }
 
     set(ref(rtdb, `routes/${routeId}/live`), {
       active: false,
